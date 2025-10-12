@@ -34,12 +34,12 @@ class _GameScreenState extends State<GameScreen> {
     ));
 
     return ChangeNotifierProvider(
-      create: (_) => GameController(gridSize: 4),
+      create: (_) => GameController(gridSize: 4)..generateNewGrid(), // auto start
       child: Consumer<GameController>(
         builder: (context, controller, _) {
           int gridSize = controller.gridSize;
 
-          // Initialize controllers only once per editable cell
+          // Prepare text controllers for editable cells
           for (int i = 0; i < gridSize; i++) {
             for (int j = 0; j < gridSize; j++) {
               if ((i != 0 || j != 0) && !controller.isFixed[i][j]) {
@@ -55,17 +55,13 @@ class _GameScreenState extends State<GameScreen> {
                 gradient: LinearGradient(
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
-                  colors: [
-                    Color(0xFFFFC0CB),
-                    Color(0xFFADD8E6),
-                    Color(0xFFE6E6FA),
-                  ],
+                  colors: [Color(0xFFFFC0CB), Color(0xFFADD8E6), Color(0xFFE6E6FA)],
                 ),
               ),
               child: SafeArea(
                 child: Column(
                   children: [
-                    /// 1. Header Bar
+                    // Header Bar
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                       child: Row(
@@ -150,11 +146,12 @@ class _GameScreenState extends State<GameScreen> {
 
                     const SizedBox(height: 10),
 
-                    /// 2. Score & Timer
+                    // Score & Timer
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 20),
                       child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                        padding:
+                        const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                         decoration: BoxDecoration(
                           color: textPink,
                           borderRadius: BorderRadius.circular(12),
@@ -185,7 +182,7 @@ class _GameScreenState extends State<GameScreen> {
 
                     const SizedBox(height: 16),
 
-                    /// 3. Solve Puzzle Button
+                    // Solve Button
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 20),
                       child: SizedBox(
@@ -215,7 +212,7 @@ class _GameScreenState extends State<GameScreen> {
 
                     const SizedBox(height: 16),
 
-                    /// 4. Grid
+                    // Grid
                     Expanded(
                       child: Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -225,8 +222,7 @@ class _GameScreenState extends State<GameScreen> {
                             return GridView.builder(
                               physics: const BouncingScrollPhysics(),
                               itemCount: gridSize * gridSize,
-                              gridDelegate:
-                              SliverGridDelegateWithFixedCrossAxisCount(
+                              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                                 crossAxisCount: gridSize,
                                 mainAxisSpacing: spacing,
                                 crossAxisSpacing: spacing,
@@ -238,20 +234,20 @@ class _GameScreenState extends State<GameScreen> {
                                 bool isFixedCell = controller.isFixed[row][col];
                                 final value = controller.grid[row][col];
 
-                                // Make the top-left corner cell pink
-                                Color cellColor =
-                                (row == 0 && col == 0) ? textPink : Colors.white;
-
-                                Border cellBorder = Border.all(
-                                  color: Colors.grey.shade600,
-                                  width: 1.6,
-                                );
+                                Color cellColor = (row == 0 && col == 0)
+                                    ? textPink
+                                    : isFixedCell
+                                    ? Colors.yellow[100]!
+                                    : Colors.white;
 
                                 return Container(
                                   decoration: BoxDecoration(
                                     color: cellColor,
                                     borderRadius: BorderRadius.circular(6),
-                                    border: cellBorder,
+                                    border: Border.all(
+                                      color: Colors.grey.shade600,
+                                      width: 1.6,
+                                    ),
                                   ),
                                   child: Center(
                                     child: (row == 0 && col == 0)
@@ -273,9 +269,8 @@ class _GameScreenState extends State<GameScreen> {
                                       ),
                                     )
                                         : TextField(
-                                      controller:
-                                      _inputControllers[_getKey(
-                                          row, col)],
+                                      controller: _inputControllers[
+                                      _getKey(row, col)],
                                       textAlign: TextAlign.center,
                                       keyboardType:
                                       TextInputType.number,
@@ -287,8 +282,7 @@ class _GameScreenState extends State<GameScreen> {
                                         border: InputBorder.none,
                                         hintText: "?",
                                         hintStyle: TextStyle(
-                                            color: Colors
-                                                .grey.shade400),
+                                            color: Colors.grey.shade400),
                                         counterText: "",
                                         isCollapsed: true,
                                       ),
@@ -302,10 +296,8 @@ class _GameScreenState extends State<GameScreen> {
                                               row, col, null);
                                           return;
                                         }
-                                        int? newVal =
-                                        int.tryParse(val);
-                                        if (newVal != null &&
-                                            newVal >= 0) {
+                                        int? newVal = int.tryParse(val);
+                                        if (newVal != null && newVal >= 0) {
                                           controller.updateCell(
                                               row, col, newVal);
                                         }
@@ -320,7 +312,7 @@ class _GameScreenState extends State<GameScreen> {
                       ),
                     ),
 
-                    /// 5. Bottom Actions
+                    // Bottom Buttons
                     Padding(
                       padding: const EdgeInsets.symmetric(
                           horizontal: 20, vertical: 10),
@@ -334,8 +326,7 @@ class _GameScreenState extends State<GameScreen> {
                               },
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: Colors.orange,
-                                padding:
-                                const EdgeInsets.symmetric(vertical: 14),
+                                padding: const EdgeInsets.symmetric(vertical: 14),
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(8),
                                 ),
@@ -360,14 +351,13 @@ class _GameScreenState extends State<GameScreen> {
                                 Navigator.push(
                                   context,
                                   MaterialPageRoute(
-                                    builder: (_) => SubmitGameScreen(),
+                                    builder: (_) => const SubmitGameScreen(),
                                   ),
                                 );
                               },
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: textBlue,
-                                padding:
-                                const EdgeInsets.symmetric(vertical: 14),
+                                padding: const EdgeInsets.symmetric(vertical: 14),
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(8),
                                 ),
@@ -396,6 +386,7 @@ class _GameScreenState extends State<GameScreen> {
     );
   }
 }
+
 
 /// =================== FinishGameDialog ===================
 class FinishGameDialog extends StatelessWidget {
