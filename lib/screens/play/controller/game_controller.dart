@@ -2,8 +2,11 @@ import 'dart:math';
 import 'dart:async';
 import 'package:flutter/material.dart';
 
+enum GameMode { untimed, timed }
+
 class GameController extends ChangeNotifier {
   int gridSize;
+  GameMode _mode = GameMode.untimed; // private field
   late List<List<int?>> grid; // visible cells (null = empty)
   late List<List<int?>> _solutionGrid; // full solution
   late List<List<bool>> isFixed; // prefilled clues
@@ -16,7 +19,9 @@ class GameController extends ChangeNotifier {
 
   GameController({this.gridSize = 4}) {
     _initGrid();
-    startTimer();
+    if (mode == GameMode.timed) {
+      startTimer();
+    }
   }
 
   // ──────────────────────────────────────────────
@@ -24,20 +29,18 @@ class GameController extends ChangeNotifier {
   // ──────────────────────────────────────────────
   void _initGrid() {
     final random = Random();
-    // Initialize empty structures
     grid = List.generate(gridSize, (_) => List.filled(gridSize, null));
     _solutionGrid = List.generate(gridSize, (_) => List.filled(gridSize, null));
     isFixed = List.generate(gridSize, (_) => List.filled(gridSize, false));
     _relationshipRules = List.generate(gridSize, (_) => List.filled(gridSize, 0));
     isWrong = List.generate(gridSize, (_) => List.filled(gridSize, false));
 
-    // Reference cell (top-left) - always fixed
+    // Top-left cell fixed
     grid[0][0] = -1;
     _solutionGrid[0][0] = -1;
     isFixed[0][0] = true;
     _relationshipRules[0][0] = -1;
 
-    // Generate a solvable puzzle
     _generateSolvablePuzzle(random);
     isPlaying = true;
     notifyListeners();
@@ -47,25 +50,21 @@ class GameController extends ChangeNotifier {
     const int maxAttempts = 100;
     bool success = false;
     for (int attempt = 0; attempt < maxAttempts && !success; attempt++) {
-      // Step 1: Generate random headers (keep them small for better gameplay)
       for (int i = 1; i < gridSize; i++) {
-        _solutionGrid[i][0] = random.nextInt(25) + 1; // A values: 1-25
+        _solutionGrid[i][0] = random.nextInt(25) + 1;
       }
       for (int j = 1; j < gridSize; j++) {
-        _solutionGrid[0][j] = random.nextInt(25) + 1; // B values: 1-25
+        _solutionGrid[0][j] = random.nextInt(25) + 1;
       }
 
-      // Step 2: Assign random valid rules to each intersection
       for (int i = 1; i < gridSize; i++) {
         for (int j = 1; j < gridSize; j++) {
           int a = _solutionGrid[i][0]!;
           int b = _solutionGrid[0][j]!;
-          // Determine which rules are valid (result must be positive)
-          List<int> validRules = [0]; // A + B = C always valid
-          if (a > b) validRules.add(1); // B + C = A → C = A - B (valid if A > B)
-          if (b > a) validRules.add(2); // A + C = B → C = B - A (valid if B > A)
+          List<int> validRules = [0];
+          if (a > b) validRules.add(1);
+          if (b > a) validRules.add(2);
 
-          // Randomly choose a valid rule (prefer non-addition for variety)
           int rule;
           if (validRules.length > 1 && random.nextDouble() > 0.4) {
             rule = validRules[1 + random.nextInt(validRules.length - 1)];
@@ -74,7 +73,6 @@ class GameController extends ChangeNotifier {
           }
           _relationshipRules[i][j] = rule;
 
-          // Calculate the result based on the rule
           int c;
           switch (rule) {
             case 0:
@@ -93,19 +91,14 @@ class GameController extends ChangeNotifier {
         }
       }
 
-      // Step 3: Select 6 OPERAND clues that are ALL < 10 and verify solvability
       if (_selectOperandClues(random)) {
         success = true;
       }
     }
-    if (!success) {
-      // Fallback: use a guaranteed-solvable pattern
-      _useFallbackClues(random);
-    }
+    if (!success) _useFallbackClues(random);
   }
 
   bool _selectOperandClues(Random random) {
-    // Clear any previous clues
     for (int i = 0; i < gridSize; i++) {
       for (int j = 0; j < gridSize; j++) {
         if (!(i == 0 && j == 0)) {
@@ -115,63 +108,42 @@ class GameController extends ChangeNotifier {
       }
     }
 
-    // CRITICAL: Select 6 cells that are OPERANDS (not results) AND VALUES < 10
     final operandCandidates = <List<int>>[];
-
-    // Add headers as operand candidates ONLY if their value < 10
     for (int i = 1; i < gridSize; i++) {
-      if (_solutionGrid[i][0]! < 10) {
-        operandCandidates.add([i, 0]); // Row headers (A values)
-      }
+      if (_solutionGrid[i][0]! < 10) operandCandidates.add([i, 0]);
     }
     for (int j = 1; j < gridSize; j++) {
-      if (_solutionGrid[0][j]! < 10) {
-        operandCandidates.add([0, j]); // Column headers (B values)
-      }
+      if (_solutionGrid[0][j]! < 10) operandCandidates.add([0, j]);
     }
 
-    // Add intersection cells where C is an OPERAND (rule 1 or 2) AND value < 10
     for (int i = 1; i < gridSize; i++) {
       for (int j = 1; j < gridSize; j++) {
         final rule = _relationshipRules[i][j];
         if ((rule == 1 || rule == 2) && _solutionGrid[i][j]! < 10) {
-          // Rule 1: B + C = A (C is operand)
-          // Rule 2: A + C = B (C is operand)
           operandCandidates.add([i, j]);
         }
       }
     }
 
-    if (operandCandidates.length < 6) {
-      return false; // Not enough operands with values < 10, retry
-    }
+    if (operandCandidates.length < 6) return false;
 
-    // NEW: First, select two disjoint obvious partial triplets (4 operands total)
     final partialTriplets = _selectTwoDisjointPartialTriplets(operandCandidates, random);
-    if (partialTriplets.length != 2) {
-      return false; // Couldn't find suitable hints, retry
-    }
+    if (partialTriplets.length != 2) return false;
 
-    // Extract the 4 operand positions from the two triplets
     final hintOperands = <List<int>>[];
     for (final triplet in partialTriplets) {
-      hintOperands.addAll(triplet.sublist(0, 2)); // The two known operands per triplet
+      hintOperands.addAll(triplet.sublist(0, 2));
     }
 
-    // Now select 2 more random operands from remaining candidates (avoiding conflicts)
     final remainingCandidates = operandCandidates
         .where((pos) => !hintOperands.any((h) => h[0] == pos[0] && h[1] == pos[1]))
         .toList();
-    if (remainingCandidates.length < 2) {
-      return false;
-    }
+    if (remainingCandidates.length < 2) return false;
+
     remainingCandidates.shuffle(random);
     final additionalClues = remainingCandidates.take(2).toList();
-
-    // Combine all 6
     final selectedClues = [...hintOperands, ...additionalClues];
 
-    // Apply these clues temporarily
     for (int i = 0; i < gridSize; i++) {
       for (int j = 0; j < gridSize; j++) {
         if (i == 0 && j == 0) continue;
@@ -184,18 +156,11 @@ class GameController extends ChangeNotifier {
       isFixed[pos[0]][pos[1]] = true;
     }
 
-    // Check if puzzle is solvable with these clues
-    if (_isPuzzleSolvable()) {
-      return true;
-    }
-    return false;
+    return _isPuzzleSolvable();
   }
 
   List<List<List<int>>> _selectTwoDisjointPartialTriplets(
       List<List<int>> operandCandidates, Random random) {
-    final triplets = <List<List<int>>>[]; // Each: [known1, known2, unknown]
-
-    // Find all possible partial triplets where exactly two operands are candidates (<10)
     final possiblePartials = <List<List<int>>>[];
     for (int i = 1; i < gridSize; i++) {
       for (int j = 1; j < gridSize; j++) {
@@ -204,114 +169,46 @@ class GameController extends ChangeNotifier {
         final bPos = [0, j];
         final cPos = [i, j];
 
-        // Check if A is operand candidate
         final aIsCandidate = operandCandidates.any((p) => p[0] == i && p[1] == 0);
-        // Check if B is operand candidate
         final bIsCandidate = operandCandidates.any((p) => p[0] == 0 && p[1] == j);
-        // Check if C is operand (for this rule) and candidate
         final cIsOperand = (rule == 1 || rule == 2);
         final cIsCandidate = cIsOperand &&
             operandCandidates.any((p) => p[0] == i && p[1] == j);
 
-        // Possible pairs for obvious deduction (unique based on rule)
-        if (rule == 0) {
-          // Prefer A + B → C (unknown C)
-          if (aIsCandidate && bIsCandidate) {
-            possiblePartials.add([aPos, bPos, cPos]);
-          }
-        } else if (rule == 1) {
-          // B + C → A (unknown A), or A + B → C but since rule=1, C operand
-          if (bIsCandidate && cIsCandidate) {
-            possiblePartials.add([bPos, cPos, aPos]);
-          } else if (aIsCandidate && bIsCandidate) {
-            // Fallback, but check if deduces correctly
-            final a = _solutionGrid[i][0]!;
-            final b = _solutionGrid[0][j]!;
-            final expectedC = a - b;
-            if (expectedC > 0) {
-              possiblePartials.add([aPos, bPos, cPos]);
-            }
-          }
-        } else if (rule == 2) {
-          // A + C → B (unknown B), or A + B → C
-          if (aIsCandidate && cIsCandidate) {
-            possiblePartials.add([aPos, cPos, bPos]);
-          } else if (aIsCandidate && bIsCandidate) {
-            final a = _solutionGrid[i][0]!;
-            final b = _solutionGrid[0][j]!;
-            final expectedC = b - a;
-            if (expectedC > 0) {
-              possiblePartials.add([aPos, bPos, cPos]);
-            }
-          }
+        if (rule == 0 && aIsCandidate && bIsCandidate) {
+          possiblePartials.add([aPos, bPos, cPos]);
+        } else if (rule == 1 && bIsCandidate && cIsCandidate) {
+          possiblePartials.add([bPos, cPos, aPos]);
+        } else if (rule == 2 && aIsCandidate && cIsCandidate) {
+          possiblePartials.add([aPos, cPos, bPos]);
         }
       }
     }
 
-    if (possiblePartials.length < 2) {
-      return [];
-    }
-
-    // Shuffle and try to pick two disjoint (no shared positions)
+    if (possiblePartials.length < 2) return [];
     possiblePartials.shuffle(random);
-    for (int idx1 = 0; idx1 < possiblePartials.length - 1; idx1++) {
-      final t1 = possiblePartials[idx1];
-      bool disjoint = true;
-      for (int idx2 = idx1 + 1; idx2 < possiblePartials.length; idx2++) {
-        final t2 = possiblePartials[idx2];
-        // Check no shared known positions
-        final shared = t1.sublist(0, 2).any((p1) => t2.sublist(0, 2).any((p2) => p1[0] == p2[0] && p1[1] == p2[1]));
-        if (!shared) {
-          return [t1, t2];
-        }
+
+    for (int i = 0; i < possiblePartials.length - 1; i++) {
+      for (int j = i + 1; j < possiblePartials.length; j++) {
+        final t1 = possiblePartials[i];
+        final t2 = possiblePartials[j];
+        final shared = t1.sublist(0, 2).any(
+                (p1) => t2.sublist(0, 2).any((p2) => p1[0] == p2[0] && p1[1] == p2[1]));
+        if (!shared) return [t1, t2];
       }
     }
-    return []; // No disjoint pair found
+    return [];
   }
 
   void _useFallbackClues(Random random) {
-    // Fallback: reveal headers strategically that are < 10
     final clues = <List<int>>[];
-
-    // Add row headers that are < 10
     for (int i = 1; i < gridSize; i++) {
-      if (_solutionGrid[i][0]! < 10) {
-        clues.add([i, 0]);
-      }
+      if (_solutionGrid[i][0]! < 10) clues.add([i, 0]);
     }
-
-    // Add column headers that are < 10
     for (int j = 1; j < gridSize; j++) {
-      if (_solutionGrid[0][j]! < 10 && clues.length < 6) {
-        clues.add([0, j]);
-      }
+      if (_solutionGrid[0][j]! < 10 && clues.length < 6) clues.add([0, j]);
     }
 
-    // If we still need more clues, add operand intersections that are < 10
-    for (int i = 1; i < gridSize && clues.length < 6; i++) {
-      for (int j = 1; j < gridSize && clues.length < 6; j++) {
-        final rule = _relationshipRules[i][j];
-        if ((rule == 1 || rule == 2) && _solutionGrid[i][j]! < 10) {
-          clues.add([i, j]);
-        }
-      }
-    }
-
-    // If STILL not enough, relax the <10 constraint but keep operand requirement
-    if (clues.length < 6) {
-      for (int i = 1; i < gridSize && clues.length < 6; i++) {
-        if (!clues.any((pos) => pos[0] == i && pos[1] == 0)) {
-          clues.add([i, 0]);
-        }
-      }
-      for (int j = 1; j < gridSize && clues.length < 6; j++) {
-        if (!clues.any((pos) => pos[0] == 0 && pos[1] == j)) {
-          clues.add([0, j]);
-        }
-      }
-    }
-
-    // Apply clues
     for (final pos in clues) {
       grid[pos[0]][pos[1]] = _solutionGrid[pos[0]][pos[1]];
       isFixed[pos[0]][pos[1]] = true;
@@ -319,19 +216,15 @@ class GameController extends ChangeNotifier {
   }
 
   bool _isPuzzleSolvable() {
-    // Simulate solving the puzzle step-by-step
-    final tempGrid = List.generate(
-      gridSize,
-          (i) => List<int?>.from(grid[i]),
-    );
+    final tempGrid =
+    List.generate(gridSize, (i) => List<int?>.from(grid[i]));
     bool madeProgress = true;
     int iterations = 0;
-    const maxIterations = 100;
-    while (madeProgress && iterations < maxIterations) {
+
+    while (madeProgress && iterations < 100) {
       madeProgress = false;
       iterations++;
 
-      // Try to deduce unknown cells from known values
       for (int i = 1; i < gridSize; i++) {
         for (int j = 1; j < gridSize; j++) {
           if (tempGrid[i][j] != null) continue;
@@ -339,7 +232,6 @@ class GameController extends ChangeNotifier {
           final b = tempGrid[0][j];
           final rule = _relationshipRules[i][j];
 
-          // Case 1: Know A and B, can deduce C
           if (a != null && b != null) {
             int c;
             switch (rule) {
@@ -362,77 +254,12 @@ class GameController extends ChangeNotifier {
           }
         }
       }
-
-      // Try to deduce row headers (A values)
-      for (int i = 1; i < gridSize; i++) {
-        if (tempGrid[i][0] != null) continue;
-        for (int j = 1; j < gridSize; j++) {
-          final b = tempGrid[0][j];
-          final c = tempGrid[i][j];
-          final rule = _relationshipRules[i][j];
-          if (b != null && c != null) {
-            int? a;
-            switch (rule) {
-              case 0:
-                a = c - b; // A + B = C → A = C - B
-                break;
-              case 1:
-                a = b + c; // B + C = A
-                break;
-              case 2:
-                a = b - c; // A + C = B → A = B - C
-                break;
-            }
-            if (a != null && a > 0) {
-              tempGrid[i][0] = a;
-              madeProgress = true;
-              break;
-            }
-          }
-        }
-      }
-
-      // Try to deduce column headers (B values)
-      for (int j = 1; j < gridSize; j++) {
-        if (tempGrid[0][j] != null) continue;
-        for (int i = 1; i < gridSize; i++) {
-          final a = tempGrid[i][0];
-          final c = tempGrid[i][j];
-          final rule = _relationshipRules[i][j];
-          if (a != null && c != null) {
-            int? b;
-            switch (rule) {
-              case 0:
-                b = c - a; // A + B = C → B = C - A
-                break;
-              case 1:
-                b = a - c; // B + C = A → B = A - C
-                break;
-              case 2:
-                b = a + c; // A + C = B
-                break;
-            }
-            if (b != null && b > 0) {
-              tempGrid[0][j] = b;
-              madeProgress = true;
-              break;
-            }
-          }
-        }
-      }
     }
 
-    // Check if we solved everything
     for (int i = 1; i < gridSize; i++) {
       for (int j = 1; j < gridSize; j++) {
         if (tempGrid[i][j] == null) return false;
       }
-    }
-    for (int i = 1; i < gridSize; i++) {
-      if (tempGrid[i][0] == null) return false;
-    }
-    for (int j = 1; j < gridSize; j++) {
-      if (tempGrid[0][j] == null) return false;
     }
     return true;
   }
@@ -458,9 +285,10 @@ class GameController extends ChangeNotifier {
   }
 
   bool validateGrid() {
-    int correct = 0;
+    int correctCount = 0;
     bool isComplete = true;
-    int totalCells = gridSize * gridSize - 1;
+    int totalCells = (gridSize * gridSize) - 1;
+
     for (int i = 0; i < gridSize; i++) {
       for (int j = 0; j < gridSize; j++) {
         if (i == 0 && j == 0) continue;
@@ -468,31 +296,33 @@ class GameController extends ChangeNotifier {
           isComplete = false;
           continue;
         }
-        // Check if the value matches the solution
-        if (grid[i][j] == _solutionGrid[i][j]) {
-          correct++;
-        }
+        if (grid[i][j] == _solutionGrid[i][j]) correctCount++;
       }
     }
-    score = correct;
-    if (isComplete && correct == totalCells) {
-      stopTimer();
+
+    score = (correctCount / totalCells * 100).round();
+
+    if (isComplete && correctCount == totalCells) {
+      if (mode == GameMode.untimed) {
+        score = 100;
+      } else {
+        int totalSeconds = 300;
+        int remaining = timeLeft.inSeconds.clamp(0, totalSeconds);
+        score = (remaining / totalSeconds * 100).round().clamp(0, 100);
+      }
       isPlaying = false;
-      score += timeLeft.inSeconds ~/ 10;
+      if (mode == GameMode.timed) stopTimer();
     }
     notifyListeners();
-    return isComplete && correct == totalCells;
+    return isComplete && correctCount == totalCells;
   }
 
   void checkGrid() {
-    // Reset all wrong flags
     for (int i = 0; i < gridSize; i++) {
       for (int j = 0; j < gridSize; j++) {
         isWrong[i][j] = false;
       }
     }
-
-    // Check each cell against solution, mark wrong if mismatch and filled
     for (int i = 0; i < gridSize; i++) {
       for (int j = 0; j < gridSize; j++) {
         if (i == 0 && j == 0) continue;
@@ -501,12 +331,13 @@ class GameController extends ChangeNotifier {
         }
       }
     }
-
     notifyListeners();
   }
 
+  /// ✅ UPDATED: Solving the puzzle now gives **0 score**
   void solvePuzzle() {
     if (!isPlaying) return;
+
     for (int i = 0; i < gridSize; i++) {
       for (int j = 0; j < gridSize; j++) {
         if (i == 0 && j == 0) continue;
@@ -514,15 +345,18 @@ class GameController extends ChangeNotifier {
         isFixed[i][j] = true;
       }
     }
-    // Clear wrongs on solve
+
     for (int i = 0; i < gridSize; i++) {
       for (int j = 0; j < gridSize; j++) {
         isWrong[i][j] = false;
       }
     }
+
+    // 🚨 Set score to zero because user didn’t solve it
+    score = 0;
+
     isPlaying = false;
-    stopTimer();
-    validateGrid();
+    if (mode == GameMode.timed) stopTimer();
     notifyListeners();
   }
 
@@ -530,6 +364,7 @@ class GameController extends ChangeNotifier {
   // TIMER
   // ──────────────────────────────────────────────
   void startTimer() {
+    if (mode != GameMode.timed) return;
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
       if (timeLeft.inSeconds > 0 && isPlaying) {
         timeLeft = timeLeft - const Duration(seconds: 1);
@@ -549,7 +384,7 @@ class GameController extends ChangeNotifier {
     score = 0;
     timeLeft = const Duration(minutes: 5);
     _initGrid();
-    startTimer();
+    if (mode == GameMode.timed) startTimer();
   }
 
   void changeGridSize(int newSize) {
@@ -558,22 +393,36 @@ class GameController extends ChangeNotifier {
     notifyListeners();
   }
 
+  GameMode get mode => _mode;
+
+  set mode(GameMode newMode) {
+    if (_mode == newMode) return;
+    _mode = newMode;
+    if (isPlaying) {
+      if (newMode == GameMode.timed) {
+        startTimer();
+      } else {
+        stopTimer();
+      }
+    }
+    notifyListeners();
+  }
+
+  void toggleMode() {
+    if (_mode == GameMode.untimed) {
+      mode = GameMode.timed;
+    } else {
+      mode = GameMode.untimed;
+    }
+  }
+
   // ──────────────────────────────────────────────
-  // HELPER METHODS FOR DEBUGGING/UI
+  // HELPERS
   // ──────────────────────────────────────────────
   String getRuleSymbol(int row, int col) {
     if (row == 0 || col == 0) return '';
     final rule = _relationshipRules[row][col];
-    switch (rule) {
-      case 0:
-        return '+'; // A + B = C
-      case 1:
-        return '−'; // B + C = A
-      case 2:
-        return '−'; // A + C = B
-      default:
-        return '+';
-    }
+    return rule == 0 ? '+' : '−';
   }
 
   String getRuleDescription(int row, int col) {

@@ -7,6 +7,7 @@ import 'package:jol_app/screens/dashboard/dashboard_screen.dart';
 import 'package:jol_app/screens/dashboard/notification_screen.dart';
 import 'package:jol_app/screens/group/group_screen.dart';
 import 'package:jol_app/screens/onboarding/onboarding_screen.dart';
+import 'package:jol_app/screens/play/controller/game_controller.dart';
 import 'package:jol_app/screens/play/game_screen.dart';
 import 'package:jol_app/screens/play/paly_screen.dart';
 import 'package:jol_app/screens/play/result_screen.dart';
@@ -20,6 +21,7 @@ import 'package:jol_app/screens/settings/monetization_screen.dart';
 import 'package:jol_app/screens/settings/money_screen.dart';
 import 'package:jol_app/screens/settings/remove_adds_screen.dart';
 import 'package:jol_app/screens/splash_screen.dart';
+import 'package:provider/provider.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized(); // 👈 Required before SystemChrome
@@ -30,7 +32,14 @@ void main() async {
     DeviceOrientation.portraitDown,
   ]);
 
-  runApp(const MyApp());
+
+
+  runApp(
+    ChangeNotifierProvider(
+      create: (_) => GameController(),
+      child: const MyApp(),
+    ),
+  );
 }
 
 class MyApp extends StatelessWidget {

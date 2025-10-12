@@ -805,10 +805,12 @@ class _SettingsDialogState extends State<SettingsDialog> {
 
 
 void showSettingsDialog(BuildContext context) {
-  final controller = Provider.of<GameController>(context, listen: false);
-
   showDialog(
     context: context,
-    builder: (context) => SettingsDialog(controller: controller),
+    builder: (BuildContext dialogContext) {
+      // Access the same controller instance here
+      final controller = Provider.of<GameController>(context, listen: false);
+      return SettingsDialog(controller: controller);
+    },
   );
 }
