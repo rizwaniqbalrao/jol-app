@@ -17,6 +17,7 @@ class _GameScreenState extends State<GameScreen> {
   static const Color textPink = Color(0xFFF82A87);
 
   final Map<String, TextEditingController> _inputControllers = {};
+  bool _showMinus = false; // State to toggle + / -
 
   @override
   void dispose() {
@@ -112,8 +113,6 @@ class _GameScreenState extends State<GameScreen> {
                               );
                             },
                           ),
-
-
                         ],
                       ),
                     ),
@@ -278,12 +277,27 @@ class _GameScreenState extends State<GameScreen> {
                                   ),
                                   child: Center(
                                     child: (row == 0 && col == 0)
-                                        ? const Text(
-                                      "+",
-                                      style: TextStyle(
-                                        fontSize: 24,
-                                        fontWeight: FontWeight.bold,
-                                        color: Colors.white,
+                                        ? GestureDetector(
+                                      onTap: () {
+                                        setState(() {
+                                          _showMinus = !_showMinus;
+                                        });
+                                        // Switch operation mode and regenerate puzzle
+                                        controller.setOperation(
+                                            _showMinus
+                                                ? PuzzleOperation.subtraction
+                                                : PuzzleOperation.addition
+                                        );
+                                        // Clear input controllers for new puzzle
+                                        _inputControllers.clear();
+                                      },
+                                      child: Text(
+                                        _showMinus ? "-" : "+",
+                                        style: const TextStyle(
+                                          fontSize: 24,
+                                          fontWeight: FontWeight.bold,
+                                          color: Colors.white,
+                                        ),
                                       ),
                                     )
                                         : isFixedCell
@@ -305,12 +319,9 @@ class _GameScreenState extends State<GameScreen> {
                                         FilteringTextInputFormatter
                                             .digitsOnly,
                                       ],
-                                      decoration: InputDecoration(
+                                      decoration: const InputDecoration(
                                         border: InputBorder.none,
-                                        hintText: "?",
-                                        hintStyle: TextStyle(
-                                            color:
-                                            Colors.grey.shade400),
+                                        hintText: "", // Removed the "?"
                                         counterText: "",
                                         isCollapsed: true,
                                       ),
@@ -413,6 +424,26 @@ class _GameScreenState extends State<GameScreen> {
           );
         },
       ),
+    );
+  }
+
+  // Settings dialog method (assuming it exists)
+  void showSettingsDialog(BuildContext context) {
+    // Your existing settings dialog code here
+    showDialog(
+      context: context,
+      builder: (BuildContext dialogContext) {
+        return AlertDialog(
+          title: const Text('Settings'),
+          content: const Text('Game settings will go here'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(),
+              child: const Text('Close'),
+            ),
+          ],
+        );
+      },
     );
   }
 }

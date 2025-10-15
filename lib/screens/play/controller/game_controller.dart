@@ -3,19 +3,21 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 enum GameMode { untimed, timed }
+enum PuzzleOperation { addition, subtraction }
 
 class GameController extends ChangeNotifier {
   int gridSize;
-  GameMode _mode = GameMode.untimed; // private field
+  GameMode _mode = GameMode.untimed;
+  PuzzleOperation operation = PuzzleOperation.addition; // NEW
   late List<List<int?>> grid; // visible cells (null = empty)
   late List<List<int?>> _solutionGrid; // full solution
   late List<List<bool>> isFixed; // prefilled clues
-  late List<List<int>> _relationshipRules; // 0=A+B=C, 1=B+C=A, 2=A+C=B
   late List<List<bool>> isWrong; // tracks incorrect cells for highlighting
   int score = 0;
   Duration timeLeft = const Duration(minutes: 5);
   Timer? _timer;
   bool isPlaying = false;
+  int seedNumbers = 0;
 
   GameController({this.gridSize = 4}) {
     _initGrid();
@@ -24,8 +26,15 @@ class GameController extends ChangeNotifier {
     }
   }
 
+  // NEW: Method to change operation and regenerate puzzle
+  void setOperation(PuzzleOperation newOperation) {
+    if (operation == newOperation) return;
+    operation = newOperation;
+    resetGame();
+  }
+
   // ──────────────────────────────────────────────
-  // INITIALIZATION
+  // INITIALIZATION - PORTED FROM JAALOO.COM
   // ──────────────────────────────────────────────
   void _initGrid() {
     final random = Random();
@@ -33,413 +42,393 @@ class GameController extends ChangeNotifier {
     grid = List.generate(gridSize, (_) => List.filled(gridSize, null));
     _solutionGrid = List.generate(gridSize, (_) => List.filled(gridSize, null));
     isFixed = List.generate(gridSize, (_) => List.filled(gridSize, false));
-    _relationshipRules = List.generate(gridSize, (_) => List.filled(gridSize, 0));
     isWrong = List.generate(gridSize, (_) => List.filled(gridSize, false));
 
     // Reference cell (top-left) - always fixed
     grid[0][0] = -1;
     _solutionGrid[0][0] = -1;
     isFixed[0][0] = true;
-    _relationshipRules[0][0] = -1;
 
-    // Generate a solvable puzzle
-    _generateSolvablePuzzle(random);
+    // Generate puzzle using jaaloo.com logic
+    _createBoard(random);
     isPlaying = true;
     notifyListeners();
   }
 
-  void _generateSolvablePuzzle(Random random) {
-    const int maxAttempts = 100;
-    bool success = false;
-    for (int attempt = 0; attempt < maxAttempts && !success; attempt++) {
-      // Step 1: Generate random headers (keep them small for better gameplay)
-      for (int i = 1; i < gridSize; i++) {
-        _solutionGrid[i][0] = random.nextInt(25) + 1; // A values: 1-25
-      }
-      for (int j = 1; j < gridSize; j++) {
-        _solutionGrid[0][j] = random.nextInt(25) + 1; // B values: 1-25
-      }
+  void _createBoard(Random random) {
+    List<int> availableRows = [];
+    List<int> availableCols = [];
 
-      // Step 2: Assign random valid rules to each intersection
-      for (int i = 1; i < gridSize; i++) {
-        for (int j = 1; j < gridSize; j++) {
-          int a = _solutionGrid[i][0]!;
-          int b = _solutionGrid[0][j]!;
-          // Determine which rules are valid (result must be positive)
-          List<int> validRules = [0]; // A + B = C always valid
-          if (a > b) validRules.add(1); // B + C = A → C = A - B (valid if A > B)
-          if (b > a) validRules.add(2); // A + C = B → C = B - A (valid if B > A)
+    for (int i = 0; i < gridSize; i++) {
+      availableRows.add(i);
+      availableCols.add(i);
+    }
 
-          // Randomly choose a valid rule (prefer non-addition for variety)
-          int rule;
-          if (validRules.length > 1 && random.nextDouble() > 0.4) {
-            rule = validRules[1 + random.nextInt(validRules.length - 1)];
+    seedNumbers = 0;
+
+    try {
+      // PHASE 1: Place first 4 seed numbers
+      for (int i = 0; i < 4; i++) {
+        int randomRow, randomCol;
+
+        do {
+          if (seedNumbers == 0) {
+            // First seed: row 0, random column (not column 0)
+            randomRow = 0;
+            randomCol = availableCols[random.nextInt(availableCols.length - 1) + 1];
           } else {
-            rule = 0;
+            // Next seeds: random positions
+            randomRow = availableRows[random.nextInt(availableRows.length)];
+            randomCol = availableCols[random.nextInt(availableCols.length)];
           }
-          _relationshipRules[i][j] = rule;
+        } while (randomRow == 0 && randomCol == 0); // Avoid top-left corner
 
-          // Calculate the result based on the rule
-          int c;
-          switch (rule) {
-            case 0:
-              c = a + b;
-              break;
-            case 1:
-              c = a - b;
-              break;
-            case 2:
-              c = b - a;
-              break;
-            default:
-              c = a + b;
-          }
-          _solutionGrid[i][j] = c;
+        // Place a random number that's not already in that row or column
+        _solutionGrid[randomRow][randomCol] = _randomNumberNotInRowCol(randomRow, randomCol, random);
+        grid[randomRow][randomCol] = _solutionGrid[randomRow][randomCol];
+        isFixed[randomRow][randomCol] = true;
+
+        seedNumbers++;
+        availableRows.remove(randomRow);
+        availableCols.remove(randomCol);
+      }
+
+      // PHASE 2: Solve the board to fill in deducible values
+      if (operation == PuzzleOperation.addition) {
+        _solvingBoard1();
+      } else {
+        _solvingBoard1Subtraction();
+      }
+
+      // PHASE 3: Add 2 more seed numbers (total 6)
+      _addAdditionalSeeds(random);
+
+      // PHASE 4: Final solve to complete the grid
+      for (int n = 0; n < 20; n++) {
+        if (operation == PuzzleOperation.addition) {
+          _solvingBoard();
+        } else {
+          _solvingBoardSubtraction();
         }
       }
 
-      // Step 3: Select 6 OPERAND clues that are ALL < 10 and verify solvability
-      if (_selectOperandClues(random)) {
-        success = true;
+      // Check if board is fully solved
+      if (!_checkBoardSolvable()) {
+        // Board is solvable, prepare for gameplay
+        _prepareGameBoard();
+      } else {
+        // Board has unsolvable cells, restart
+        debugPrint("Board not solvable, regenerating...");
+        _clearBoard();
+        _createBoard(random);
       }
-    }
-    if (!success) {
-      // Fallback: use a guaranteed-solvable pattern
-      _useFallbackClues(random);
+    } catch (e) {
+      debugPrint("Error in board creation: $e");
+      _clearBoard();
+      _createBoard(random);
     }
   }
 
-  bool _selectOperandClues(Random random) {
-    // Clear any previous clues
+  int _randomNumberNotInRowCol(int row, int col, Random random) {
+    int number;
+    do {
+      number = random.nextInt(9) + 1; // 1 to 9 (less than 10)
+    } while (_isNumberUsedInRowOrColumn(number, row, col));
+    return number;
+  }
+
+  bool _isNumberUsedInRowOrColumn(int number, int row, int col) {
     for (int i = 0; i < gridSize; i++) {
-      for (int j = 0; j < gridSize; j++) {
-        if (!(i == 0 && j == 0)) {
-          grid[i][j] = null;
-          isFixed[i][j] = false;
-        }
+      if (_solutionGrid[row][i] == number || _solutionGrid[i][col] == number) {
+        return true;
       }
-    }
-
-    // CRITICAL: Select 6 cells that are OPERANDS (not results) AND VALUES < 10
-    final operandCandidates = <List<int>>[];
-
-    // Add headers as operand candidates ONLY if their value < 10
-    for (int i = 1; i < gridSize; i++) {
-      if (_solutionGrid[i][0]! < 10) {
-        operandCandidates.add([i, 0]); // Row headers (A values)
-      }
-    }
-    for (int j = 1; j < gridSize; j++) {
-      if (_solutionGrid[0][j]! < 10) {
-        operandCandidates.add([0, j]); // Column headers (B values)
-      }
-    }
-
-    // Add intersection cells where C is an OPERAND (rule 1 or 2) AND value < 10
-    for (int i = 1; i < gridSize; i++) {
-      for (int j = 1; j < gridSize; j++) {
-        final rule = _relationshipRules[i][j];
-        if ((rule == 1 || rule == 2) && _solutionGrid[i][j]! < 10) {
-          // Rule 1: B + C = A (C is operand)
-          // Rule 2: A + C = B (C is operand)
-          operandCandidates.add([i, j]);
-        }
-      }
-    }
-
-    if (operandCandidates.length < 6) {
-      return false; // Not enough operands with values < 10, retry
-    }
-
-    // NEW: First, select two disjoint obvious partial triplets (4 operands total)
-    final partialTriplets = _selectTwoDisjointPartialTriplets(operandCandidates, random);
-    if (partialTriplets.length != 2) {
-      return false; // Couldn't find suitable hints, retry
-    }
-
-    // Extract the 4 operand positions from the two triplets
-    final hintOperands = <List<int>>[];
-    for (final triplet in partialTriplets) {
-      hintOperands.addAll(triplet.sublist(0, 2)); // The two known operands per triplet
-    }
-
-    // Now select 2 more random operands from remaining candidates (avoiding conflicts)
-    final remainingCandidates = operandCandidates
-        .where((pos) => !hintOperands.any((h) => h[0] == pos[0] && h[1] == pos[1]))
-        .toList();
-    if (remainingCandidates.length < 2) {
-      return false;
-    }
-    remainingCandidates.shuffle(random);
-    final additionalClues = remainingCandidates.take(2).toList();
-
-    // Combine all 6
-    final selectedClues = [...hintOperands, ...additionalClues];
-
-    // Apply these clues temporarily
-    for (int i = 0; i < gridSize; i++) {
-      for (int j = 0; j < gridSize; j++) {
-        if (i == 0 && j == 0) continue;
-        grid[i][j] = null;
-        isFixed[i][j] = false;
-      }
-    }
-    for (final pos in selectedClues) {
-      grid[pos[0]][pos[1]] = _solutionGrid[pos[0]][pos[1]];
-      isFixed[pos[0]][pos[1]] = true;
-    }
-
-    // Check if puzzle is solvable with these clues
-    if (_isPuzzleSolvable()) {
-      return true;
     }
     return false;
   }
 
-  List<List<List<int>>> _selectTwoDisjointPartialTriplets(
-      List<List<int>> operandCandidates, Random random) {
-    final triplets = <List<List<int>>>[]; // Each: [known1, known2, unknown]
-
-    // Find all possible partial triplets where exactly two operands are candidates (<10)
-    final possiblePartials = <List<List<int>>>[];
-    for (int i = 1; i < gridSize; i++) {
-      for (int j = 1; j < gridSize; j++) {
-        final rule = _relationshipRules[i][j];
-        final aPos = [i, 0];
-        final bPos = [0, j];
-        final cPos = [i, j];
-
-        // Check if A is operand candidate
-        final aIsCandidate = operandCandidates.any((p) => p[0] == i && p[1] == 0);
-        // Check if B is operand candidate
-        final bIsCandidate = operandCandidates.any((p) => p[0] == 0 && p[1] == j);
-        // Check if C is operand (for this rule) and candidate
-        final cIsOperand = (rule == 1 || rule == 2);
-        final cIsCandidate = cIsOperand &&
-            operandCandidates.any((p) => p[0] == i && p[1] == j);
-
-        // Possible pairs for obvious deduction (unique based on rule)
-        if (rule == 0) {
-          // Prefer A + B → C (unknown C)
-          if (aIsCandidate && bIsCandidate) {
-            possiblePartials.add([aPos, bPos, cPos]);
-          }
-        } else if (rule == 1) {
-          // B + C → A (unknown A), or A + B → C but since rule=1, C operand
-          if (bIsCandidate && cIsCandidate) {
-            possiblePartials.add([bPos, cPos, aPos]);
-          } else if (aIsCandidate && bIsCandidate) {
-            // Fallback, but check if deduces correctly
-            final a = _solutionGrid[i][0]!;
-            final b = _solutionGrid[0][j]!;
-            final expectedC = a - b;
-            if (expectedC > 0) {
-              possiblePartials.add([aPos, bPos, cPos]);
+  // ──────────────────────────────────────────────
+  // ADDITION MODE SOLVING (ORIGINAL)
+  // ──────────────────────────────────────────────
+  void _solvingBoard1() {
+    for (int i = 0; i < gridSize; i++) {
+      for (int j = 0; j < gridSize; j++) {
+        if (i == 0 && j == 0) {
+          continue;
+        } else if (i == 0 && (j >= 1 && j < gridSize)) {
+          // Top row (B values): B = sum of pairs in column
+          if (_solutionGrid[i][j] == null) {
+            for (int n = 1; n < gridSize; n++) {
+              if (_solutionGrid[n][i] != null && _solutionGrid[n][j] != null) {
+                _solutionGrid[i][j] = _solutionGrid[n][i]! + _solutionGrid[n][j]!;
+                break;
+              }
             }
           }
-        } else if (rule == 2) {
-          // A + C → B (unknown B), or A + B → C
-          if (aIsCandidate && cIsCandidate) {
-            possiblePartials.add([aPos, cPos, bPos]);
-          } else if (aIsCandidate && bIsCandidate) {
-            final a = _solutionGrid[i][0]!;
-            final b = _solutionGrid[0][j]!;
-            final expectedC = b - a;
-            if (expectedC > 0) {
-              possiblePartials.add([aPos, bPos, cPos]);
+        } else if ((i >= 1 && i < gridSize) && j == 0) {
+          // Left column (A values): A = sum of pairs in row
+          if (_solutionGrid[i][j] == null) {
+            for (int n = 1; n < gridSize; n++) {
+              if (_solutionGrid[j][n] != null && _solutionGrid[i][n] != null) {
+                _solutionGrid[i][j] = _solutionGrid[j][n]! + _solutionGrid[i][n]!;
+                break;
+              }
+            }
+          }
+        } else {
+          // Intersection cells: C = A + B
+          if (_solutionGrid[i][j] == null) {
+            if (_solutionGrid[i][0] != null && _solutionGrid[0][j] != null) {
+              _solutionGrid[i][j] = _solutionGrid[i][0]! + _solutionGrid[0][j]!;
             }
           }
         }
       }
-    }
-
-    if (possiblePartials.length < 2) {
-      return [];
-    }
-
-    // Shuffle and try to pick two disjoint (no shared positions)
-    possiblePartials.shuffle(random);
-    for (int idx1 = 0; idx1 < possiblePartials.length - 1; idx1++) {
-      final t1 = possiblePartials[idx1];
-      bool disjoint = true;
-      for (int idx2 = idx1 + 1; idx2 < possiblePartials.length; idx2++) {
-        final t2 = possiblePartials[idx2];
-        // Check no shared known positions
-        final shared = t1.sublist(0, 2).any((p1) => t2.sublist(0, 2).any((p2) => p1[0] == p2[0] && p1[1] == p2[1]));
-        if (!shared) {
-          return [t1, t2];
-        }
-      }
-    }
-    return []; // No disjoint pair found
-  }
-
-  void _useFallbackClues(Random random) {
-    // Fallback: reveal headers strategically that are < 10
-    final clues = <List<int>>[];
-
-    // Add row headers that are < 10
-    for (int i = 1; i < gridSize; i++) {
-      if (_solutionGrid[i][0]! < 10) {
-        clues.add([i, 0]);
-      }
-    }
-
-    // Add column headers that are < 10
-    for (int j = 1; j < gridSize; j++) {
-      if (_solutionGrid[0][j]! < 10 && clues.length < 6) {
-        clues.add([0, j]);
-      }
-    }
-
-    // If we still need more clues, add operand intersections that are < 10
-    for (int i = 1; i < gridSize && clues.length < 6; i++) {
-      for (int j = 1; j < gridSize && clues.length < 6; j++) {
-        final rule = _relationshipRules[i][j];
-        if ((rule == 1 || rule == 2) && _solutionGrid[i][j]! < 10) {
-          clues.add([i, j]);
-        }
-      }
-    }
-
-    // If STILL not enough, relax the <10 constraint but keep operand requirement
-    if (clues.length < 6) {
-      for (int i = 1; i < gridSize && clues.length < 6; i++) {
-        if (!clues.any((pos) => pos[0] == i && pos[1] == 0)) {
-          clues.add([i, 0]);
-        }
-      }
-      for (int j = 1; j < gridSize && clues.length < 6; j++) {
-        if (!clues.any((pos) => pos[0] == 0 && pos[1] == j)) {
-          clues.add([0, j]);
-        }
-      }
-    }
-
-    // Apply clues
-    for (final pos in clues) {
-      grid[pos[0]][pos[1]] = _solutionGrid[pos[0]][pos[1]];
-      isFixed[pos[0]][pos[1]] = true;
     }
   }
 
-  bool _isPuzzleSolvable() {
-    // Simulate solving the puzzle step-by-step
-    final tempGrid = List.generate(
-      gridSize,
-          (i) => List<int?>.from(grid[i]),
-    );
-    bool madeProgress = true;
-    int iterations = 0;
-    const maxIterations = 100;
-    while (madeProgress && iterations < maxIterations) {
-      madeProgress = false;
-      iterations++;
-
-      // Try to deduce unknown cells from known values
-      for (int i = 1; i < gridSize; i++) {
-        for (int j = 1; j < gridSize; j++) {
-          if (tempGrid[i][j] != null) continue;
-          final a = tempGrid[i][0];
-          final b = tempGrid[0][j];
-          final rule = _relationshipRules[i][j];
-
-          // Case 1: Know A and B, can deduce C
-          if (a != null && b != null) {
-            int c;
-            switch (rule) {
-              case 0:
-                c = a + b;
+  void _solvingBoard() {
+    for (int i = 0; i < gridSize; i++) {
+      for (int j = 0; j < gridSize; j++) {
+        if (i == 0 && j == 0) {
+          continue;
+        } else if (i == 0 && (j >= 1 && j < gridSize)) {
+          // Top row
+          if (_solutionGrid[i][j] == null) {
+            for (int n = 1; n < gridSize; n++) {
+              if (_solutionGrid[n][i] != null && _solutionGrid[n][j] != null) {
+                _solutionGrid[i][j] = _solutionGrid[n][i]! + _solutionGrid[n][j]!;
                 break;
-              case 1:
-                c = a - b;
-                break;
-              case 2:
-                c = b - a;
-                break;
-              default:
-                c = a + b;
-            }
-            if (c > 0) {
-              tempGrid[i][j] = c;
-              madeProgress = true;
+              }
             }
           }
-        }
-      }
-
-      // Try to deduce row headers (A values)
-      for (int i = 1; i < gridSize; i++) {
-        if (tempGrid[i][0] != null) continue;
-        for (int j = 1; j < gridSize; j++) {
-          final b = tempGrid[0][j];
-          final c = tempGrid[i][j];
-          final rule = _relationshipRules[i][j];
-          if (b != null && c != null) {
-            int? a;
-            switch (rule) {
-              case 0:
-                a = c - b; // A + B = C → A = C - B
+        } else if ((i >= 1 && i < gridSize) && j == 0) {
+          // Left column
+          if (_solutionGrid[i][j] == null) {
+            for (int n = 1; n < gridSize; n++) {
+              if (_solutionGrid[i][n] != null && _solutionGrid[j][n] != null) {
+                _solutionGrid[i][j] = _solutionGrid[j][n]! + _solutionGrid[i][n]!;
                 break;
-              case 1:
-                a = b + c; // B + C = A
-                break;
-              case 2:
-                a = b - c; // A + C = B → A = B - C
-                break;
-            }
-            if (a != null && a > 0) {
-              tempGrid[i][0] = a;
-              madeProgress = true;
-              break;
+              }
             }
           }
-        }
-      }
-
-      // Try to deduce column headers (B values)
-      for (int j = 1; j < gridSize; j++) {
-        if (tempGrid[0][j] != null) continue;
-        for (int i = 1; i < gridSize; i++) {
-          final a = tempGrid[i][0];
-          final c = tempGrid[i][j];
-          final rule = _relationshipRules[i][j];
-          if (a != null && c != null) {
-            int? b;
-            switch (rule) {
-              case 0:
-                b = c - a; // A + B = C → B = C - A
-                break;
-              case 1:
-                b = a - c; // B + C = A → B = A - C
-                break;
-              case 2:
-                b = a + c; // A + C = B
-                break;
-            }
-            if (b != null && b > 0) {
-              tempGrid[0][j] = b;
-              madeProgress = true;
-              break;
+        } else {
+          // Intersection
+          if (_solutionGrid[i][j] == null) {
+            if (_solutionGrid[i][0] != null && _solutionGrid[0][j] != null) {
+              _solutionGrid[i][j] = _solutionGrid[i][0]! + _solutionGrid[0][j]!;
             }
           }
         }
       }
     }
+  }
 
-    // Check if we solved everything
-    for (int i = 1; i < gridSize; i++) {
-      for (int j = 1; j < gridSize; j++) {
-        if (tempGrid[i][j] == null) return false;
+  // ──────────────────────────────────────────────
+  // SUBTRACTION MODE SOLVING (NEW)
+  // ──────────────────────────────────────────────
+  void _solvingBoard1Subtraction() {
+    for (int i = 0; i < gridSize; i++) {
+      for (int j = 0; j < gridSize; j++) {
+        if (i == 0 && j == 0) {
+          continue;
+        } else if (i == 0 && (j >= 1 && j < gridSize)) {
+          // Top row (B values): B = |difference| of pairs in column
+          if (_solutionGrid[i][j] == null) {
+            for (int n = 1; n < gridSize; n++) {
+              if (_solutionGrid[n][i] != null && _solutionGrid[n][j] != null) {
+                _solutionGrid[i][j] = (_solutionGrid[n][i]! - _solutionGrid[n][j]!).abs();
+                break;
+              }
+            }
+          }
+        } else if ((i >= 1 && i < gridSize) && j == 0) {
+          // Left column (A values): A = |difference| of pairs in row
+          if (_solutionGrid[i][j] == null) {
+            for (int n = 1; n < gridSize; n++) {
+              if (_solutionGrid[j][n] != null && _solutionGrid[i][n] != null) {
+                _solutionGrid[i][j] = (_solutionGrid[j][n]! - _solutionGrid[i][n]!).abs();
+                break;
+              }
+            }
+          }
+        } else {
+          // Intersection cells: C = |A - B|
+          if (_solutionGrid[i][j] == null) {
+            if (_solutionGrid[i][0] != null && _solutionGrid[0][j] != null) {
+              _solutionGrid[i][j] = (_solutionGrid[i][0]! - _solutionGrid[0][j]!).abs();
+            }
+          }
+        }
       }
     }
-    for (int i = 1; i < gridSize; i++) {
-      if (tempGrid[i][0] == null) return false;
+  }
+
+  void _solvingBoardSubtraction() {
+    for (int i = 0; i < gridSize; i++) {
+      for (int j = 0; j < gridSize; j++) {
+        if (i == 0 && j == 0) {
+          continue;
+        } else if (i == 0 && (j >= 1 && j < gridSize)) {
+          // Top row
+          if (_solutionGrid[i][j] == null) {
+            for (int n = 1; n < gridSize; n++) {
+              if (_solutionGrid[n][i] != null && _solutionGrid[n][j] != null) {
+                _solutionGrid[i][j] = (_solutionGrid[n][i]! - _solutionGrid[n][j]!).abs();
+                break;
+              }
+            }
+          }
+        } else if ((i >= 1 && i < gridSize) && j == 0) {
+          // Left column
+          if (_solutionGrid[i][j] == null) {
+            for (int n = 1; n < gridSize; n++) {
+              if (_solutionGrid[i][n] != null && _solutionGrid[j][n] != null) {
+                _solutionGrid[i][j] = (_solutionGrid[j][n]! - _solutionGrid[i][n]!).abs();
+                break;
+              }
+            }
+          }
+        } else {
+          // Intersection
+          if (_solutionGrid[i][j] == null) {
+            if (_solutionGrid[i][0] != null && _solutionGrid[0][j] != null) {
+              _solutionGrid[i][j] = (_solutionGrid[i][0]! - _solutionGrid[0][j]!).abs();
+            }
+          }
+        }
+      }
     }
-    for (int j = 1; j < gridSize; j++) {
-      if (tempGrid[0][j] == null) return false;
+  }
+
+  void _addAdditionalSeeds(Random random) {
+    List<int> availableRows = [];
+    List<int> availableCols = [];
+
+    for (int i = 0; i < gridSize; i++) {
+      availableRows.add(i);
+      availableCols.add(i);
     }
-    return true;
+
+    try {
+      while (seedNumbers < 6) {
+        int randomRow = availableRows[random.nextInt(availableRows.length)];
+        int randomCol = availableCols[random.nextInt(availableCols.length)];
+
+        // Check if this position is valid for a seed
+        if ((randomRow != 0 && randomCol != 0) &&
+            _solutionGrid[randomRow][randomCol] == null &&
+            _checkCondition(randomRow, randomCol)) {
+
+          _solutionGrid[randomRow][randomCol] = random.nextInt(9) + 1; // 1-9 (less than 10)
+          grid[randomRow][randomCol] = _solutionGrid[randomRow][randomCol];
+          isFixed[randomRow][randomCol] = true;
+          seedNumbers++;
+
+          // Solve multiple times to propagate
+          for (int n = 0; n < 20; n++) {
+            if (operation == PuzzleOperation.addition) {
+              _solvingBoard();
+            } else {
+              _solvingBoardSubtraction();
+            }
+          }
+
+          availableRows.remove(randomRow);
+          availableCols.remove(randomCol);
+        }
+      }
+    } catch (e) {
+      debugPrint("Error adding seeds: $e");
+      // Reset to 4 seeds and try again
+      for (int i = 0; i < gridSize; i++) {
+        for (int j = 0; j < gridSize; j++) {
+          if (!isFixed[i][j] || seedNumbers > 4) {
+            if (isFixed[i][j] && seedNumbers > 4) {
+              _solutionGrid[i][j] = null;
+              grid[i][j] = null;
+              isFixed[i][j] = false;
+            }
+          }
+        }
+      }
+      seedNumbers = 4;
+      _addAdditionalSeeds(random);
+    }
+  }
+
+  bool _checkCondition(int i, int j) {
+    if (i == 0) {
+      // Top row position
+      if (_solutionGrid[i][j] == null) {
+        for (int n = 1; n < gridSize; n++) {
+          if (_solutionGrid[n][i] == null || _solutionGrid[n][j] == null) {
+            return true;
+          } else {
+            return false;
+          }
+        }
+      }
+    } else if (j == 0) {
+      // Left column position
+      if (_solutionGrid[i][j] == null) {
+        for (int n = 1; n < gridSize; n++) {
+          if (_solutionGrid[n][i] == null || _solutionGrid[n][j] == null) {
+            return true;
+          } else {
+            return false;
+          }
+        }
+      }
+    } else {
+      // Intersection position
+      if (_solutionGrid[i][j] == null) {
+        if (_solutionGrid[i][0] == null || _solutionGrid[0][j] == null) {
+          return true;
+        } else {
+          return false;
+        }
+      }
+    }
+    return false;
+  }
+
+  bool _checkBoardSolvable() {
+    int zeroCount = 0;
+    for (int i = 0; i < gridSize; i++) {
+      for (int j = 0; j < gridSize; j++) {
+        if (i == 0 && j == 0) continue;
+        if (_solutionGrid[i][j] == null) {
+          zeroCount++;
+        }
+      }
+    }
+    return zeroCount > 0; // Returns true if there are unsolved cells
+  }
+
+  void _prepareGameBoard() {
+    // Clear the player's grid, keeping only the seed numbers
+    for (int i = 0; i < gridSize; i++) {
+      for (int j = 0; j < gridSize; j++) {
+        if (!isFixed[i][j]) {
+          grid[i][j] = null;
+        }
+      }
+    }
+  }
+
+  void _clearBoard() {
+    for (int i = 0; i < gridSize; i++) {
+      for (int j = 0; j < gridSize; j++) {
+        grid[i][j] = null;
+        _solutionGrid[i][j] = null;
+        isFixed[i][j] = false;
+        isWrong[i][j] = false;
+      }
+    }
+    grid[0][0] = -1;
+    _solutionGrid[0][0] = -1;
+    isFixed[0][0] = true;
+    seedNumbers = 0;
   }
 
   // ──────────────────────────────────────────────
@@ -466,6 +455,7 @@ class GameController extends ChangeNotifier {
     int correctCount = 0;
     bool isComplete = true;
     int totalCells = (gridSize * gridSize) - 1;
+
     for (int i = 0; i < gridSize; i++) {
       for (int j = 0; j < gridSize; j++) {
         if (i == 0 && j == 0) continue;
@@ -473,12 +463,12 @@ class GameController extends ChangeNotifier {
           isComplete = false;
           continue;
         }
-        // Check if the value matches the solution
         if (grid[i][j] == _solutionGrid[i][j]) {
           correctCount++;
         }
       }
     }
+
     // Progress score: normalized to 100
     score = (correctCount / totalCells * 100).round();
 
@@ -487,7 +477,6 @@ class GameController extends ChangeNotifier {
       if (mode == GameMode.untimed) {
         score = 100;
       } else {
-        // Timed: time factor (5 min = 300 sec)
         int totalSeconds = 300;
         int remaining = timeLeft.inSeconds.clamp(0, totalSeconds);
         score = (remaining / totalSeconds * 100).round().clamp(0, 100);
@@ -509,7 +498,7 @@ class GameController extends ChangeNotifier {
       }
     }
 
-    // Check each cell against solution, mark wrong if mismatch and filled
+    // Check each cell against solution
     for (int i = 0; i < gridSize; i++) {
       for (int j = 0; j < gridSize; j++) {
         if (i == 0 && j == 0) continue;
@@ -531,27 +520,19 @@ class GameController extends ChangeNotifier {
         isFixed[i][j] = true;
       }
     }
-    // Clear wrongs on solve
+
+    // Clear wrong flags
     for (int i = 0; i < gridSize; i++) {
       for (int j = 0; j < gridSize; j++) {
         isWrong[i][j] = false;
       }
     }
-    // Set final score as if completed
-    int totalCells = (gridSize * gridSize) - 1;
-    if (mode == GameMode.untimed) {
-      score = 100;
-    } else {
-      int totalSeconds = 300;
-      int remaining = timeLeft.inSeconds.clamp(0, totalSeconds);
-      score = (remaining / totalSeconds * 100).round().clamp(0, 100);
-    }
+
     isPlaying = false;
     if (mode == GameMode.timed) {
       stopTimer();
     }
-    // 🧮 Let the mobile solve it, but give no points for it
-    score = 0;
+    score = 0; // No points for auto-solve
     notifyListeners();
   }
 
@@ -590,7 +571,7 @@ class GameController extends ChangeNotifier {
     notifyListeners();
   }
 
-  GameMode get mode => _mode; // public getter
+  GameMode get mode => _mode;
 
   set mode(GameMode newMode) {
     if (_mode == newMode) return;
@@ -613,38 +594,17 @@ class GameController extends ChangeNotifier {
     }
   }
 
-
   // ──────────────────────────────────────────────
-  // HELPER METHODS FOR DEBUGGING/UI
+  // HELPER METHODS
   // ──────────────────────────────────────────────
   String getRuleSymbol(int row, int col) {
     if (row == 0 || col == 0) return '';
-    final rule = _relationshipRules[row][col];
-    switch (rule) {
-      case 0:
-        return '+'; // A + B = C
-      case 1:
-        return '−'; // B + C = A
-      case 2:
-        return '−'; // A + C = B
-      default:
-        return '+';
-    }
+    return operation == PuzzleOperation.addition ? '+' : '-';
   }
 
   String getRuleDescription(int row, int col) {
     if (row == 0 || col == 0) return '';
-    final rule = _relationshipRules[row][col];
-    switch (rule) {
-      case 0:
-        return 'A + B = C';
-      case 1:
-        return 'B + C = A';
-      case 2:
-        return 'A + C = B';
-      default:
-        return '';
-    }
+    return operation == PuzzleOperation.addition ? 'A + B = C' : '|A - B| = C';
   }
 
   @override
