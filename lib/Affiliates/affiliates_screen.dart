@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:jol_app/screens/dashboard/notification_screen.dart';
 
+import '../screens/auth/models/user.dart';
 import '../screens/onboarding/onboarding_screen.dart';
 import '../screens/settings/account_screen.dart';
+import '../screens/settings/services/user_profile_services.dart';
 
 class AffiliatesScreen extends StatefulWidget {
   const AffiliatesScreen({super.key});
@@ -16,6 +18,52 @@ class _AffiliatesScreenState extends State<AffiliatesScreen> {
   static const Color textBlue = Color(0xFF0734A5);
   static const Color textGreen = Color(0xFF43AC45);
   static const Color textPink = Color(0xFFF82A87);
+
+  final UserProfileService _profileService = UserProfileService();
+
+  // Static cache to persist across screen instances
+  static UserProfile? _cachedProfile;
+  static bool _hasLoadedOnce = false;
+
+  UserProfile? _userProfile;
+  bool _isLoadingProfile = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUserProfile();
+  }
+
+  Future<void> _loadUserProfile() async {
+    // Check if we already have cached profile
+    if (_hasLoadedOnce && _cachedProfile != null) {
+      setState(() {
+        _userProfile = _cachedProfile;
+        _isLoadingProfile = false;
+      });
+      return;
+    }
+
+    // Fetch from API only if not cached
+    final result = await _profileService.getUserProfile();
+    if (mounted) {
+      setState(() {
+        _isLoadingProfile = false;
+        if (result.success) {
+          _userProfile = result.profile;
+          // Cache the profile
+          _cachedProfile = result.profile;
+          _hasLoadedOnce = true;
+        }
+      });
+    }
+  }
+
+  // Call this method when profile is updated
+  static void refreshCache() {
+    _hasLoadedOnce = false;
+    _cachedProfile = null;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -170,6 +218,43 @@ class _AffiliatesScreenState extends State<AffiliatesScreen> {
     );
   }
 
+  /// 👤 Build Profile Avatar Widget
+  Widget _buildProfileAvatar() {
+    // If still loading, show a placeholder
+    if (_isLoadingProfile) {
+      return const CircleAvatar(
+        radius: 18,
+        backgroundColor: Colors.white,
+        child: CircularProgressIndicator(
+          strokeWidth: 2,
+          valueColor: AlwaysStoppedAnimation<Color>(textPink),
+        ),
+      );
+    }
+
+    // Check if user has an avatar URL
+    final avatarUrl = _userProfile?.avatar;
+
+    if (avatarUrl != null && avatarUrl.isNotEmpty) {
+      // Use network image if avatar exists
+      return CircleAvatar(
+        radius: 18,
+        backgroundImage: NetworkImage(avatarUrl),
+        onBackgroundImageError: (exception, stackTrace) {
+          // If network image fails to load, it will show the default
+          print('Error loading avatar: $exception');
+        },
+        child: Container(), // Empty container as child
+      );
+    } else {
+      // Fall back to static emoji image
+      return const CircleAvatar(
+        radius: 18,
+        backgroundImage: AssetImage("lib/assets/images/settings_emoji.png"),
+      );
+    }
+  }
+
   /// 🔠 JOL Logo
   Widget _buildJolLogo() {
     const letters = ["J", "O", "L"];
@@ -248,7 +333,7 @@ class _AffiliatesScreenState extends State<AffiliatesScreen> {
                 onTap: () {
                   Navigator.push(
                     context,
-                    MaterialPageRoute(builder: (context) => NotificationScreen()), // Replace with NotificationScreen()
+                    MaterialPageRoute(builder: (context) => NotificationScreen()),
                   );
                 },
                 child: Container(
@@ -313,19 +398,17 @@ class _AffiliatesScreenState extends State<AffiliatesScreen> {
               ),
               const SizedBox(width: 8),
 
+              // 👤 Profile Avatar - UPDATED WITH DYNAMIC IMAGE
               InkWell(
                 onTap: () {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (context) =>
-                      const AccountScreen(),),
+                      builder: (context) => const AccountScreen(),
+                    ),
                   );
                 },
-                child: const CircleAvatar(
-                  radius: 18,
-                  backgroundImage: AssetImage("lib/assets/images/settings_emoji.png"),
-                ),
+                child: _buildProfileAvatar(),
               ),
             ],
           ),

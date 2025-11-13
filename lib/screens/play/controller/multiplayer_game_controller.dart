@@ -571,11 +571,12 @@ enum PuzzleOperation { addition, subtraction }
 
 class MultiplayerPuzzleGenerator {
   /// Generates a puzzle using the same logic as single-player GameController
+  /// Now with two-digit numbers (1-25) for seed numbers
   static PuzzleData generatePuzzle({
     required int gridSize,
     required PuzzleOperation operation,
   }) {
-    debugPrint("Generating ${gridSize}x$gridSize puzzle (${operation.name})");
+    debugPrint("Generating ${gridSize}x$gridSize puzzle (${operation.name}) with numbers 1-25");
 
     final random = Random();
 
@@ -619,7 +620,7 @@ class MultiplayerPuzzleGenerator {
       ),
     );
 
-    debugPrint("Puzzle generated successfully");
+    debugPrint("Puzzle generated successfully with two-digit numbers");
     _debugPrintPuzzle(playerGrid, solutionGrid, isFixed, gridSize);
 
     return PuzzleData(
@@ -641,7 +642,7 @@ class MultiplayerPuzzleGenerator {
       List<int> availableRows = List.generate(gridSize, (i) => i);
       List<int> availableCols = List.generate(gridSize, (i) => i);
 
-      // PHASE 1: Place first 4 seed numbers
+      // PHASE 1: Place first 4 seed numbers (now with numbers 1-25)
       for (int i = 0; i < 4; i++) {
         int randomRow, randomCol;
 
@@ -673,7 +674,7 @@ class MultiplayerPuzzleGenerator {
         _solvingBoard1Subtraction(solutionGrid, gridSize);
       }
 
-      // PHASE 3: Add 2 more seeds (total 6)
+      // PHASE 3: Add 2 more seeds (total 6) - now with numbers 1-25
       _addAdditionalSeeds(solutionGrid, isFixed, gridSize, operation, random, seedNumbers);
 
       // PHASE 4: Final solve
@@ -694,6 +695,7 @@ class MultiplayerPuzzleGenerator {
     }
   }
 
+  /// UPDATED: Now generates numbers 1-25 (same as GameController)
   static int _randomNumberNotInRowCol(
       List<List<int?>> grid,
       int row,
@@ -702,9 +704,21 @@ class MultiplayerPuzzleGenerator {
       Random random
       ) {
     int number;
+    int attempts = 0;
+    int maxAttempts = 50; // Prevent infinite loops
+
     do {
-      number = random.nextInt(9) + 1; // 1-9
+      // CHANGED: Generate numbers from 1 to 25 (single and double digits)
+      number = random.nextInt(25) + 1;
+      attempts++;
+
+      if (attempts >= maxAttempts) {
+        // Fallback: use a number that might not be unique but avoids infinite loop
+        debugPrint("Warning: Could not find unique number after $maxAttempts attempts");
+        break;
+      }
     } while (_isNumberUsedInRowOrColumn(grid, number, row, col, gridSize));
+
     return number;
   }
 
@@ -801,6 +815,7 @@ class MultiplayerPuzzleGenerator {
     _solvingBoard1Subtraction(grid, size);
   }
 
+  /// UPDATED: Additional seeds now also use numbers 1-25
   static void _addAdditionalSeeds(
       List<List<int?>> grid,
       List<List<bool>> isFixed,
@@ -827,11 +842,12 @@ class MultiplayerPuzzleGenerator {
       if (randomRow == 0 && randomCol == 0) continue;
       if (grid[randomRow][randomCol] != null) continue;
 
-      grid[randomRow][randomCol] = random.nextInt(9) + 1;
+      // CHANGED: Use numbers 1-25 for additional seeds too
+      grid[randomRow][randomCol] = random.nextInt(25) + 1;
       isFixed[randomRow][randomCol] = true;
       seedNumbers++;
 
-      // Solve multiple times
+      // Solve multiple times to propagate the new seed
       for (int n = 0; n < 20; n++) {
         if (operation == PuzzleOperation.addition) {
           _solvingBoardAddition(grid, gridSize);
@@ -842,6 +858,10 @@ class MultiplayerPuzzleGenerator {
 
       availableRows.remove(randomRow);
       availableCols.remove(randomCol);
+    }
+
+    if (seedNumbers < targetSeeds) {
+      debugPrint("Warning: Only placed $seedNumbers seeds (target: $targetSeeds)");
     }
   }
 
@@ -862,10 +882,16 @@ class MultiplayerPuzzleGenerator {
       List<List<bool>> isFixed,
       int size,
       ) {
-    debugPrint("\nPuzzle Structure:");
-    debugPrint("Player Grid:");
+    debugPrint("\nPuzzle Structure (Numbers 1-25):");
+    debugPrint("Player Grid (fixed cells only):");
     for (int i = 0; i < size; i++) {
       String row = playerGrid[i].map((v) => v?.toString().padLeft(3) ?? '  -').join(' ');
+      debugPrint("  $row");
+    }
+
+    debugPrint("\nFull Solution:");
+    for (int i = 0; i < size; i++) {
+      String row = solution[i].map((v) => v?.toString().padLeft(3) ?? '  -').join(' ');
       debugPrint("  $row");
     }
 
@@ -873,7 +899,18 @@ class MultiplayerPuzzleGenerator {
     for (var row in isFixed) {
       fixedCount += row.where((f) => f).length;
     }
-    debugPrint("\nFixed cells: $fixedCount");
+
+    // Count two-digit numbers in fixed cells
+    int twoDigitCount = 0;
+    for (int i = 0; i < size; i++) {
+      for (int j = 0; j < size; j++) {
+        if (isFixed[i][j] && solution[i][j] != null && solution[i][j]! > 9) {
+          twoDigitCount++;
+        }
+      }
+    }
+
+    debugPrint("\nFixed cells: $fixedCount (with $twoDigitCount two-digit numbers)");
     debugPrint("Player cells: ${size * size - fixedCount}");
   }
 }

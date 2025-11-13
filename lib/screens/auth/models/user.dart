@@ -1,12 +1,10 @@
-import 'package:jol_app/screens/auth/models/user_wallet.dart';
-
+// User Model - From /api/v1/user/detail/
 class User {
   final int id;
   final String email;
   final String username;
-  final String? firstName;  // Optional, as per schema
-  final String? lastName;   // Optional
-  final UserWallet wallet;
+  final String? firstName;
+  final String? lastName;
 
   User({
     required this.id,
@@ -14,28 +12,163 @@ class User {
     required this.username,
     this.firstName,
     this.lastName,
-    required this.wallet,
   });
 
+  // From JSON
   factory User.fromJson(Map<String, dynamic> json) {
     return User(
-      id: json['id'] ?? 0,
-      email: json['email'] ?? '',
-      username: json['username'] ?? '',
-      firstName: json['first_name'],
-      lastName: json['last_name'],
-      wallet: UserWallet.fromJson(json['wallet'] ?? {}),
+      id: json['pk'] ?? json['id'] ?? 0,
+      email: json['email'] as String,
+      username: json['username'] as String,
+      firstName: json['first_name'] as String?,
+      lastName: json['last_name'] as String?,
+    );
+  }
+
+  // To JSON
+  Map<String, dynamic> toJson() {
+    return {
+      'username': username,
+      'first_name': firstName,
+      'last_name': lastName,
+      // email and id are read-only, typically not sent in updates
+    };
+  }
+
+  // CopyWith method
+  User copyWith({
+    int? id,
+    String? email,
+    String? username,
+    String? firstName,
+    String? lastName,
+  }) {
+    return User(
+      id: id ?? this.id,
+      email: email ?? this.email,
+      username: username ?? this.username,
+      firstName: firstName ?? this.firstName,
+      lastName: lastName ?? this.lastName,
+    );
+  }
+
+  @override
+  String toString() {
+    return 'User(id: $id, email: $email, username: $username, '
+        'firstName: $firstName, lastName: $lastName)';
+  }
+}
+
+// UserWallet Model
+class UserWallet {
+  final int totalCoins;
+  final int usedCoins;
+  final int availableCoins;
+
+  UserWallet({
+    required this.totalCoins,
+    required this.usedCoins,
+    required this.availableCoins,
+  });
+
+  factory UserWallet.fromJson(Map<String, dynamic> json) {
+    return UserWallet(
+      totalCoins: json['total_coins'] as int? ?? 0,
+      usedCoins: json['used_coins'] as int? ?? 0,
+      availableCoins: json['available_coins'] as int? ?? 0,
     );
   }
 
   Map<String, dynamic> toJson() {
     return {
-      'id': id,
-      'email': email,
-      'username': username,
-      'first_name': firstName,
-      'last_name': lastName,
-      'wallet': wallet.toJson(),
+      'total_coins': totalCoins,
+      'used_coins': usedCoins,
+      'available_coins': availableCoins,
     };
+  }
+
+  @override
+  String toString() {
+    return 'UserWallet(totalCoins: $totalCoins, usedCoins: $usedCoins, availableCoins: $availableCoins)';
+  }
+}
+
+// UserProfile Model - From /api/v1/user/profile/
+// NOTE: This does NOT contain User data - that comes from a separate endpoint
+class UserProfile {
+  final String? bio;
+  final String? location;
+  final DateTime? birthDate;
+  final String? avatar;
+  final String referralCode;
+  final int? referredBy;
+  final int totalReferrals;
+  final UserWallet? wallet;
+
+  UserProfile({
+    this.bio,
+    this.location,
+    this.birthDate,
+    this.avatar,
+    required this.referralCode,
+    this.referredBy,
+    this.totalReferrals = 0,
+    this.wallet,
+  });
+
+  // Parse UserProfile from JSON - NO USER FIELD
+  factory UserProfile.fromJson(Map<String, dynamic> json) {
+    return UserProfile(
+      bio: json['bio'] as String?,
+      location: json['location'] as String?,
+      birthDate: json['birth_date'] != null
+          ? DateTime.parse(json['birth_date'] as String)
+          : null,
+      avatar: json['avatar'] as String?,
+      referralCode: json['referral_code'] as String? ?? '',
+      referredBy: json['referred_by'] as int?,
+      totalReferrals: json['total_referrals'] as int? ?? 0,
+      wallet: json['wallet'] != null ? UserWallet.fromJson(json['wallet']) : null,
+    );
+  }
+
+  // To JSON (for updates - only include editable fields)
+  Map<String, dynamic> toJson() {
+    return {
+      'bio': bio,
+      'location': location,
+      'birth_date': birthDate?.toIso8601String().split('T')[0],
+      // avatar, referral_code, total_referrals, wallet are read-only
+    };
+  }
+
+  // CopyWith method for easy updates
+  UserProfile copyWith({
+    String? bio,
+    String? location,
+    DateTime? birthDate,
+    String? avatar,
+    String? referralCode,
+    int? referredBy,
+    int? totalReferrals,
+    UserWallet? wallet,
+  }) {
+    return UserProfile(
+      bio: bio ?? this.bio,
+      location: location ?? this.location,
+      birthDate: birthDate ?? this.birthDate,
+      avatar: avatar ?? this.avatar,
+      referralCode: referralCode ?? this.referralCode,
+      referredBy: referredBy ?? this.referredBy,
+      totalReferrals: totalReferrals ?? this.totalReferrals,
+      wallet: wallet ?? this.wallet,
+    );
+  }
+
+  @override
+  String toString() {
+    return 'UserProfile(bio: $bio, location: $location, '
+        'birthDate: $birthDate, avatar: $avatar, referralCode: $referralCode, '
+        'referredBy: $referredBy, totalReferrals: $totalReferrals, wallet: $wallet)';
   }
 }

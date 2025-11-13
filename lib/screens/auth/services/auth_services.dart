@@ -82,11 +82,6 @@ class AuthService {
           username: account.displayName ?? account.email,
           firstName: account.displayName,
           lastName: null,
-          wallet: UserWallet(
-            totalCoins: 0,
-            usedCoins: 0,
-            availableCoins: 0,
-          ),
         );
 
         return AuthResult(success: true, user: user);
@@ -150,8 +145,6 @@ class AuthService {
             id: 0,
             email: email,
             username: username,
-            wallet: UserWallet(
-                totalCoins: 0, usedCoins: 0, availableCoins: 0),
           );
           return AuthResult(success: true, user: user);
         }
@@ -230,8 +223,6 @@ class AuthService {
             id: 0,
             email: email,
             username: username,
-            wallet: UserWallet(
-                totalCoins: 0, usedCoins: 0, availableCoins: 0),
           );
           print('Registration success: Token saved, user: ${user.username}');  // Debug: Success
           return AuthResult(success: true, user: user);

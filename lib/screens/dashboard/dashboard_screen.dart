@@ -4,7 +4,9 @@ import 'package:jol_app/screens/dashboard/notification_screen.dart';
 import 'package:jol_app/screens/settings/account_screen.dart';
 
 import '../../constants/add_manager.dart';
+import '../auth/models/user.dart';
 import '../onboarding/onboarding_screen.dart';
+import '../settings/services/user_profile_services.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -19,11 +21,53 @@ class _DashboardScreenState extends State<DashboardScreen> {
   static const Color textPink = Color(0xFFF82A87);
 
   final AdManager _adManager = AdManager();
+  final UserProfileService _profileService = UserProfileService();
+
+  // Static cache to persist across screen instances
+  static UserProfile? _cachedProfile;
+  static bool _hasLoadedOnce = false;
+
+  UserProfile? _userProfile;
+  bool _isLoadingProfile = true;
+
   @override
   void initState() {
     super.initState();
     _adManager.loadInterstitial(); // Preload ad
+    _loadUserProfile();
   }
+
+  Future<void> _loadUserProfile() async {
+    // Check if we already have cached profile
+    if (_hasLoadedOnce && _cachedProfile != null) {
+      setState(() {
+        _userProfile = _cachedProfile;
+        _isLoadingProfile = false;
+      });
+      return;
+    }
+
+    // Fetch from API only if not cached
+    final result = await _profileService.getUserProfile();
+    if (mounted) {
+      setState(() {
+        _isLoadingProfile = false;
+        if (result.success) {
+          _userProfile = result.profile;
+          // Cache the profile
+          _cachedProfile = result.profile;
+          _hasLoadedOnce = true;
+        }
+      });
+    }
+  }
+
+  // Call this method when profile is updated (e.g., from AccountScreen)
+  static void refreshCache() {
+    _hasLoadedOnce = false;
+    _cachedProfile = null;
+  }
+
   @override
   Widget build(BuildContext context) {
     // Transparent status bar
@@ -108,8 +152,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             Navigator.push(
                               context,
                               MaterialPageRoute(
-                                  builder: (context) =>
-                                  const NotificationScreen(),),
+                                builder: (context) =>
+                                const NotificationScreen(),),
                             );
                           },
                           child: Container(
@@ -178,21 +222,17 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
                         const SizedBox(width: 8),
 
-                        // 👤 Profile Avatar
+                        // 👤 Profile Avatar - UPDATED WITH DYNAMIC IMAGE
                         InkWell(
                           onTap: () {
                             Navigator.push(
                               context,
                               MaterialPageRoute(
-                                  builder: (context) =>
-                                  const AccountScreen(),),
+                                builder: (context) =>
+                                const AccountScreen(),),
                             );
                           },
-                          child: const CircleAvatar(
-                            radius: 18,
-                            backgroundImage:
-                            AssetImage("lib/assets/images/settings_emoji.png"),
-                          ),
+                          child: _buildProfileAvatar(),
                         ),
                       ],
                     ),
@@ -258,6 +298,43 @@ class _DashboardScreenState extends State<DashboardScreen> {
         },
       ),
     );
+  }
+
+  // 👤 Build Profile Avatar Widget
+  Widget _buildProfileAvatar() {
+    // If still loading, show a placeholder
+    if (_isLoadingProfile) {
+      return const CircleAvatar(
+        radius: 18,
+        backgroundColor: Colors.white,
+        child: CircularProgressIndicator(
+          strokeWidth: 2,
+          valueColor: AlwaysStoppedAnimation<Color>(textPink),
+        ),
+      );
+    }
+
+    // Check if user has an avatar URL
+    final avatarUrl = _userProfile?.avatar;
+
+    if (avatarUrl != null && avatarUrl.isNotEmpty) {
+      // Use network image if avatar exists
+      return CircleAvatar(
+        radius: 18,
+        backgroundImage: NetworkImage(avatarUrl),
+        onBackgroundImageError: (exception, stackTrace) {
+          // If network image fails to load, it will show the default
+          print('Error loading avatar: $exception');
+        },
+        child: Container(), // Empty container as child
+      );
+    } else {
+      // Fall back to static emoji image
+      return const CircleAvatar(
+        radius: 18,
+        backgroundImage: AssetImage("lib/assets/images/settings_emoji.png"),
+      );
+    }
   }
 
   // 🔠 JOL logo builder
@@ -327,7 +404,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         "24",
                         style: TextStyle(
                           fontFamily: 'Digitalt',
-                          fontSize: 11, // ⬆️ was 10
+                          fontSize: 11,
                           fontWeight: FontWeight.bold,
                           letterSpacing: 0.8,
                           color: Colors.white,
@@ -345,7 +422,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     "YOU WON",
                     style: TextStyle(
                       fontFamily: 'Digitalt',
-                      fontSize: 19, // ⬆️ was 18
+                      fontSize: 19,
                       fontWeight: FontWeight.bold,
                       letterSpacing: 1.2,
                       color: textPink,
@@ -358,7 +435,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         "VS ",
                         style: TextStyle(
                           fontFamily: 'Digitalt',
-                          fontSize: 14, // ⬆️ was 14
+                          fontSize: 14,
                           letterSpacing: 1.1,
                           color: Colors.black54,
                         ),
@@ -366,7 +443,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       Text(
                         "Sarajb20 ",
                         style: TextStyle(
-                          fontSize: 15, // ⬆️ was 14
+                          fontSize: 15,
                           letterSpacing: 1.1,
                           color: Colors.black54,
                         ),
@@ -388,7 +465,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 "TIME: 3 DAYS AGO",
                 style: TextStyle(
                   fontFamily: 'Digitalt',
-                  fontSize: 13, // ⬆️ was 12
+                  fontSize: 13,
                   fontWeight: FontWeight.bold,
                   letterSpacing: 1.1,
                   color: textPink,
@@ -398,7 +475,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 "ENTRY FEE: \$8",
                 style: TextStyle(
                   fontFamily: 'Digitalt',
-                  fontSize: 13, // ⬆️ was 12
+                  fontSize: 13,
                   fontWeight: FontWeight.bold,
                   letterSpacing: 1.1,
                   color: Color(0xFFfc6839),
@@ -427,7 +504,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 style: TextStyle(
                   fontFamily: 'Digitalt',
                   fontWeight: FontWeight.bold,
-                  fontSize: 14, // ⬆️ was 13
+                  fontSize: 14,
                   letterSpacing: 1.1,
                   color: textGreen,
                 ),
@@ -443,7 +520,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   "BRONZE",
                   style: TextStyle(
                     fontFamily: 'Digitalt',
-                    fontSize: 14, // ⬆️ was 13
+                    fontSize: 14,
                     fontWeight: FontWeight.bold,
                     letterSpacing: 1.2,
                     color: Colors.white,
@@ -457,7 +534,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-// helper row builder
+  // helper row builder
   Widget _buildStatRow(String label, String value) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 2),
@@ -468,7 +545,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             label,
             style: const TextStyle(
               fontFamily: 'Digitalt',
-              fontSize: 14, // ⬆️ was 13
+              fontSize: 14,
               fontWeight: FontWeight.bold,
               letterSpacing: 1.1,
               color: Colors.black54,
@@ -478,7 +555,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             value,
             style: const TextStyle(
               fontFamily: 'Digitalt',
-              fontSize: 14, // ⬆️ was 13
+              fontSize: 14,
               fontWeight: FontWeight.bold,
               letterSpacing: 1.1,
               color: Colors.purple,
@@ -488,5 +565,4 @@ class _DashboardScreenState extends State<DashboardScreen> {
       ),
     );
   }
-
 }
