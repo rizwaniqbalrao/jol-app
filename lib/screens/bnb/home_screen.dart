@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:jol_app/Affiliates/affiliates_screen.dart';
 import 'package:jol_app/screens/dashboard/dashboard_screen.dart';
 import 'package:jol_app/screens/group/group_screen.dart';
 import 'package:jol_app/screens/score%20board/score_board_screen.dart';
 import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
 
+import '../Affiliates/affiliates_screen.dart';
 import '../play/paly_screen.dart';
 
 class HomeScreen extends StatefulWidget {

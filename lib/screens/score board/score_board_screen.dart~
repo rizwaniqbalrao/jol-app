@@ -575,8 +575,6 @@ class LeaderboardCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const String baseUrl = "https://nonabstemiously-stocky-cynthia.ngrok-free.dev";
-
     return Container(
       margin: const EdgeInsets.symmetric(vertical: 8),
       child: IntrinsicHeight(   // ← IMPORTANT: makes both sides auto-align vertically
@@ -626,7 +624,7 @@ class LeaderboardCard extends StatelessWidget {
                         CircleAvatar(
                           radius: 28,
                           backgroundImage: avatarUrl != null && avatarUrl!.isNotEmpty
-                              ? NetworkImage(baseUrl + avatarUrl!)
+                              ? NetworkImage(avatarUrl!)
                               : const AssetImage("lib/assets/images/settings_emoji.png")
                           as ImageProvider,
                         ),

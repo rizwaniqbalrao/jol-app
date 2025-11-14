@@ -1,0 +1,93 @@
+// Leaderboard Models - models/leaderboard.dart
+
+class LeaderboardEntry {
+  final int rank;
+  final int userId;
+  final String username;
+  final String email;
+  final String? avatar;
+  final int totalPoints;
+  final int gamesPlayed;
+
+  LeaderboardEntry({
+    required this.rank,
+    required this.userId,
+    required this.username,
+    required this.email,
+    this.avatar,
+    required this.totalPoints,
+    required this.gamesPlayed,
+  });
+
+  factory LeaderboardEntry.fromJson(Map<String, dynamic> json) {
+    return LeaderboardEntry(
+      rank: json['rank'] as int? ?? 0,
+      userId: json['user_id'] as int? ?? 0,
+      username: json['username'] as String? ?? 'Unknown',
+      email: json['email'] as String? ?? '',
+      avatar: json['avatar'] as String?,
+      totalPoints: json['total_points'] as int? ?? 0,
+      gamesPlayed: json['games_played'] as int? ?? 0,
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'rank': rank,
+      'user_id': userId,
+      'username': username,
+      'email': email,
+      'avatar': avatar,
+      'total_points': totalPoints,
+      'games_played': gamesPlayed,
+    };
+  }
+}
+
+
+class LeaderboardResponse {
+  final String period;
+  final int count;
+  final int page;
+  final int pageSize;
+  final List<LeaderboardEntry> results;
+
+  LeaderboardResponse({
+    required this.period,
+    required this.count,
+    required this.page,
+    required this.pageSize,
+    required this.results,
+  });
+
+  // From JSON
+  factory LeaderboardResponse.fromJson(Map<String, dynamic> json) {
+    return LeaderboardResponse(
+      period: json['period'] as String? ?? 'all_time',
+      count: json['count'] as int? ?? 0,
+      page: json['page'] as int? ?? 1,
+      pageSize: json['page_size'] as int? ?? 50,
+      results: (json['results'] as List<dynamic>?)
+          ?.map((item) => LeaderboardEntry.fromJson(item as Map<String, dynamic>))
+          .toList() ??
+          [],
+    );
+  }
+
+  // To JSON
+  Map<String, dynamic> toJson() {
+    return {
+      'period': period,
+      'count': count,
+      'page': page,
+      'page_size': pageSize,
+      'results': results.map((entry) => entry.toJson()).toList(),
+    };
+  }
+
+  @override
+  String toString() {
+    return 'LeaderboardResponse(period: $period, count: $count, page: $page, '
+        'pageSize: $pageSize, resultsCount: ${results.length})';
+  }
+}

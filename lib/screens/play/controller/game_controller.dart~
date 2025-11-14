@@ -35,11 +35,6 @@ class GameController extends ChangeNotifier {
 
   List<List<int?>> get solutionGrid => _solutionGrid;
   int get hintsRemaining => maxHints - hintsUsed;
-  int get correctAnswers => _correctAnswers;
-  int get totalPlayerCells => _totalPlayerCells;
-  double get accuracyPercentage => _accuracyPercentage;
-  int? get completionTimeSeconds => _completionTimeSeconds;
-  DateTime? get gameStartTime => _gameStartTime;
 
   GameController({this.gridSize = 4}) {
     _initGrid();
@@ -459,18 +454,6 @@ class GameController extends ChangeNotifier {
     int correctCount = 0;
     int totalCells = (gridSize * gridSize) - 1; // Exclude top-left corner
 
-    // Calculate total player cells (excluding fixed cells and corner)
-    int playerCells = 0;
-    for (int i = 0; i < gridSize; i++) {
-      for (int j = 0; j < gridSize; j++) {
-        if (i == 0 && j == 0) continue;
-        if (!isFixed[i][j]) {
-          playerCells++;
-        }
-      }
-    }
-    _totalPlayerCells = playerCells;
-
     for (int i = 0; i < gridSize; i++) {
       for (int j = 0; j < gridSize; j++) {
         if (i == 0 && j == 0) continue;
@@ -478,25 +461,6 @@ class GameController extends ChangeNotifier {
           correctCount++;
         }
       }
-    }
-
-    // Store correct answers count
-    _correctAnswers = correctCount;
-
-    // Calculate accuracy percentage (only player cells, not fixed ones)
-    if (_totalPlayerCells > 0) {
-      int correctPlayerCells = 0;
-      for (int i = 0; i < gridSize; i++) {
-        for (int j = 0; j < gridSize; j++) {
-          if (i == 0 && j == 0) continue;
-          if (!isFixed[i][j] && grid[i][j] != null && grid[i][j] == _solutionGrid[i][j]) {
-            correctPlayerCells++;
-          }
-        }
-      }
-      _accuracyPercentage = (correctPlayerCells / _totalPlayerCells) * 100;
-    } else {
-      _accuracyPercentage = 0.0;
     }
 
     // SCORING SYSTEM
@@ -536,12 +500,6 @@ class GameController extends ChangeNotifier {
         } else {
           timeBonus = 0;
           score = 0;
-
-          // Calculate completion time for timed mode
-          if (_gameStartTime != null) {
-            _completionTimeSeconds = DateTime.now().difference(_gameStartTime!).inSeconds;
-          }
-
           notifyListeners();
           return false;
         }
@@ -553,20 +511,16 @@ class GameController extends ChangeNotifier {
       }
     }
 
-    // Calculate completion time when game completes
+    notifyListeners();
+
     bool isComplete = correctCount == totalCells;
     if (isComplete) {
       isPlaying = false;
       if (mode == GameMode.timed) {
         stopTimer();
-        // Calculate actual time taken
-        if (_gameStartTime != null) {
-          _completionTimeSeconds = DateTime.now().difference(_gameStartTime!).inSeconds;
-        }
       }
     }
 
-    notifyListeners();
     return isComplete;
   }
 
@@ -616,20 +570,11 @@ class GameController extends ChangeNotifier {
   // ──────────────────────────────────────────────
   // TIMER
   // ──────────────────────────────────────────────
-  void startGame() {
-    // Record start time for both timed and untimed modes
-    _gameStartTime = DateTime.now();
-    isPlaying = true;
-    notifyListeners();
-  }
-
   void startTimer() {
     if (mode != GameMode.timed) return;
     if (_timerStarted) return;
 
     _timerStarted = true;
-    _gameStartTime = DateTime.now(); // Record start time
-
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
       if (timeLeft.inSeconds > 0 && isPlaying) {
         timeLeft = timeLeft - const Duration(seconds: 1);
@@ -642,12 +587,6 @@ class GameController extends ChangeNotifier {
         stopTimer();
         isPlaying = false;
         score = 0;
-
-        // Calculate completion time even if timed out
-        if (_gameStartTime != null) {
-          _completionTimeSeconds = DateTime.now().difference(_gameStartTime!).inSeconds;
-        }
-
         notifyListeners();
       }
     });
@@ -664,11 +603,6 @@ class GameController extends ChangeNotifier {
     timeLeft = const Duration(minutes: 5);
     _timerStarted = false;
     hintsUsed = 0; // NEW: Reset hints
-    _gameStartTime = null; // Reset start time
-    _completionTimeSeconds = null;
-    _correctAnswers = 0;
-    _totalPlayerCells = 0;
-    _accuracyPercentage = 0.0;
     _initGrid();
   }
 

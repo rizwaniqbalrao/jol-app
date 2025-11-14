@@ -2,10 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:jol_app/screens/dashboard/notification_screen.dart';
 
-import '../screens/auth/models/user.dart';
-import '../screens/onboarding/onboarding_screen.dart';
-import '../screens/settings/account_screen.dart';
-import '../screens/settings/services/user_profile_services.dart';
+import '../auth/models/user.dart';
+import '../onboarding/onboarding_screen.dart';
+import '../settings/account_screen.dart';
+import '../settings/services/user_profile_services.dart';
+
 
 class AffiliatesScreen extends StatefulWidget {
   const AffiliatesScreen({super.key});

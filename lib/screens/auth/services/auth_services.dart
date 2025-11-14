@@ -139,6 +139,7 @@ class AuthService {
         final token = data['key'];
         if (token != null) {
           await _storage.saveToken(token);
+          await _storage.saveUserId(data['user']['id'].toString());
           final user = data['user'] != null
               ? User.fromJson(data['user'])
               : User(
