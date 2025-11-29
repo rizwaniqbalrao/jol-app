@@ -1,4 +1,7 @@
 // User Model - From /api/v1/user/detail/
+
+import 'package:jol_app/screens/auth/models/user_wallet.dart';
+
 class User {
   final int id;
   final String email;
@@ -59,40 +62,6 @@ class User {
   }
 }
 
-// UserWallet Model
-class UserWallet {
-  final int totalCoins;
-  final int usedCoins;
-  final int availableCoins;
-
-  UserWallet({
-    required this.totalCoins,
-    required this.usedCoins,
-    required this.availableCoins,
-  });
-
-  factory UserWallet.fromJson(Map<String, dynamic> json) {
-    return UserWallet(
-      totalCoins: json['total_coins'] as int? ?? 0,
-      usedCoins: json['used_coins'] as int? ?? 0,
-      availableCoins: json['available_coins'] as int? ?? 0,
-    );
-  }
-
-  Map<String, dynamic> toJson() {
-    return {
-      'total_coins': totalCoins,
-      'used_coins': usedCoins,
-      'available_coins': availableCoins,
-    };
-  }
-
-  @override
-  String toString() {
-    return 'UserWallet(totalCoins: $totalCoins, usedCoins: $usedCoins, availableCoins: $availableCoins)';
-  }
-}
-
 // UserProfile Model - From /api/v1/user/profile/
 // NOTE: This does NOT contain User data - that comes from a separate endpoint
 class UserProfile {
@@ -103,7 +72,7 @@ class UserProfile {
   final String referralCode;
   final int? referredBy;
   final int totalReferrals;
-  final UserWallet? wallet;
+  final Wallet? wallet;
 
   UserProfile({
     this.bio,
@@ -128,7 +97,7 @@ class UserProfile {
       referralCode: json['referral_code'] as String? ?? '',
       referredBy: json['referred_by'] as int?,
       totalReferrals: json['total_referrals'] as int? ?? 0,
-      wallet: json['wallet'] != null ? UserWallet.fromJson(json['wallet']) : null,
+      wallet: json['wallet'] != null ? Wallet.fromJson(json['wallet']) : null,
     );
   }
 
@@ -151,7 +120,7 @@ class UserProfile {
     String? referralCode,
     int? referredBy,
     int? totalReferrals,
-    UserWallet? wallet,
+    Wallet? wallet,
   }) {
     return UserProfile(
       bio: bio ?? this.bio,

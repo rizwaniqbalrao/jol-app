@@ -16,404 +16,126 @@ class AffiliatesScreen extends StatefulWidget {
 }
 
 class _AffiliatesScreenState extends State<AffiliatesScreen> {
-  static const Color textBlue = Color(0xFF0734A5);
-  static const Color textGreen = Color(0xFF43AC45);
   static const Color textPink = Color(0xFFF82A87);
-
-  final UserProfileService _profileService = UserProfileService();
-
-  // Static cache to persist across screen instances
-  static UserProfile? _cachedProfile;
-  static bool _hasLoadedOnce = false;
-
-  UserProfile? _userProfile;
-  bool _isLoadingProfile = true;
-
-  @override
-  void initState() {
-    super.initState();
-    _loadUserProfile();
-  }
-
-  Future<void> _loadUserProfile() async {
-    // Check if we already have cached profile
-    if (_hasLoadedOnce && _cachedProfile != null) {
-      setState(() {
-        _userProfile = _cachedProfile;
-        _isLoadingProfile = false;
-      });
-      return;
-    }
-
-    // Fetch from API only if not cached
-    final result = await _profileService.getUserProfile();
-    if (mounted) {
-      setState(() {
-        _isLoadingProfile = false;
-        if (result.success) {
-          _userProfile = result.profile;
-          // Cache the profile
-          _cachedProfile = result.profile;
-          _hasLoadedOnce = true;
-        }
-      });
-    }
-  }
-
-  // Call this method when profile is updated
-  static void refreshCache() {
-    _hasLoadedOnce = false;
-    _cachedProfile = null;
-  }
 
   @override
   Widget build(BuildContext context) {
-    // Transparent status bar
-    SystemChrome.setSystemUIOverlayStyle(
-      const SystemUiOverlayStyle(
-        statusBarColor: Colors.transparent,
-        statusBarIconBrightness: Brightness.dark,
-      ),
-    );
-
     return Scaffold(
+      backgroundColor: Colors.transparent,
       body: Container(
-        // 📌 Gradient background (same as PlayScreen)
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [
-              Color(0xFFFFC0CB),
-              Color(0xFFADD8E6),
-              Color(0xFFE6E6FA),
-            ],
-          ),
+        width: double.infinity,
+        margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.05),
+              blurRadius: 6,
+              offset: const Offset(0, 4),
+            )
+          ],
         ),
-        child: SafeArea(
-          top: false,
-          child: Column(
+        child: Container(
+          height: 300,
+          decoration: BoxDecoration(
+            color: Color(0xFFFF4CA1), // pink header
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Stack(
             children: [
-              _buildAppBar(context),
-
+              /// 🔖 Pink Header
               Container(
                 width: double.infinity,
-                margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(16),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.05),
-                      blurRadius: 6,
-                      offset: const Offset(0, 4),
-                    )
-                  ],
-                ),
-                child: Container(
-                  height: 300,
-                  decoration: BoxDecoration(
-                    color: Color(0xFFFF4CA1), // pink header
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  child: Stack(
-                    children: [
-                      /// 🔖 Pink Header
-                      Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                        child: const Text(
-                          "AFFILIATES",
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            fontFamily: 'Digitalt',
-                            fontSize: 20,
-                            fontWeight: FontWeight.bold,
-                            letterSpacing: 1.2,
-                            color: Colors.white,
-                          ),
-                        ),
-                      ),
-
-                      Padding(
-                        padding: const EdgeInsets.all(8.0),
-                        child: Align(
-                          alignment: Alignment.bottomCenter,
-                          child: Container(
-                            height: 240,
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(16),
-                              color: Colors.white,
-                            ),
-                            child: Column(
-                              children: [
-                                /// 🚫 No Affiliates Found text
-                                const Padding(
-                                  padding: EdgeInsets.symmetric(horizontal: 50, vertical: 12),
-                                  child: Text(
-                                    "NO AFFILIATES FOUND RIGHT NOW",
-                                    textAlign: TextAlign.center,
-                                    style: TextStyle(
-                                      fontFamily: 'Digitalt',
-                                      fontSize: 22,
-                                      fontWeight: FontWeight.bold,
-                                      color: Color(0xFFE6005C), // dark pink
-                                    ),
-                                  ),
-                                ),
-
-                                /// Divider
-                                Divider(
-                                  color: Colors.grey.shade300,
-                                  thickness: 1,
-                                  indent: 20,
-                                  endIndent: 20,
-                                ),
-
-                                const SizedBox(height: 12),
-
-                                /// 📢 Invite Info
-                                const Padding(
-                                  padding: EdgeInsets.symmetric(horizontal: 20),
-                                  child: Text(
-                                    "Invite affiliates and earn 10% commission by clicking the button below",
-                                    textAlign: TextAlign.center,
-                                    style: TextStyle(
-                                      fontFamily: 'Rubik',
-                                      fontSize: 13,
-                                      fontWeight: FontWeight.w500,
-                                      color: textPink,
-                                      height: 1.4,
-                                    ),
-                                  ),
-                                ),
-
-                                const SizedBox(height: 20),
-
-                                /// 🔘 Custom Invite Button
-                                Padding(
-                                  padding: const EdgeInsets.only(bottom: 20),
-                                  child: InviteAffiliatesButton(
-                                    onPressed: () {
-                                      showDialog(
-                                        context: context,
-                                        builder: (_) => const InviteAffiliateDialog(),
-                                      );
-                                    },
-
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      )
-                    ],
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                child: const Text(
+                  "AFFILIATES",
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontFamily: 'Digitalt',
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 1.2,
+                    color: Colors.white,
                   ),
                 ),
               ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
 
-  /// 👤 Build Profile Avatar Widget
-  Widget _buildProfileAvatar() {
-    // If still loading, show a placeholder
-    if (_isLoadingProfile) {
-      return const CircleAvatar(
-        radius: 18,
-        backgroundColor: Colors.white,
-        child: CircularProgressIndicator(
-          strokeWidth: 2,
-          valueColor: AlwaysStoppedAnimation<Color>(textPink),
-        ),
-      );
-    }
-
-    // Check if user has an avatar URL
-    final avatarUrl = _userProfile?.avatar;
-
-    if (avatarUrl != null && avatarUrl.isNotEmpty) {
-      // Use network image if avatar exists
-      return CircleAvatar(
-        radius: 18,
-        backgroundImage: NetworkImage(avatarUrl),
-        onBackgroundImageError: (exception, stackTrace) {
-          // If network image fails to load, it will show the default
-          print('Error loading avatar: $exception');
-        },
-        child: Container(), // Empty container as child
-      );
-    } else {
-      // Fall back to static emoji image
-      return const CircleAvatar(
-        radius: 18,
-        backgroundImage: AssetImage("lib/assets/images/settings_emoji.png"),
-      );
-    }
-  }
-
-  /// 🔠 JOL Logo
-  Widget _buildJolLogo() {
-    const letters = ["J", "O", "L"];
-    const colors = [Color(0xFFf8bc64), textPink, Color(0xFFfc6839)];
-
-    return Row(
-      children: List.generate(
-        letters.length,
-            (index) => Text(
-          letters[index],
-          style: const TextStyle(
-            fontFamily: 'Digitalt',
-            fontWeight: FontWeight.w500,
-            fontSize: 35,
-            height: 0.82,
-          ).copyWith(
-            color: colors[index],
-            letterSpacing: 1.5,
-          ),
-        ),
-      ),
-    );
-  }
-
-  /// 📌 App Bar (copied from PlayScreen)
-  Widget _buildAppBar(BuildContext context) {
-    return Container(
-      padding: EdgeInsets.only(
-        top: MediaQuery.of(context).padding.top + 6,
-        left: 12,
-        right: 12,
-        bottom: 6,
-      ),
-      decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.5),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          _buildJolLogo(),
-          Row(
-            children: [
-              // ✅ HOW TO PLAY (pill button)
-              InkWell(
-                onTap: () {
-                  showDialog(
-                    context: context,
-                    builder: (_) => const HelpDialog(),
-                  );
-                },
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-                  decoration: BoxDecoration(
-                    color: textGreen,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
-                      color: Colors.white.withOpacity(0.9),
-                      width: 2.5,
-                    ),
-                  ),
-                  child: const Text(
-                    "HOW TO PLAY",
-                    style: TextStyle(
-                      fontFamily: 'Digitalt',
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold,
+              Padding(
+                padding: const EdgeInsets.all(8.0),
+                child: Align(
+                  alignment: Alignment.bottomCenter,
+                  child: Container(
+                    height: 240,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(16),
                       color: Colors.white,
                     ),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 8),
-
-              // 🔔 Notification Bell
-              InkWell(
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (context) => NotificationScreen()),
-                  );
-                },
-                child: Container(
-                  width: 30,
-                  height: 30,
-                  decoration: const BoxDecoration(
-                    color: Colors.white,
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(
-                    Icons.notifications,
-                    size: 20,
-                    color: textPink,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 8),
-
-              // 💰 Coins
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
-                decoration: BoxDecoration(
-                  border: Border.all(color: Colors.white),
-                  color: textPink,
-                  borderRadius: BorderRadius.circular(30),
-                ),
-                child: Row(
-                  children: [
-                    Container(
-                      width: 20,
-                      height: 20,
-                      decoration: const BoxDecoration(
-                        color: Colors.white,
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Center(
-                        child: Text(
-                          "J",
-                          style: TextStyle(
-                            fontFamily: 'Digitalt',
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                            color: textPink,
+                    child: Column(
+                      children: [
+                        /// 🚫 No Affiliates Found text
+                        const Padding(
+                          padding: EdgeInsets.symmetric(horizontal: 50, vertical: 12),
+                          child: Text(
+                            "NO AFFILIATES FOUND RIGHT NOW",
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              fontFamily: 'Digitalt',
+                              fontSize: 22,
+                              fontWeight: FontWeight.bold,
+                              color: Color(0xFFE6005C), // dark pink
+                            ),
                           ),
                         ),
-                      ),
-                    ),
-                    const Padding(
-                      padding: EdgeInsets.symmetric(horizontal: 8.0),
-                      child: Text(
-                        "5M",
-                        style: TextStyle(
-                          fontFamily: 'Digitalt',
-                          fontSize: 14,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 8),
 
-              // 👤 Profile Avatar - UPDATED WITH DYNAMIC IMAGE
-              InkWell(
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const AccountScreen(),
+                        /// Divider
+                        Divider(
+                          color: Colors.grey.shade300,
+                          thickness: 1,
+                          indent: 20,
+                          endIndent: 20,
+                        ),
+
+                        const SizedBox(height: 12),
+
+                        /// 📢 Invite Info
+                        const Padding(
+                          padding: EdgeInsets.symmetric(horizontal: 20),
+                          child: Text(
+                            "Invite affiliates and earn 10% commission by clicking the button below",
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              fontFamily: 'Rubik',
+                              fontSize: 13,
+                              fontWeight: FontWeight.w500,
+                              color: textPink,
+                              height: 1.4,
+                            ),
+                          ),
+                        ),
+
+                        const SizedBox(height: 20),
+
+                        /// 🔘 Custom Invite Button
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 20),
+                          child: InviteAffiliatesButton(
+                            onPressed: () {
+                              showDialog(
+                                context: context,
+                                builder: (_) => const InviteAffiliateDialog(),
+                              );
+                            },
+                          ),
+                        ),
+                      ],
                     ),
-                  );
-                },
-                child: _buildProfileAvatar(),
-              ),
+                  ),
+                ),
+              )
             ],
           ),
-        ],
+        ),
       ),
     );
   }

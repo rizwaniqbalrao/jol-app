@@ -1,0 +1,292 @@
+// File: models/game_history_response.dart
+
+class GameHistoryResponse {
+  final String matchId;
+  final String gameType;
+  final String gameMode;
+  final String operation;
+  final int gridSize;
+  final String timestamp;
+  final String status;
+  final int finalScore;
+  final double accuracyPercentage;
+  final int hintsUsed;
+  final double? completionTime;
+  final String? roomCode;
+  final int? position;
+  final int? totalPlayers;
+  final int pointsEarned;
+
+  GameHistoryResponse({
+    required this.matchId,
+    required this.gameType,
+    required this.gameMode,
+    required this.operation,
+    required this.gridSize,
+    required this.timestamp,
+    required this.status,
+    required this.finalScore,
+    required this.accuracyPercentage,
+    required this.hintsUsed,
+    this.completionTime,
+    this.roomCode,
+    this.position,
+    this.totalPlayers,
+    required this.pointsEarned,
+  });
+
+  factory GameHistoryResponse.fromJson(Map<String, dynamic> json) {
+    return GameHistoryResponse(
+      matchId: json['match_id'] as String,
+      gameType: json['game_type'] as String,
+      gameMode: json['game_mode'] as String,
+      operation: json['operation'] as String,
+      gridSize: json['grid_size'] as int,
+      timestamp: json['timestamp'] as String,
+      status: json['status'] as String,
+      finalScore: json['final_score'] as int,
+      accuracyPercentage: (json['accuracy_percentage'] as num).toDouble(),
+      hintsUsed: json['hints_used'] as int,
+      completionTime: json['completion_time'] != null
+          ? (json['completion_time'] as num).toDouble()
+          : null,
+      roomCode: json['room_code'] as String?,
+      position: json['position'] as int?,
+      totalPlayers: json['total_players'] as int?,
+      pointsEarned: json['points_earned'] as int,
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'match_id': matchId,
+      'game_type': gameType,
+      'game_mode': gameMode,
+      'operation': operation,
+      'grid_size': gridSize,
+      'timestamp': timestamp,
+      'status': status,
+      'final_score': finalScore,
+      'accuracy_percentage': accuracyPercentage,
+      'hints_used': hintsUsed,
+      'completion_time': completionTime,
+      'room_code': roomCode,
+      'position': position,
+      'total_players': totalPlayers,
+      'points_earned': pointsEarned,
+    };
+  }
+
+  String getStatusDisplay() {
+    switch (status.toUpperCase()) {
+      case 'COMPLETED':
+        return 'Completed';
+      case 'ABANDONED':
+        return 'Abandoned';
+      case 'TIMED_OUT':
+        return 'Timed Out';
+      default:
+        return status;
+    }
+  }
+
+  String getFormattedTime() {
+    if (completionTime == null) return 'N/A';
+    final minutes = (completionTime! / 60).floor();
+    final seconds = (completionTime! % 60).floor();
+    return '${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}';
+  }
+}
+
+// ============================================================================
+// File: helpers/game_save_helper.dart (UPDATED)
+// ============================================================================
+
+import 'package:uuid/uuid.dart';
+import '../../dashboard/models/game_models.dart';
+import '../../dashboard/services/game_service.dart';
+import '../../settings/services/user_profile_services.dart';
+import '../controller/game_controller.dart';
+import '../models/game_history_response.dart';
+
+class GameSaveHelper {
+  final GameService _gameService = GameService();
+  final UserProfileService _userService = UserProfileService();
+  final _uuid = Uuid();
+
+  /// Save a completed solo game to the backend
+  ///
+  /// Returns a map with:
+  /// - 'success': bool
+  /// - 'message': String
+  /// - 'matchId': String? (if successful)
+  /// - 'gameHistory': GameHistoryResponse? (if successful)
+  /// - 'pointsEarned': int? (if successful)
+  Future<Map<String, dynamic>> saveSoloGame({
+    required GameController controller,
+    required String gameStatus, // "completed", "abandoned", or "timed_out"
+  }) async {
+    try {
+      // Step 1: Get user ID
+      final userResult = await _userService.getUserDetail();
+
+      if (!userResult.success || userResult.user == null) {
+        return {
+          'success': false,
+          'message': userResult.error ?? 'Unable to get user information',
+        };
+      }
+
+      final userId = userResult.user!.id.toString();
+
+      // Step 2: Calculate completion time for untimed mode
+      int? completionTime;
+      if (controller.mode == GameMode.timed) {
+        completionTime = controller.completionTimeSeconds;
+      } else {
+        // For untimed mode, still track how long they took
+        if (controller.gameStartTime != null) {
+          completionTime = DateTime.now().difference(controller.gameStartTime!).inSeconds;
+        }
+      }
+
+      // Step 3: Determine game status
+      String finalStatus = gameStatus;
+      if (controller.mode == GameMode.timed && controller.timeLeft.inSeconds <= 0) {
+        finalStatus = 'timed_out';
+      }
+
+      // Step 4: Build Game object
+      final game = Game(
+        matchId: _uuid.v4(), // Generate unique match ID
+        playerId: userId,
+        gameType: 'solo',
+        gameMode: controller.mode == GameMode.timed ? 'timed' : 'untimed',
+        operation: controller.operation == PuzzleOperation.addition ? 'addition' : 'subtraction',
+        gridSize: controller.gridSize,
+        timestamp: DateTime.now().toUtc().toIso8601String(),
+        status: finalStatus,
+        finalScore: controller.score,
+        accuracyPercentage: controller.accuracyPercentage,
+        hintsUsed: controller.hintsUsed,
+        completionTime: controller.mode == GameMode.timed ? completionTime : null,
+        roomCode: null, // Solo game
+        position: null, // Solo game
+        totalPlayers: null, // Solo game
+      );
+
+      // Step 5: Validate game data
+      final validationError = _validateGameData(game, controller);
+      if (validationError != null) {
+        return {
+          'success': false,
+          'message': validationError,
+        };
+      }
+
+      // Step 6: Save to backend
+      final saveResult = await _gameService.saveGame(game);
+
+      if (saveResult.success && saveResult.data != null) {
+        // NEW: Parse the response to GameHistoryResponse
+        GameHistoryResponse? gameHistory;
+        int? pointsEarned;
+
+        try {
+          final saveGameResponse = saveResult.data!;
+
+          // Create GameHistoryResponse from the SaveGameResponse
+          // You'll need to check what fields are available in SaveGameResponse
+          // and map them accordingly. Here's a common approach:
+
+          // Option 1: If SaveGameResponse has a toJson() method or raw data
+          if (saveGameResponse.hasRawData) {
+            // Use raw JSON data if available
+            gameHistory = GameHistoryResponse.fromJson(saveGameResponse.rawData);
+            pointsEarned = gameHistory.pointsEarned;
+          } else {
+            // Option 2: Manually construct from SaveGameResponse fields
+            gameHistory = GameHistoryResponse(
+              matchId: saveGameResponse.matchId ?? game.matchId,
+              gameType: game.gameType,
+              gameMode: game.gameMode,
+              operation: game.operation,
+              gridSize: game.gridSize,
+              timestamp: game.timestamp,
+              status: game.status,
+              finalScore: game.finalScore,
+              accuracyPercentage: game.accuracyPercentage,
+              hintsUsed: game.hintsUsed,
+              completionTime: game.completionTime?.toDouble(),
+              roomCode: game.roomCode,
+              position: game.position,
+              totalPlayers: game.totalPlayers,
+              pointsEarned: saveGameResponse.pointsEarned ?? 0,
+            );
+            pointsEarned = gameHistory.pointsEarned;
+          }
+        } catch (e) {
+          print('Error parsing game history response: $e');
+          // Continue even if parsing fails
+        }
+
+        return {
+          'success': true,
+          'message': saveResult.data!.detail ?? 'Game saved successfully!',
+          'matchId': saveResult.data!.matchId ?? game.matchId,
+          'gameHistory': gameHistory,
+          'pointsEarned': pointsEarned,
+        };
+      } else {
+        return {
+          'success': false,
+          'message': saveResult.error ?? 'Failed to save game',
+        };
+      }
+    } catch (e) {
+      print('Exception in saveSoloGame: $e');
+      return {
+        'success': false,
+        'message': 'An unexpected error occurred: $e',
+      };
+    }
+  }
+
+  /// Validate game data before saving
+  String? _validateGameData(Game game, GameController controller) {
+    // Ensure score is within 0-100 range
+    if (game.finalScore < 0 || game.finalScore > 100) {
+      return 'Invalid score: ${game.finalScore}. Must be between 0-100.';
+    }
+
+    // Ensure accuracy is within 0-100 range
+    if (game.accuracyPercentage < 0 || game.accuracyPercentage > 100) {
+      return 'Invalid accuracy: ${game.accuracyPercentage}%. Must be between 0-100.';
+    }
+
+    // For timed mode, completion time should exist
+    if (game.gameMode == 'timed' && game.completionTime == null) {
+      return 'Completion time is required for timed games.';
+    }
+
+    // Hints used cannot be negative or exceed max
+    if (game.hintsUsed < 0 || game.hintsUsed > controller.maxHints) {
+      return 'Invalid hints used: ${game.hintsUsed}. Must be between 0-${controller.maxHints}.';
+    }
+
+    return null; // No errors
+  }
+
+  /// Helper method to determine game status based on controller state
+  String determineGameStatus(GameController controller, bool wasCompleted) {
+    if (controller.mode == GameMode.timed && controller.timeLeft.inSeconds <= 0) {
+      return 'timed_out';
+    }
+
+    if (wasCompleted) {
+      return 'completed';
+    }
+
+    return 'abandoned';
+  }
+}

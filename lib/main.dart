@@ -2,10 +2,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
-import 'package:jol_app/screens/dashboard/dashboard_screen.dart';
 import 'package:jol_app/screens/play/controller/game_controller.dart';
-import 'package:jol_app/screens/play/game_screen.dart';
-import 'package:jol_app/screens/play/paly_screen.dart';
 import 'package:jol_app/screens/splash_screen.dart';
 import 'package:provider/provider.dart';
 

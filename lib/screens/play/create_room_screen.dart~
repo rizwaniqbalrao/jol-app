@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:jol_app/screens/play/services/room_service.dart';
 import 'package:jol_app/screens/play/waiting_lobby_screen.dart';
 import 'package:uuid/uuid.dart';
+import 'controller/game_controller.dart';
 import 'controller/multiplayer_game_controller.dart';
 import 'models/room_models.dart';
 

@@ -1,0 +1,932 @@
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:provider/provider.dart';
+
+import 'controller/group_controller.dart';
+import 'group_game_setup_screen.dart';
+import 'models/group_metadata.dart';
+
+class GroupDetailScreen extends StatefulWidget {
+  final String groupId;
+
+  const GroupDetailScreen({super.key, required this.groupId});
+
+  @override
+  State<GroupDetailScreen> createState() => _GroupDetailScreenState();
+}
+
+class _GroupDetailScreenState extends State<GroupDetailScreen>
+    with SingleTickerProviderStateMixin {
+  static const Color textPink = Color(0xFFF82A87);
+  static const Color textOrange = Color(0xFFfc6839);
+  static const Color textGreen = Color(0xFF4CAF50);
+  static const Color textYellow = Color(0xFFf8bc64);
+  static const Color textPurple = Color(0xFFC42AF8);
+
+  late TabController _tabController;
+  GroupController? _controller; // Store reference to controller
+
+  @override
+  void initState() {
+    super.initState();
+    _tabController = TabController(length: 3, vsync: this);
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      // Store the controller reference
+      _controller = context.read<GroupController>();
+      _controller?.listenToGroup(widget.groupId);
+    });
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    // Use the stored controller reference instead of context.read
+    _controller?.stopListeningToGroup();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: Container(
+        height: double.infinity,
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              Color(0xFFFFC0CB),
+              Color(0xFFADD8E6),
+              Color(0xFFE6E6FA),
+            ],
+          ),
+        ),
+        child: SafeArea(
+          child: Consumer<GroupController>(
+            builder: (context, controller, _) {
+              final group = controller.currentGroup;
+
+              if (group == null) {
+                return const Center(
+                  child: CircularProgressIndicator(color: textPink),
+                );
+              }
+
+              return Column(
+                children: [
+                  const SizedBox(height: 16),
+
+                  // Header
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 25),
+                    child: Row(
+                      children: [
+                        InkWell(
+                          onTap: () => Navigator.pop(context),
+                          child: Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: textOrange,
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: Colors.white, width: 1.5),
+                            ),
+                            child: const Icon(
+                              Icons.arrow_back,
+                              size: 20,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            group.metadata.name.toUpperCase(),
+                            style: const TextStyle(
+                              fontFamily: 'Digitalt',
+                              fontSize: 24,
+                              fontWeight: FontWeight.bold,
+                              color: textPink,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        InkWell(
+                          onTap: () => _showGroupInfoDialog(context, group),
+                          child: Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: textPink,
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: Colors.white, width: 1.5),
+                            ),
+                            child: const Icon(
+                              Icons.info_outline,
+                              size: 20,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  const SizedBox(height: 16),
+
+                  // Group Info Card
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 25),
+                    child: Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.9),
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: textPink, width: 2),
+                      ),
+                      child: Column(
+                        children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceAround,
+                            children: [
+                              _buildStatItem(
+                                icon: Icons.people,
+                                label: "MEMBERS",
+                                value: "${group.memberCount}",
+                                color: textPink,
+                              ),
+                              _buildStatItem(
+                                icon: Icons.games,
+                                label: "GAMES",
+                                value: "${group.stats.totalGames}",
+                                color: textOrange,
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 12),
+                          // Group Code with Copy
+                          InkWell(
+                            onTap: () {
+                              Clipboard.setData(
+                                ClipboardData(text: group.metadata.code),
+                              );
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('Code copied to clipboard!'),
+                                  backgroundColor: textGreen,
+                                  duration: Duration(seconds: 1),
+                                ),
+                              );
+                            },
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 8,
+                              ),
+                              decoration: BoxDecoration(
+                                color: textPurple.withOpacity(0.2),
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(color: textPurple, width: 1.5),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Icon(
+                                    Icons.code,
+                                    size: 16,
+                                    color: textPurple,
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    group.metadata.code,
+                                    style: const TextStyle(
+                                      fontFamily: 'Digitalt',
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.bold,
+                                      color: textPurple,
+                                      letterSpacing: 2,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  const Icon(
+                                    Icons.copy,
+                                    size: 14,
+                                    color: textPurple,
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+
+                  const SizedBox(height: 16),
+
+                  // Tab Bar
+                  Container(
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.3),
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: TabBar(
+                      padding: const EdgeInsets.all(4),
+                      controller: _tabController,
+                      indicator: BoxDecoration(
+                        color: textPink,
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      labelColor: Colors.white,
+                      unselectedLabelColor: textPink,
+                      labelStyle: const TextStyle(
+                        fontFamily: 'Digitalt',
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                      ),
+                      tabs: const [
+                        Tab(text: "   MEMBERS   ",),
+                        Tab(text: "   HISTORY   "),
+                        Tab(text: "   LEADERBOARD   "),
+                      ],
+                    ),
+                  ),
+
+                  const SizedBox(height: 16),
+
+                  // Tab Content
+                  Expanded(
+                    child: TabBarView(
+                      controller: _tabController,
+                      children: [
+                        _buildMembersTab(group, controller),
+                        _buildHistoryTab(group),
+                        _buildLeaderboardTab(group),
+                      ],
+                    ),
+                  ),
+                ],
+              );
+            },
+          ),
+        ),
+      ),
+      floatingActionButton: Consumer<GroupController>(
+        builder: (context, controller, _) {
+          final group = controller.currentGroup;
+          if (group == null) return const SizedBox.shrink();
+
+          return FloatingActionButton.extended(
+            backgroundColor: textGreen,
+            onPressed: () {
+              // TODO: Navigate to game setup
+              _showStartGameDialog(context, group);
+            },
+            icon: const Icon(Icons.play_arrow, color: Colors.white),
+            label: const Text(
+              "START GAME",
+              style: TextStyle(
+                fontFamily: 'Digitalt',
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  // Stat Item Widget
+  Widget _buildStatItem({
+    required IconData icon,
+    required String label,
+    required String value,
+    required Color color,
+  }) {
+    return Column(
+      children: [
+        Icon(icon, size: 32, color: color),
+        const SizedBox(height: 4),
+        Text(
+          value,
+          style: TextStyle(
+            fontFamily: 'Digitalt',
+            fontSize: 24,
+            fontWeight: FontWeight.bold,
+            color: color,
+          ),
+        ),
+        Text(
+          label,
+          style: TextStyle(
+            fontFamily: 'Rubik',
+            fontSize: 12,
+            color: color.withOpacity(0.8),
+          ),
+        ),
+      ],
+    );
+  }
+
+  // MEMBERS TAB
+  Widget _buildMembersTab(Group group, GroupController controller) {
+    final members = group.members.values.toList();
+    final currentUserId = controller.userId;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 25),
+      child: Container(
+        decoration: BoxDecoration(
+          color: textPink.withOpacity(0.5),
+          borderRadius: BorderRadius.circular(16),
+        ),
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          children: [
+            Row(
+              children: [
+                Text(
+                  "MEMBERS: ${members.length.toString().padLeft(2, '0')}",
+                  style: const TextStyle(
+                    fontFamily: 'Digitalt',
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                    letterSpacing: 1.5,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Expanded(
+              child: ListView.builder(
+                itemCount: members.length,
+                itemBuilder: (context, index) {
+                  final member = members[index];
+                  final isCurrentUser = member.id == currentUserId;
+
+                  return Container(
+                    margin: const EdgeInsets.only(bottom: 8),
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(12),
+                      border: isCurrentUser
+                          ? Border.all(color: textGreen, width: 2)
+                          : null,
+                    ),
+                    child: Row(
+                      children: [
+                        CircleAvatar(
+                          backgroundColor: textOrange,
+                          child: Text(
+                            member.name[0].toUpperCase(),
+                            style: const TextStyle(
+                              fontFamily: 'Digitalt',
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  Text(
+                                    member.name,
+                                    style: const TextStyle(
+                                      fontFamily: 'Digitalt',
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.bold,
+                                      color: textPink,
+                                    ),
+                                  ),
+                                  if (isCurrentUser) ...[
+                                    const SizedBox(width: 8),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 6,
+                                        vertical: 2,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: textGreen,
+                                        borderRadius: BorderRadius.circular(6),
+                                      ),
+                                      child: const Text(
+                                        "YOU",
+                                        style: TextStyle(
+                                          fontFamily: 'Digitalt',
+                                          fontSize: 9,
+                                          fontWeight: FontWeight.bold,
+                                          color: Colors.white,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ],
+                              ),
+                              Text(
+                                "${member.gamesPlayed} games played",
+                                style: const TextStyle(
+                                  fontFamily: 'Rubik',
+                                  fontSize: 11,
+                                  color: textOrange,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        if (member.isAdmin)
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 4,
+                            ),
+                            decoration: BoxDecoration(
+                              color: textOrange,
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: const Text(
+                              "ADMIN",
+                              style: TextStyle(
+                                fontFamily: 'Digitalt',
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // HISTORY TAB
+  Widget _buildHistoryTab(Group group) {
+    final games = group.sortedGameHistory;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 25),
+      child: Container(
+        decoration: BoxDecoration(
+          color: textOrange.withOpacity(0.5),
+          borderRadius: BorderRadius.circular(16),
+        ),
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          children: [
+            Row(
+              children: [
+                Text(
+                  "GAME HISTORY: ${games.length.toString().padLeft(2, '0')}",
+                  style: const TextStyle(
+                    fontFamily: 'Digitalt',
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                    letterSpacing: 1.5,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            if (games.isEmpty)
+              const Expanded(
+                child: Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        Icons.history,
+                        size: 48,
+                        color: Colors.white70,
+                      ),
+                      SizedBox(height: 12),
+                      Text(
+                        "NO GAMES YET",
+                        style: TextStyle(
+                          fontFamily: 'Digitalt',
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                      ),
+                      SizedBox(height: 4),
+                      Text(
+                        "Start a game to see history",
+                        style: TextStyle(
+                          fontFamily: 'Rubik',
+                          fontSize: 12,
+                          color: Colors.white70,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              )
+            else
+              Expanded(
+                child: ListView.builder(
+                  itemCount: games.length,
+                  itemBuilder: (context, index) {
+                    final game = games[index];
+                    final date = DateTime.fromMillisecondsSinceEpoch(
+                      game.timestamp,
+                    );
+                    final winner = game.winnerId != null
+                        ? group.members[game.winnerId]?.name ?? 'Unknown'
+                        : 'No winner';
+
+                    return Container(
+                      margin: const EdgeInsets.only(bottom: 8),
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Row(
+                        children: [
+                          Container(
+                            width: 40,
+                            height: 40,
+                            decoration: BoxDecoration(
+                              color: textPurple,
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: Center(
+                              child: Text(
+                                "#${games.length - index}",
+                                style: const TextStyle(
+                                  fontFamily: 'Digitalt',
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white,
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  "Winner: $winner",
+                                  style: const TextStyle(
+                                    fontFamily: 'Digitalt',
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.bold,
+                                    color: textPink,
+                                  ),
+                                ),
+                                Text(
+                                  "${game.playerIds.length} players",
+                                  style: const TextStyle(
+                                    fontFamily: 'Rubik',
+                                    fontSize: 11,
+                                    color: textOrange,
+                                  ),
+                                ),
+                                Text(
+                                  _formatDate(date),
+                                  style: const TextStyle(
+                                    fontFamily: 'Rubik',
+                                    fontSize: 10,
+                                    color: Colors.grey,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const Icon(
+                            Icons.chevron_right,
+                            color: textPink,
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // LEADERBOARD TAB
+  Widget _buildLeaderboardTab(Group group) {
+    final leaderboard = group.sortedMembersByWins;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 25),
+      child: Container(
+        decoration: BoxDecoration(
+          color: textPurple.withOpacity(0.5),
+          borderRadius: BorderRadius.circular(16),
+        ),
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          children: [
+            Row(
+              children: [
+                const Text(
+                  "LEADERBOARD",
+                  style: TextStyle(
+                    fontFamily: 'Digitalt',
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                    letterSpacing: 1.5,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Expanded(
+              child: ListView.builder(
+                itemCount: leaderboard.length,
+                itemBuilder: (context, index) {
+                  final member = leaderboard[index];
+                  final rank = index + 1;
+                  final medalColor = rank == 1
+                      ? const Color(0xFFFFD700) // Gold
+                      : rank == 2
+                      ? const Color(0xFFC0C0C0) // Silver
+                      : rank == 3
+                      ? const Color(0xFFCD7F32) // Bronze
+                      : Colors.grey;
+
+                  return Container(
+                    margin: const EdgeInsets.only(bottom: 8),
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(12),
+                      border: rank <= 3
+                          ? Border.all(color: medalColor, width: 2)
+                          : null,
+                    ),
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 40,
+                          height: 40,
+                          decoration: BoxDecoration(
+                            color: rank <= 3 ? medalColor : Colors.grey[300],
+                            shape: BoxShape.circle,
+                          ),
+                          child: Center(
+                            child: rank <= 3
+                                ? Icon(
+                              Icons.emoji_events,
+                              color: Colors.white,
+                              size: 20,
+                            )
+                                : Text(
+                              "$rank",
+                              style: const TextStyle(
+                                fontFamily: 'Digitalt',
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                member.name,
+                                style: const TextStyle(
+                                  fontFamily: 'Digitalt',
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                  color: textPink,
+                                ),
+                              ),
+                              Text(
+                                "${member.gamesPlayed} games played",
+                                style: const TextStyle(
+                                  fontFamily: 'Rubik',
+                                  fontSize: 11,
+                                  color: textOrange,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        Column(
+                          children: [
+                            Text(
+                              "${member.wins}",
+                              style: TextStyle(
+                                fontFamily: 'Digitalt',
+                                fontSize: 24,
+                                fontWeight: FontWeight.bold,
+                                color: rank <= 3 ? medalColor : textPink,
+                              ),
+                            ),
+                            const Text(
+                              "WINS",
+                              style: TextStyle(
+                                fontFamily: 'Digitalt',
+                                fontSize: 10,
+                                color: textOrange,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // Format Date
+  String _formatDate(DateTime date) {
+    return "${date.day}/${date.month}/${date.year} ${date.hour}:${date.minute.toString().padLeft(2, '0')}";
+  }
+
+  // Group Info Dialog
+  void _showGroupInfoDialog(BuildContext context, Group group) {
+    final controller = context.read<GroupController>();
+
+    showDialog(
+      context: context,
+      builder: (dialogContext) => Dialog(
+        insetPadding: const EdgeInsets.symmetric(horizontal: 24),
+        backgroundColor: Colors.transparent,
+        child: Container(
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(24),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                "GROUP INFO",
+                style: TextStyle(
+                  fontFamily: 'Digitalt',
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: textOrange,
+                ),
+              ),
+              const SizedBox(height: 16),
+              _buildInfoRow("Name:", group.metadata.name),
+              _buildInfoRow("Code:", group.metadata.code),
+              _buildInfoRow("Members:", "${group.memberCount}"),
+              _buildInfoRow("Games:", "${group.stats.totalGames}"),
+              if (group.metadata.description != null) ...[
+                const SizedBox(height: 8),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    "Description:",
+                    style: const TextStyle(
+                      fontFamily: 'Digitalt',
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                      color: textPink,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  group.metadata.description!,
+                  style: const TextStyle(
+                    fontFamily: 'Rubik',
+                    fontSize: 12,
+                    color: Colors.black87,
+                  ),
+                ),
+              ],
+              const SizedBox(height: 20),
+              if (group.isMember(controller.userId))
+                ElevatedButton.icon(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.red,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 20,
+                      vertical: 12,
+                    ),
+                  ),
+                  icon: const Icon(Icons.exit_to_app, color: Colors.white),
+                  label: const Text(
+                    "LEAVE GROUP",
+                    style: TextStyle(
+                      fontFamily: 'Digitalt',
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                  ),
+                  onPressed: () async {
+                    final confirm = await showDialog<bool>(
+                      context: dialogContext,
+                      builder: (confirmContext) => AlertDialog(
+                        title: const Text("Leave Group?"),
+                        content: const Text(
+                          "Are you sure you want to leave this group?",
+                        ),
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.pop(confirmContext, false),
+                            child: const Text("Cancel"),
+                          ),
+                          TextButton(
+                            onPressed: () => Navigator.pop(confirmContext, true),
+                            style: TextButton.styleFrom(
+                              foregroundColor: Colors.red,
+                            ),
+                            child: const Text("Leave"),
+                          ),
+                        ],
+                      ),
+                    );
+
+                    if (confirm == true) {
+                      await controller.leaveGroup(group.metadata.id);
+
+                      // Close dialogs and navigate back
+                      if (dialogContext.mounted) {
+                        Navigator.pop(dialogContext); // Close info dialog
+                      }
+                      if (context.mounted) {
+                        Navigator.pop(context); // Go back to groups list
+                      }
+                    }
+                  },
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildInfoRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            label,
+            style: const TextStyle(
+              fontFamily: 'Digitalt',
+              fontSize: 12,
+              fontWeight: FontWeight.bold,
+              color: textPink,
+            ),
+          ),
+          Text(
+            value,
+            style: const TextStyle(
+              fontFamily: 'Rubik',
+              fontSize: 12,
+              color: Colors.black87,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showStartGameDialog(BuildContext context, Group group) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => ChangeNotifierProvider.value(
+          value: context.read<GroupController>(),
+          child: GroupGameSetupScreen(groupId: group.metadata.id),
+        ),
+      ),
+    );
+  }
+}

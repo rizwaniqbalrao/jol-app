@@ -1,8 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:jol_app/screens/score%20board/services/leadboard_services.dart';
-import '../dashboard/notification_screen.dart';
-import '../onboarding/onboarding_screen.dart';
-import '../settings/account_screen.dart';
 import 'models/leadboard_entry.dart';
 
 class ScoreBoardScreen extends StatefulWidget {
@@ -135,55 +132,35 @@ class _ScoreBoardScreenState extends State<ScoreBoardScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.transparent,
       resizeToAvoidBottomInset: true,
-      body: Container(
-        height: double.infinity,
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [
-              Color(0xFFFFC0CB),
-              Color(0xFFADD8E6),
-              Color(0xFFE6E6FA),
-            ],
+      body: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 16.0, horizontal: 20),
+        child: Container(
+          decoration: BoxDecoration(
+            color: textPink.withOpacity(0.55),
+            borderRadius: BorderRadius.circular(18),
           ),
-        ),
-        child: Column(
-          children: [
-            _buildAppBar(context),
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 16.0, horizontal: 20),
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: textPink.withOpacity(0.55),
-                    borderRadius: BorderRadius.circular(18),
-                  ),
-                  padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 12),
-                  child: Column(
-                    children: [
-                      const Text(
-                        "LEADERBOARD",
-                        style: TextStyle(
-                          fontFamily: 'Digitalt',
-                          fontSize: 22,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                          letterSpacing: 1.5,
-                        ),
-                      ),
-                      const SizedBox(height: 6),
-                      _buildTabsRow(),
-                      Expanded(
-                        child: _buildLeaderboardContent(),
-                      ),
-                    ],
-                  ),
+          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 12),
+          child: Column(
+            children: [
+              const Text(
+                "LEADERBOARD",
+                style: TextStyle(
+                  fontFamily: 'Digitalt',
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                  letterSpacing: 1.5,
                 ),
               ),
-            ),
-          ],
+              const SizedBox(height: 6),
+              _buildTabsRow(),
+              Expanded(
+                child: _buildLeaderboardContent(),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -393,159 +370,6 @@ class _ScoreBoardScreenState extends State<ScoreBoardScreen> {
       ),
     );
   }
-
-  Widget _buildJolLogo() {
-    const letters = ["J", "O", "L"];
-    const colors = [Color(0xFFf8bc64), textPink, Color(0xFFfc6839)];
-
-    return Row(
-      children: List.generate(
-        letters.length,
-            (index) => Text(
-          letters[index],
-          style: const TextStyle(
-            fontFamily: 'Digitalt',
-            fontWeight: FontWeight.w500,
-            fontSize: 35,
-            height: 0.82,
-          ).copyWith(
-            color: colors[index],
-            letterSpacing: 1.5,
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildAppBar(BuildContext context) {
-    return Container(
-      padding: EdgeInsets.only(
-        top: MediaQuery.of(context).padding.top + 6,
-        left: 12,
-        right: 12,
-        bottom: 6,
-      ),
-      decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.5),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          _buildJolLogo(),
-          Row(
-            children: [
-              InkWell(
-                onTap: () {
-                  showDialog(
-                    context: context,
-                    builder: (_) => const HelpDialog(),
-                  );
-                },
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-                  decoration: BoxDecoration(
-                    color: textGreen,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: Colors.white.withOpacity(0.9), width: 2.5),
-                  ),
-                  child: const Text(
-                    "HOW TO PLAY",
-                    style: TextStyle(
-                      fontFamily: 'Digitalt',
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 8),
-              InkWell(
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (context) => NotificationScreen()),
-                  );
-                },
-                child: Container(
-                  width: 30,
-                  height: 30,
-                  decoration: const BoxDecoration(
-                    color: Colors.white,
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(
-                    Icons.notifications,
-                    size: 20,
-                    color: textPink,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 8),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
-                decoration: BoxDecoration(
-                  border: Border.all(color: Colors.white),
-                  color: textPink,
-                  borderRadius: BorderRadius.circular(30),
-                ),
-                child: Row(
-                  children: [
-                    Container(
-                      width: 20,
-                      height: 20,
-                      decoration: const BoxDecoration(
-                        color: Colors.white,
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Center(
-                        child: Text(
-                          "J",
-                          style: TextStyle(
-                            fontFamily: 'Digitalt',
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                            color: textPink,
-                          ),
-                        ),
-                      ),
-                    ),
-                    const Padding(
-                      padding: EdgeInsets.symmetric(horizontal: 8.0),
-                      child: Text(
-                        "5M",
-                        style: TextStyle(
-                          fontFamily: 'Digitalt',
-                          fontSize: 14,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 8),
-              InkWell(
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const AccountScreen(),
-                    ),
-                  );
-                },
-                child: const CircleAvatar(
-                  radius: 18,
-                  backgroundImage: AssetImage("lib/assets/images/settings_emoji.png"),
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
 }
 
 // --------------------
@@ -579,7 +403,7 @@ class LeaderboardCard extends StatelessWidget {
 
     return Container(
       margin: const EdgeInsets.symmetric(vertical: 8),
-      child: IntrinsicHeight(   // ← IMPORTANT: makes both sides auto-align vertically
+      child: IntrinsicHeight(
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -635,7 +459,8 @@ class LeaderboardCard extends StatelessWidget {
                             right: -6,
                             top: -6,
                             child: Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                              padding:
+                              const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                               decoration: BoxDecoration(
                                 color: const Color(0xFFfc4b81),
                                 borderRadius: BorderRadius.circular(12),

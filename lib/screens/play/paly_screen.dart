@@ -3,9 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:jol_app/screens/play/create_room_screen.dart';
 import 'package:jol_app/screens/play/game_screen.dart';
 
-import '../dashboard/notification_screen.dart';
-import '../onboarding/onboarding_screen.dart';
-import '../settings/account_screen.dart';
+import '../../constants/add_manager.dart';
 import 'join_room_screen.dart';
 
 class PlayScreen extends StatefulWidget {
@@ -20,6 +18,15 @@ class _PlayScreenState extends State<PlayScreen> {
   static const Color textGreen = Color(0xFF43AC45);
   static const Color textPink = Color(0xFFF82A87);
   static const Color textOrange = Color(0xFFfc6839);
+
+  final AdManager _adManager = AdManager();
+  bool _isShowingAd = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _adManager.loadInterstitial(); // Preload ad
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -48,7 +55,6 @@ class _PlayScreenState extends State<PlayScreen> {
           top: false,
           child: Column(
             children: [
-              _buildAppBar(context),
               Expanded(
                 child: SingleChildScrollView(
                   child: Padding(
@@ -147,14 +153,7 @@ class _PlayScreenState extends State<PlayScreen> {
                           title: "ENTER MATCH CODE",
                           icon: Icons.login_rounded,
                           color: textBlue,
-                          onTap: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => const JoinRoomScreen(),
-                              ),
-                            );
-                          },
+                          onTap: () => _handleJoinRoom(context),
                         ),
                         const SizedBox(height: 10),
 
@@ -163,14 +162,7 @@ class _PlayScreenState extends State<PlayScreen> {
                           title: "CREATE PRIVATE TABLE",
                           icon: Icons.add_circle_outline,
                           color: textPink,
-                          onTap: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => const CreateRoomScreen(),
-                              ),
-                            );
-                          },
+                          onTap: () => _handleCreateRoom(context),
                         ),
 
                         const SizedBox(height: 16),
@@ -185,6 +177,132 @@ class _PlayScreenState extends State<PlayScreen> {
       ),
     );
   }
+
+  // ═══════════════════════════════════════════════════════════════
+  // AD HANDLING METHODS
+  // ═══════════════════════════════════════════════════════════════
+
+  /// Show ad and navigate to Join Room screen
+  Future<void> _handleJoinRoom(BuildContext context) async {
+    if (_isShowingAd) return; // Prevent multiple ad triggers
+
+    setState(() => _isShowingAd = true);
+
+    // Show loading indicator
+    _showLoadingDialog(context, "Loading...");
+
+    // Try to show ad
+    final adShown = await _adManager.showInterstitial();
+
+    // Close loading dialog
+    if (mounted) Navigator.of(context).pop();
+
+    setState(() => _isShowingAd = false);
+
+    if (mounted) {
+      // Navigate to Join Room screen regardless of ad result
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => const JoinRoomScreen(),
+        ),
+      );
+    }
+  }
+
+  /// Show ad and navigate to Create Room screen
+  Future<void> _handleCreateRoom(BuildContext context) async {
+    if (_isShowingAd) return; // Prevent multiple ad triggers
+
+    setState(() => _isShowingAd = true);
+
+    // Show loading indicator
+    _showLoadingDialog(context, "Loading...");
+
+    // Try to show ad
+    final adShown = await _adManager.showInterstitial();
+
+    // Close loading dialog
+    if (mounted) Navigator.of(context).pop();
+
+    setState(() => _isShowingAd = false);
+
+    if (mounted) {
+      // Navigate to Create Room screen regardless of ad result
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => const CreateRoomScreen(),
+        ),
+      );
+    }
+  }
+
+  /// Show ad and navigate to Game screen (for 4x4 grid)
+  Future<void> _handleStartGame(BuildContext context) async {
+    if (_isShowingAd) return; // Prevent multiple ad triggers
+
+    setState(() => _isShowingAd = true);
+
+    // Show loading indicator
+    _showLoadingDialog(context, "Loading game...");
+
+    // Try to show ad
+    final adShown = await _adManager.showInterstitial();
+
+    // Close loading dialog
+    if (mounted) Navigator.of(context).pop();
+
+    setState(() => _isShowingAd = false);
+
+    if (mounted) {
+      // Navigate to Game screen regardless of ad result
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => const GameScreen(),
+        ),
+      );
+    }
+  }
+
+  /// Show a loading dialog
+  void _showLoadingDialog(BuildContext context, String message) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => Dialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const CircularProgressIndicator(
+                valueColor: AlwaysStoppedAnimation<Color>(textPink),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                message,
+                style: const TextStyle(
+                  fontFamily: 'Digitalt',
+                  fontSize: 14,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 0.8,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  // UI BUILDING METHODS
+  // ═══════════════════════════════════════════════════════════════
 
   Widget _buildCompactGridCard(
       BuildContext context, {
@@ -472,13 +590,8 @@ class _PlayScreenState extends State<PlayScreen> {
                   Expanded(
                     child: ElevatedButton(
                       onPressed: () {
-                        Navigator.pop(context);
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => const GameScreen(),
-                          ),
-                        );
+                        Navigator.pop(context); // Close dialog first
+                        _handleStartGame(context); // Then show ad and start game
                       },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: color,
@@ -649,138 +762,6 @@ class _PlayScreenState extends State<PlayScreen> {
             letterSpacing: 1.5,
           ),
         ),
-      ),
-    );
-  }
-
-  Widget _buildAppBar(BuildContext context) {
-    return Container(
-      padding: EdgeInsets.only(
-        top: MediaQuery.of(context).padding.top + 6,
-        left: 12,
-        right: 12,
-        bottom: 6,
-      ),
-      decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.5),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          _buildJolLogo(),
-          Row(
-            children: [
-              InkWell(
-                onTap: () {
-                  showDialog(
-                    context: context,
-                    builder: (_) => const HelpDialog(),
-                  );
-                },
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-                  decoration: BoxDecoration(
-                    color: textGreen,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
-                        color: Colors.white.withOpacity(0.9), width: 2.5),
-                  ),
-                  child: const Text(
-                    "HOW TO PLAY",
-                    style: TextStyle(
-                      fontFamily: 'Digitalt',
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 8),
-              InkWell(
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (context) => NotificationScreen()),
-                  );
-                },
-                child: Container(
-                  width: 30,
-                  height: 30,
-                  decoration: const BoxDecoration(
-                    color: Colors.white,
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(
-                    Icons.notifications,
-                    size: 20,
-                    color: textPink,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 8),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
-                decoration: BoxDecoration(
-                  border: Border.all(color: Colors.white),
-                  color: textPink,
-                  borderRadius: BorderRadius.circular(30),
-                ),
-                child: Row(
-                  children: [
-                    Container(
-                      width: 20,
-                      height: 20,
-                      decoration: const BoxDecoration(
-                        color: Colors.white,
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Center(
-                        child: Text(
-                          "J",
-                          style: TextStyle(
-                            fontFamily: 'Digitalt',
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                            color: textPink,
-                          ),
-                        ),
-                      ),
-                    ),
-                    const Padding(
-                      padding: EdgeInsets.symmetric(horizontal: 8.0),
-                      child: Text(
-                        "5M",
-                        style: TextStyle(
-                          fontFamily: 'Digitalt',
-                          fontSize: 14,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 8),
-              InkWell(
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const AccountScreen(),
-                    ),
-                  );
-                },
-                child: const CircleAvatar(
-                  radius: 18,
-                  backgroundImage:
-                  AssetImage("lib/assets/images/settings_emoji.png"),
-                ),
-              ),
-            ],
-          ),
-        ],
       ),
     );
   }

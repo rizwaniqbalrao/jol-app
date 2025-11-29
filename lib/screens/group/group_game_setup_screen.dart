@@ -1,0 +1,868 @@
+// group_game_setup_screen.dart - UPDATED WITH ONLINE STATUS
+import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:firebase_database/firebase_database.dart';
+import '../play/controller/game_controller.dart';
+import '../play/controller/multiplayer_game_controller.dart';
+import '../play/models/room_models.dart';
+import 'controller/group_controller.dart';
+import 'group_waiting_lobby_screen.dart';
+import 'models/group_metadata.dart';
+import 'package:jol_app/screens/play/controller/game_controller.dart';
+import 'package:jol_app/screens/play/controller/multiplayer_game_controller.dart'
+as multiplayer; // ← Add this alias
+
+
+class GroupGameSetupScreen extends StatefulWidget {
+  final String groupId;
+
+  const GroupGameSetupScreen({
+    super.key,
+    required this.groupId,
+  });
+
+  @override
+  State<GroupGameSetupScreen> createState() => _GroupGameSetupScreenState();
+}
+
+class _GroupGameSetupScreenState extends State<GroupGameSetupScreen> {
+  static const Color textPink = Color(0xFFF82A87);
+  static const Color textOrange = Color(0xFFfc6839);
+  static const Color textGreen = Color(0xFF4CAF50);
+  static const Color textPurple = Color(0xFFC42AF8);
+  static const Color textYellow = Color(0xFFf8bc64);
+
+  final FirebaseDatabase _database = FirebaseDatabase.instance;
+
+  // Game settings
+  int _gridSize = 4;
+  String _mode = 'untimed';
+  String _operation = 'addition';
+  int _timeLimit = 300;
+  int _maxHints = 2;
+
+  // Selected players (including host)
+  Set<String> _selectedPlayerIds = {};
+  bool _isCreatingRoom = false;
+
+  // Online status tracking
+  Map<String, String> _memberStatuses = {}; // userId -> 'online'/'offline'/'in_game'
+
+  @override
+  void initState() {
+    super.initState();
+    // Auto-select host
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final controller = context.read<GroupController>();
+      _selectedPlayerIds.add(controller.userId);
+      _loadMemberStatuses();
+      setState(() {});
+    });
+  }
+
+  Future<void> _loadMemberStatuses() async {
+    final controller = context.read<GroupController>();
+    final group = controller.currentGroup;
+
+    if (group == null) return;
+
+    final memberIds = group.members.keys.toList();
+
+    for (String memberId in memberIds) {
+      _listenToMemberStatus(memberId);
+    }
+  }
+
+  void _listenToMemberStatus(String userId) {
+    _database.ref('userPresence/$userId/status').onValue.listen((event) {
+      if (mounted && event.snapshot.exists) {
+        setState(() {
+          _memberStatuses[userId] = event.snapshot.value as String;
+        });
+      } else if (mounted) {
+        setState(() {
+          _memberStatuses[userId] = 'offline';
+        });
+      }
+    });
+  }
+
+  String _getMemberStatus(String userId) {
+    return _memberStatuses[userId] ?? 'offline';
+  }
+
+  bool _isMemberAvailable(String userId) {
+    final status = _getMemberStatus(userId);
+    return status == 'online' || status == 'offline';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: Container(
+        height: double.infinity,
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              Color(0xFFFFC0CB),
+              Color(0xFFADD8E6),
+              Color(0xFFE6E6FA),
+            ],
+          ),
+        ),
+        child: SafeArea(
+          child: Consumer<GroupController>(
+            builder: (context, controller, _) {
+              final group = controller.currentGroup;
+
+              if (group == null) {
+                return const Center(
+                  child: CircularProgressIndicator(color: textPink),
+                );
+              }
+
+              // Get available members (not in-game)
+              final allMembers = group.members.values
+                  .where((m) => m.id != controller.userId)
+                  .toList();
+
+              // Separate online and offline members
+              final onlineMembers = allMembers
+                  .where((m) => _getMemberStatus(m.id) == 'online')
+                  .toList();
+
+              final offlineMembers = allMembers
+                  .where((m) => _getMemberStatus(m.id) == 'offline')
+                  .toList();
+
+              final inGameMembers = allMembers
+                  .where((m) => _getMemberStatus(m.id) == 'in_game')
+                  .toList();
+
+              return Column(
+                children: [
+                  // Header
+                  Padding(
+                    padding: const EdgeInsets.all(20),
+                    child: Row(
+                      children: [
+                        InkWell(
+                          onTap: () => Navigator.pop(context),
+                          child: Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: textOrange,
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: Colors.white, width: 1.5),
+                            ),
+                            child: const Icon(
+                              Icons.arrow_back,
+                              size: 20,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        const Expanded(
+                          child: Text(
+                            "SETUP GAME",
+                            style: TextStyle(
+                              fontFamily: 'Digitalt',
+                              fontSize: 24,
+                              fontWeight: FontWeight.bold,
+                              color: textPink,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  Expanded(
+                    child: SingleChildScrollView(
+                      padding: const EdgeInsets.symmetric(horizontal: 20),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // SECTION 1: Select Players
+                          _buildSectionHeader(
+                            "SELECT PLAYERS",
+                            "${_selectedPlayerIds.length}/4 Selected",
+                          ),
+                          const SizedBox(height: 12),
+
+                          // Host (always included)
+                          _buildPlayerTile(
+                            member: group.members[controller.userId]!,
+                            isHost: true,
+                            isSelected: true,
+                            status: 'online',
+                            onTap: null,
+                          ),
+
+                          const SizedBox(height: 12),
+
+                          // Online Members
+                          if (onlineMembers.isNotEmpty) ...[
+                            const Text(
+                              "ONLINE",
+                              style: TextStyle(
+                                fontFamily: 'Digitalt',
+                                fontSize: 14,
+                                fontWeight: FontWeight.bold,
+                                color: textGreen,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            ...onlineMembers.map((member) {
+                              final isSelected = _selectedPlayerIds.contains(member.id);
+                              final canSelect = _selectedPlayerIds.length < 4 || isSelected;
+
+                              return Padding(
+                                padding: const EdgeInsets.only(bottom: 8),
+                                child: _buildPlayerTile(
+                                  member: member,
+                                  isHost: false,
+                                  isSelected: isSelected,
+                                  status: 'online',
+                                  onTap: canSelect
+                                      ? () {
+                                    setState(() {
+                                      if (isSelected) {
+                                        _selectedPlayerIds.remove(member.id);
+                                      } else {
+                                        _selectedPlayerIds.add(member.id);
+                                      }
+                                    });
+                                  }
+                                      : null,
+                                ),
+                              );
+                            }).toList(),
+                            const SizedBox(height: 12),
+                          ],
+
+                          // Offline Members (can still be selected)
+                          if (offlineMembers.isNotEmpty) ...[
+                            const Text(
+                              "OFFLINE",
+                              style: TextStyle(
+                                fontFamily: 'Digitalt',
+                                fontSize: 14,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.grey,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            ...offlineMembers.map((member) {
+                              final isSelected = _selectedPlayerIds.contains(member.id);
+                              final canSelect = _selectedPlayerIds.length < 4 || isSelected;
+
+                              return Padding(
+                                padding: const EdgeInsets.only(bottom: 8),
+                                child: _buildPlayerTile(
+                                  member: member,
+                                  isHost: false,
+                                  isSelected: isSelected,
+                                  status: 'offline',
+                                  onTap: canSelect
+                                      ? () {
+                                    setState(() {
+                                      if (isSelected) {
+                                        _selectedPlayerIds.remove(member.id);
+                                      } else {
+                                        _selectedPlayerIds.add(member.id);
+                                      }
+                                    });
+                                  }
+                                      : null,
+                                ),
+                              );
+                            }).toList(),
+                            const SizedBox(height: 12),
+                          ],
+
+                          // In-Game Members (cannot be selected)
+                          if (inGameMembers.isNotEmpty) ...[
+                            const Text(
+                              "IN GAME",
+                              style: TextStyle(
+                                fontFamily: 'Digitalt',
+                                fontSize: 14,
+                                fontWeight: FontWeight.bold,
+                                color: textOrange,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            ...inGameMembers.map((member) {
+                              return Padding(
+                                padding: const EdgeInsets.only(bottom: 8),
+                                child: _buildPlayerTile(
+                                  member: member,
+                                  isHost: false,
+                                  isSelected: false,
+                                  status: 'in_game',
+                                  onTap: null,
+                                ),
+                              );
+                            }).toList(),
+                            const SizedBox(height: 12),
+                          ],
+
+                          if (allMembers.isEmpty)
+                            Container(
+                              padding: const EdgeInsets.all(16),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withOpacity(0.5),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: const Center(
+                                child: Text(
+                                  "No other members in group",
+                                  style: TextStyle(
+                                    fontFamily: 'Rubik',
+                                    color: Colors.grey,
+                                  ),
+                                ),
+                              ),
+                            ),
+
+                          const SizedBox(height: 24),
+
+                          // SECTION 2: Game Settings
+                          _buildSectionHeader("GAME SETTINGS", ""),
+                          const SizedBox(height: 12),
+
+                          _buildSettingCard(
+                            title: "Grid Size",
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                              children: [3, 4, 5, 6].map((size) {
+                                return _buildGridSizeOption(size);
+                              }).toList(),
+                            ),
+                          ),
+
+                          const SizedBox(height: 12),
+
+                          _buildSettingCard(
+                            title: "Operation",
+                            child: Row(
+                              children: [
+                                Expanded(
+                                  child: _buildOperationButton(
+                                    'Addition',
+                                    'addition',
+                                    Icons.add,
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: _buildOperationButton(
+                                    'Subtraction',
+                                    'subtraction',
+                                    Icons.remove,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+
+                          const SizedBox(height: 12),
+
+                          _buildSettingCard(
+                            title: "Game Mode",
+                            child: Row(
+                              children: [
+                                Expanded(
+                                  child: _buildModeButton('Untimed', 'untimed'),
+                                ),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: _buildModeButton('Timed', 'timed'),
+                                ),
+                              ],
+                            ),
+                          ),
+
+                          if (_mode == 'timed') ...[
+                            const SizedBox(height: 12),
+                            _buildSettingCard(
+                              title: "Time Limit",
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                                children: [180, 300, 420, 600].map((seconds) {
+                                  return _buildTimeOption(seconds);
+                                }).toList(),
+                              ),
+                            ),
+                          ],
+
+                          const SizedBox(height: 12),
+
+                          _buildSettingCard(
+                            title: "Max Hints",
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                              children: [0, 1, 2, 3].map((hints) {
+                                return _buildHintOption(hints);
+                              }).toList(),
+                            ),
+                          ),
+
+                          const SizedBox(height: 32),
+
+                          // Start Game Button
+                          SizedBox(
+                            width: double.infinity,
+                            height: 50,
+                            child: ElevatedButton(
+                              onPressed: (_selectedPlayerIds.length >= 2 && !_isCreatingRoom)
+                                  ? () => _startGame(controller, group)
+                                  : null,
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: textGreen,
+                                disabledBackgroundColor: Colors.grey,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                              ),
+                              child: _isCreatingRoom
+                                  ? const SizedBox(
+                                height: 24,
+                                width: 24,
+                                child: CircularProgressIndicator(
+                                  color: Colors.white,
+                                  strokeWidth: 2,
+                                ),
+                              )
+                                  : const Text(
+                                "START GAME",
+                                style: TextStyle(
+                                  fontFamily: 'Digitalt',
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white,
+                                ),
+                              ),
+                            ),
+                          ),
+
+                          const SizedBox(height: 20),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              );
+            },
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSectionHeader(String title, String subtitle) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(
+          title,
+          style: const TextStyle(
+            fontFamily: 'Digitalt',
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+            color: textPink,
+          ),
+        ),
+        if (subtitle.isNotEmpty)
+          Text(
+            subtitle,
+            style: const TextStyle(
+              fontFamily: 'Rubik',
+              fontSize: 14,
+              color: textOrange,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _buildPlayerTile({
+    required GroupMember member,
+    required bool isHost,
+    required bool isSelected,
+    required String status,
+    required VoidCallback? onTap,
+  }) {
+    Color statusColor;
+    IconData statusIcon;
+    String statusText;
+
+    switch (status) {
+      case 'online':
+        statusColor = textGreen;
+        statusIcon = Icons.circle;
+        statusText = 'Online';
+        break;
+      case 'in_game':
+        statusColor = textOrange;
+        statusIcon = Icons.sports_esports;
+        statusText = 'In Game';
+        break;
+      default:
+        statusColor = Colors.grey;
+        statusIcon = Icons.circle;
+        statusText = 'Offline';
+    }
+
+    return InkWell(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: isSelected ? textGreen.withOpacity(0.2) : Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: isSelected ? textGreen : Colors.grey.shade300,
+            width: isSelected ? 2 : 1,
+          ),
+        ),
+        child: Row(
+          children: [
+            CircleAvatar(
+              backgroundColor: textOrange,
+              radius: 20,
+              child: Text(
+                member.name[0].toUpperCase(),
+                style: const TextStyle(
+                  fontFamily: 'Digitalt',
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    member.name,
+                    style: const TextStyle(
+                      fontFamily: 'Digitalt',
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: textPink,
+                    ),
+                  ),
+                  Row(
+                    children: [
+                      Icon(statusIcon, size: 10, color: statusColor),
+                      const SizedBox(width: 4),
+                      Text(
+                        statusText,
+                        style: TextStyle(
+                          fontFamily: 'Rubik',
+                          fontSize: 11,
+                          color: statusColor,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        "${member.wins}W • ${member.gamesPlayed}G",
+                        style: const TextStyle(
+                          fontFamily: 'Rubik',
+                          fontSize: 11,
+                          color: Colors.grey,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            if (isHost)
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: textOrange,
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: const Text(
+                  "HOST",
+                  style: TextStyle(
+                    fontFamily: 'Digitalt',
+                    fontSize: 10,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
+                ),
+              )
+            else if (isSelected)
+              const Icon(Icons.check_circle, color: textGreen, size: 24)
+            else if (onTap == null)
+                const Icon(Icons.lock, color: Colors.grey, size: 20),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSettingCard({required String title, required Widget child}) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.8),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: textPurple.withOpacity(0.3), width: 1),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            title,
+            style: const TextStyle(
+              fontFamily: 'Digitalt',
+              fontSize: 14,
+              fontWeight: FontWeight.bold,
+              color: textPurple,
+            ),
+          ),
+          const SizedBox(height: 12),
+          child,
+        ],
+      ),
+    );
+  }
+
+  Widget _buildGridSizeOption(int size) {
+    final isSelected = _gridSize == size;
+    return InkWell(
+      onTap: () => setState(() => _gridSize = size),
+      child: Container(
+        width: 60,
+        height: 60,
+        decoration: BoxDecoration(
+          color: isSelected ? textPink : Colors.grey.shade200,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: isSelected ? textPink : Colors.grey.shade400,
+            width: 2,
+          ),
+        ),
+        child: Center(
+          child: Text(
+            "${size}x$size",
+            style: TextStyle(
+              fontFamily: 'Digitalt',
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              color: isSelected ? Colors.white : Colors.black,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildOperationButton(String label, String value, IconData icon) {
+    final isSelected = _operation == value;
+    return InkWell(
+      onTap: () => setState(() => _operation = value),
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 12),
+        decoration: BoxDecoration(
+          color: isSelected ? textOrange : Colors.grey.shade200,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(
+            color: isSelected ? textOrange : Colors.grey.shade400,
+            width: 2,
+          ),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, color: isSelected ? Colors.white : Colors.black),
+            const SizedBox(width: 8),
+            Text(
+              label,
+              style: TextStyle(
+                fontFamily: 'Digitalt',
+                fontSize: 14,
+                fontWeight: FontWeight.bold,
+                color: isSelected ? Colors.white : Colors.black,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildModeButton(String label, String value) {
+    final isSelected = _mode == value;
+    return InkWell(
+      onTap: () => setState(() => _mode = value),
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 12),
+        decoration: BoxDecoration(
+          color: isSelected ? textPurple : Colors.grey.shade200,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(
+            color: isSelected ? textPurple : Colors.grey.shade400,
+            width: 2,
+          ),
+        ),
+        child: Center(
+          child: Text(
+            label,
+            style: TextStyle(
+              fontFamily: 'Digitalt',
+              fontSize: 14,
+              fontWeight: FontWeight.bold,
+              color: isSelected ? Colors.white : Colors.black,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTimeOption(int seconds) {
+    final isSelected = _timeLimit == seconds;
+    final minutes = seconds ~/ 60;
+    return InkWell(
+      onTap: () => setState(() => _timeLimit = seconds),
+      child: Container(
+        width: 60,
+        height: 50,
+        decoration: BoxDecoration(
+          color: isSelected ? textGreen : Colors.grey.shade200,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(
+            color: isSelected ? textGreen : Colors.grey.shade400,
+            width: 2,
+          ),
+        ),
+        child: Center(
+          child: Text(
+            "${minutes}m",
+            style: TextStyle(
+              fontFamily: 'Digitalt',
+              fontSize: 14,
+              fontWeight: FontWeight.bold,
+              color: isSelected ? Colors.white : Colors.black,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildHintOption(int hints) {
+    final isSelected = _maxHints == hints;
+    return InkWell(
+      onTap: () => setState(() => _maxHints = hints),
+      child: Container(
+        width: 60,
+        height: 50,
+        decoration: BoxDecoration(
+          color: isSelected ? textYellow : Colors.grey.shade200,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(
+            color: isSelected ? textYellow : Colors.grey.shade400,
+            width: 2,
+          ),
+        ),
+        child: Center(
+          child: Text(
+            "$hints",
+            style: TextStyle(
+              fontFamily: 'Digitalt',
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              color: isSelected ? Colors.white : Colors.black,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _startGame(GroupController controller, Group group) async {
+    if (_selectedPlayerIds.length < 2) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Select at least 2 players'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    setState(() => _isCreatingRoom = true);
+
+    try {
+      // Generate puzzle
+      final puzzle = MultiplayerPuzzleGenerator.generatePuzzle(
+        gridSize: _gridSize,
+        operation: _operation == 'addition'
+            ? multiplayer.PuzzleOperation.addition
+            : multiplayer.PuzzleOperation.subtraction,
+      );
+
+      // Create room settings
+      final settings = RoomSettings(
+        gridSize: _gridSize,
+        mode: _mode,
+        operation: _operation,
+        timeLimit: _timeLimit,
+        maxHints: _maxHints,
+        maxPlayers: 4,
+      );
+
+      // Start game and get room code
+      final roomCode = await controller.startGroupGame(
+        groupId: group.metadata.id,
+        settings: settings,
+        puzzle: puzzle,
+      );
+
+      if (roomCode != null && mounted) {
+        // Navigate to waiting lobby (same flow as regular multiplayer)
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (context) => GroupWaitingLobbyScreen(
+              roomCode: roomCode,
+              playerId: controller.userId,
+              playerName: controller.userName,
+              groupId: group.metadata.id,
+              invitedPlayerIds: _selectedPlayerIds.toList(),
+            ),
+          ),
+        );
+      } else {
+        throw Exception('Failed to create room');
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isCreatingRoom = false);
+      }
+    }
+  }
+}

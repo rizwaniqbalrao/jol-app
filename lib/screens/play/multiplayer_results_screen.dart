@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_database/firebase_database.dart';
 import 'package:jol_app/screens/play/services/room_service.dart';
 import 'models/room_models.dart';
 
@@ -22,8 +23,13 @@ class _MultiplayerResultsScreenState extends State<MultiplayerResultsScreen> {
   static const Color textPink = Color(0xFFF82A87);
 
   final RoomService _roomService = RoomService();
+  final FirebaseDatabase _database = FirebaseDatabase.instance;
+
   Room? _room;
   bool _isLoading = true;
+  bool _hasRecordedToGroup = false;
+  bool _isGroupGame = false;
+  String? _groupId;
 
   @override
   void initState() {
@@ -32,14 +38,141 @@ class _MultiplayerResultsScreenState extends State<MultiplayerResultsScreen> {
   }
 
   Future<void> _loadRoomData() async {
-    _roomService.listenToRoom(widget.roomCode).listen((room) {
+    // First check if this is a group game
+    await _checkIfGroupGame();
+
+    _roomService.listenToRoom(widget.roomCode).listen((room) async {
       if (mounted) {
         setState(() {
           _room = room;
           _isLoading = false;
         });
+
+        // Auto-record to group once room data is loaded
+        if (_isGroupGame && !_hasRecordedToGroup && _groupId != null) {
+          await _recordGameToGroup(room);
+        }
       }
     });
+  }
+
+  Future<void> _checkIfGroupGame() async {
+    try {
+      final snapshot = await _database.ref('rooms/${widget.roomCode}/groupId').get();
+
+      if (snapshot.exists) {
+        setState(() {
+          _isGroupGame = true;
+          _groupId = snapshot.value as String;
+        });
+        debugPrint('🎮 This is a group game: $_groupId');
+      } else {
+        debugPrint('ℹ️ This is not a group game');
+      }
+    } catch (e) {
+      debugPrint('❌ Error checking if group game: $e');
+    }
+  }
+
+  Future<void> _recordGameToGroup(Room room) async {
+    if (_hasRecordedToGroup || _groupId == null) return;
+
+    try {
+      debugPrint('📝 Recording game to group: $_groupId');
+
+      // Get all players who participated
+      final playerIds = room.players.keys.toList();
+
+      // Calculate scores for each player
+      final scores = <String, int>{};
+      room.players.forEach((id, player) {
+        scores[id] = player.score;
+      });
+
+      // Determine winner (highest score)
+      String? winnerId;
+      int highestScore = 0;
+
+      room.players.forEach((id, player) {
+        if (player.score > highestScore) {
+          highestScore = player.score;
+          winnerId = id;
+        }
+      });
+
+      // Create game record in group history
+      final gameRef = _database.ref('groups/$_groupId/gameHistory').push();
+      final gameId = gameRef.key!;
+
+      await gameRef.set({
+        'roomCode': widget.roomCode,
+        'playerIds': playerIds,
+        'scores': scores,
+        'winnerId': winnerId,
+        'timestamp': ServerValue.timestamp,
+        'settings': {
+          'gridSize': room.settings.gridSize,
+          'mode': room.settings.mode,
+          'operation': room.settings.operation,
+          'timeLimit': room.settings.timeLimit,
+          'maxHints': room.settings.maxHints,
+        },
+      });
+
+      debugPrint('✅ Game recorded to group history: $gameId');
+
+      // Update group stats
+      await _database.ref('groups/$_groupId/stats').update({
+        'totalGames': ServerValue.increment(1),
+        'lastActivity': ServerValue.timestamp,
+      });
+
+      debugPrint('📊 Updated group stats');
+
+      // Update member stats for all players
+      for (String playerId in playerIds) {
+        await _database.ref('groups/$_groupId/members/$playerId').update({
+          'gamesPlayed': ServerValue.increment(1),
+        });
+        debugPrint('✅ Updated stats for player: $playerId');
+      }
+
+      // Update winner stats
+      if (winnerId != null) {
+        await _database.ref('groups/$_groupId/members/$winnerId').update({
+          'wins': ServerValue.increment(1),
+        });
+        debugPrint('🏆 Incremented wins for: $winnerId');
+      }
+
+      setState(() => _hasRecordedToGroup = true);
+
+      // Show success message
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Game results saved to group!'),
+            backgroundColor: textGreen,
+            duration: Duration(seconds: 2),
+          ),
+        );
+      }
+
+      debugPrint('🎉 Game successfully recorded to group!');
+
+    } catch (e) {
+      debugPrint('❌ Error recording game to group: $e');
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to save game to group: $e'),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
+    }
   }
 
   List<Player> _getSortedPlayers() {
@@ -57,8 +190,37 @@ class _MultiplayerResultsScreenState extends State<MultiplayerResultsScreen> {
   @override
   Widget build(BuildContext context) {
     if (_isLoading || _room == null) {
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
+      return Scaffold(
+        body: Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [
+                Color(0xFFFFC0CB),
+                Color(0xFFADD8E6),
+                Color(0xFFE6E6FA),
+              ],
+            ),
+          ),
+          child: const Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                CircularProgressIndicator(color: textPink),
+                SizedBox(height: 16),
+                Text(
+                  'Loading results...',
+                  style: TextStyle(
+                    fontFamily: 'Rubik',
+                    fontSize: 16,
+                    color: Colors.black87,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
       );
     }
 
@@ -122,7 +284,42 @@ class _MultiplayerResultsScreenState extends State<MultiplayerResultsScreen> {
                     ],
                   ),
                 ),
-                const SizedBox(height: 30),
+
+                // Group Game Indicator (if applicable)
+                if (_isGroupGame) ...[
+                  Container(
+                    margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: textGreen.withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(color: textGreen, width: 1.5),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.group, color: textGreen, size: 16),
+                        const SizedBox(width: 6),
+                        const Text(
+                          'Group Game',
+                          style: TextStyle(
+                            fontFamily: 'Digitalt',
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                            color: textGreen,
+                          ),
+                        ),
+                        if (_hasRecordedToGroup) ...[
+                          const SizedBox(width: 6),
+                          const Icon(Icons.check_circle, color: textGreen, size: 14),
+                        ],
+                      ],
+                    ),
+                  ),
+                ],
+
+                const SizedBox(height: 20),
+
                 // Winner Announcement
                 if (winner != null) ...[
                   Container(
@@ -187,6 +384,7 @@ class _MultiplayerResultsScreenState extends State<MultiplayerResultsScreen> {
                   ),
                   const SizedBox(height: 30),
                 ],
+
                 // Final Leaderboard
                 const Padding(
                   padding: EdgeInsets.symmetric(horizontal: 20),
@@ -201,6 +399,7 @@ class _MultiplayerResultsScreenState extends State<MultiplayerResultsScreen> {
                   ),
                 ),
                 const SizedBox(height: 16),
+
                 Expanded(
                   child: ListView.builder(
                     padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -240,7 +439,7 @@ class _MultiplayerResultsScreenState extends State<MultiplayerResultsScreen> {
                               child: Center(
                                 child: Text(
                                   '#$rank',
-                                  style: TextStyle(
+                                  style: const TextStyle(
                                     fontFamily: "Rubik",
                                     fontSize: 16,
                                     fontWeight: FontWeight.w700,
@@ -305,6 +504,7 @@ class _MultiplayerResultsScreenState extends State<MultiplayerResultsScreen> {
                     },
                   ),
                 ),
+
                 // Buttons
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
@@ -325,30 +525,12 @@ class _MultiplayerResultsScreenState extends State<MultiplayerResultsScreen> {
                             Navigator.popUntil(context, (route) => route.isFirst);
                           },
                           child: const Text(
-                            "Play Again",
+                            "Back to Home",
                             style: TextStyle(
                               fontFamily: "Rubik",
                               fontSize: 16,
                               fontWeight: FontWeight.w700,
                               color: Colors.white,
-                            ),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      SizedBox(
-                        width: double.infinity,
-                        child: TextButton(
-                          onPressed: () {
-                            Navigator.popUntil(context, (route) => route.isFirst);
-                          },
-                          child: const Text(
-                            "Back to Home",
-                            style: TextStyle(
-                              fontFamily: "Rubik",
-                              fontSize: 14,
-                              fontWeight: FontWeight.w600,
-                              color: textBlue,
                             ),
                           ),
                         ),

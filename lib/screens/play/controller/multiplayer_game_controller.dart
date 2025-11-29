@@ -1,4 +1,4 @@
-// multiplayer_game_controller.dart - FIXED VERSION
+// multiplayer_game_controller.dart - UPDATED VERSION
 import 'dart:async';
 import 'dart:math';
 import 'package:flutter/material.dart';
@@ -19,10 +19,18 @@ class MultiplayerGameController extends ChangeNotifier {
   int gridSize = 4;
   List<List<int?>> grid = [];
   List<List<bool>> isWrong = [];
+  List<List<bool>> isHinted = []; // Track which cells were revealed by hints
   int localScore = 0;
   int hintPenalty = 0;
   bool isSubmitted = false;
   bool isPlaying = false;
+
+  // Game metrics tracking
+  DateTime? _gameStartTime;
+  int? _completionTimeSeconds;
+  int _correctAnswers = 0;
+  int _totalPlayerCells = 0;
+  double _accuracyPercentage = 0.0;
 
   MultiplayerGameController({
     required this.roomCode,
@@ -31,13 +39,20 @@ class MultiplayerGameController extends ChangeNotifier {
     _listenToRoom();
   }
 
+  // Getters
   Room? get room => _room;
   Player? get currentPlayer => _room?.players[playerId];
   bool get isHost => _room?.gameState.hostId == playerId;
   bool get canStart => isHost && (_room?.canStart ?? false);
-
   int get hintsRemaining =>
       (_room?.settings.maxHints ?? 2) - (currentPlayer?.hintsUsed ?? 0);
+
+  // Metrics getters
+  int get correctAnswers => _correctAnswers;
+  int get totalPlayerCells => _totalPlayerCells;
+  double get accuracyPercentage => _accuracyPercentage;
+  int? get completionTimeSeconds => _completionTimeSeconds;
+  DateTime? get gameStartTime => _gameStartTime;
 
   // --------------------------------------------------
   // Listen to room updates
@@ -66,7 +81,7 @@ class MultiplayerGameController extends ChangeNotifier {
           _endGame();
         }
 
-        // NEW: Check if all players completed whenever room updates
+        // Check if all players completed whenever room updates
         if (isPlaying && room.gameState.status == 'playing') {
           final allDone = room.players.values.every((p) => p.isCompleted);
           if (allDone) {
@@ -111,6 +126,10 @@ class MultiplayerGameController extends ChangeNotifier {
             (i) => List.generate(gridSize, (j) => null),
       );
       isWrong = List.generate(
+        gridSize,
+            (_) => List.filled(gridSize, false),
+      );
+      isHinted = List.generate(
         gridSize,
             (_) => List.filled(gridSize, false),
       );
@@ -192,10 +211,14 @@ class MultiplayerGameController extends ChangeNotifier {
   // --------------------------------------------------
   void _startGame() {
     isPlaying = true;
+    _gameStartTime = DateTime.now();
+
     if (_room?.settings.mode == 'timed') {
       timeLeft = Duration(seconds: _room?.settings.timeLimit ?? 300);
       _startTimer();
     }
+
+    debugPrint("🎮 Game started at $_gameStartTime");
     notifyListeners();
   }
 
@@ -224,6 +247,13 @@ class MultiplayerGameController extends ChangeNotifier {
 
   void _handleTimeUp() {
     isPlaying = false;
+
+    // Calculate completion time even if timed out
+    if (_gameStartTime != null) {
+      _completionTimeSeconds = DateTime.now().difference(_gameStartTime!).inSeconds;
+      debugPrint("⏰ Time's up! Completion time: $_completionTimeSeconds seconds");
+    }
+
     if (isHost) _roomService.endGame(roomCode);
     notifyListeners();
   }
@@ -231,6 +261,12 @@ class MultiplayerGameController extends ChangeNotifier {
   void _endGame() {
     isPlaying = false;
     _timerCountdown?.cancel();
+
+    if (_gameStartTime != null && _completionTimeSeconds == null) {
+      _completionTimeSeconds = DateTime.now().difference(_gameStartTime!).inSeconds;
+      debugPrint("🏁 Game ended. Total time: $_completionTimeSeconds seconds");
+    }
+
     notifyListeners();
   }
 
@@ -265,6 +301,14 @@ class MultiplayerGameController extends ChangeNotifier {
     if (row == 0 && col == 0) return;
     if (_room?.puzzle?.isFixed[row][col] == true) return;
 
+    // Don't allow editing hinted cells
+    if (isHinted[row][col]) {
+      debugPrint("⚠️ Cannot edit a hinted cell");
+      return;
+    }
+
+    if (value != null && value < 0) return;
+
     grid[row][col] = value;
     _validateGrid(progressOnly: true);
     notifyListeners();
@@ -293,6 +337,8 @@ class MultiplayerGameController extends ChangeNotifier {
         }
       }
     }
+
+    _totalPlayerCells = totalPlayerCells;
 
     // Reset wrong flags
     for (var i = 0; i < gridSize; i++) {
@@ -327,29 +373,44 @@ class MultiplayerGameController extends ChangeNotifier {
       }
     }
 
+    // Store metrics
+    _correctAnswers = correctCount;
+
+    // Calculate accuracy percentage
+    if (_totalPlayerCells > 0) {
+      _accuracyPercentage = (correctCount / _totalPlayerCells) * 100;
+    } else {
+      _accuracyPercentage = 0.0;
+    }
+
     // Calculate progress score
     int progressScore = totalPlayerCells > 0
         ? (correctCount / totalPlayerCells * 100).round()
         : 0;
 
     if (!progressOnly) {
-      // Full validation on submission - ALWAYS SUBMIT
+      // Full validation on submission
       debugPrint("🎯 Submitting with score calculation...");
       debugPrint("   Correct: $correctCount/$totalPlayerCells");
       debugPrint("   Filled: $filledCount/$totalPlayerCells");
+      debugPrint("   Accuracy: ${_accuracyPercentage.toStringAsFixed(1)}%");
 
-      // NEW SCORING SYSTEM: 70% accuracy + 30% time bonus
       localScore = _calculateFinalScore(correctCount, totalPlayerCells);
+
+      // Calculate completion time
+      if (_gameStartTime != null) {
+        _completionTimeSeconds = DateTime.now().difference(_gameStartTime!).inSeconds;
+        debugPrint("   Completion Time: $_completionTimeSeconds seconds");
+      }
 
       _roomService.updateScore(roomCode, playerId, localScore);
       _markSubmitted();
 
-      // Check if all players completed in untimed mode
       if (_room?.settings.mode == 'untimed') {
         _checkIfAllCompleted();
       }
     } else {
-      // Progressive score update - just accuracy based
+      // Progressive score update
       localScore = (progressScore - hintPenalty).clamp(0, 100);
       _roomService.updateScore(roomCode, playerId, localScore);
     }
@@ -357,7 +418,7 @@ class MultiplayerGameController extends ChangeNotifier {
     notifyListeners();
   }
 
-  // NEW SCORING SYSTEM - 70% accuracy + 30% time bonus
+  // Scoring system - 70% accuracy + 30% time bonus
   int _calculateFinalScore(int correctCount, int totalPlayerCells) {
     if (_room?.settings.mode == 'untimed') {
       // Untimed: 100% accuracy based
@@ -470,6 +531,9 @@ class MultiplayerGameController extends ChangeNotifier {
     isSubmitted = true;
     _roomService.markCompleted(roomCode, playerId, localScore);
     debugPrint("✅ Game submitted and marked as completed");
+    debugPrint("   Final Score: $localScore");
+    debugPrint("   Accuracy: ${_accuracyPercentage.toStringAsFixed(1)}%");
+    debugPrint("   Correct Answers: $_correctAnswers/$_totalPlayerCells");
 
     // Wait a bit for Firebase to update, then check if all completed
     Future.delayed(const Duration(milliseconds: 500), () {
@@ -499,6 +563,12 @@ class MultiplayerGameController extends ChangeNotifier {
       return false;
     }
 
+    // Don't allow hints on fixed cells
+    if (_room!.puzzle!.isFixed[row][col]) {
+      debugPrint("⚠️ Cannot use hint on fixed cell");
+      return false;
+    }
+
     int? correctValue;
     if (row < _room!.puzzle!.solution.length &&
         col < _room!.puzzle!.solution[row].length) {
@@ -511,11 +581,15 @@ class MultiplayerGameController extends ChangeNotifier {
     }
 
     grid[row][col] = correctValue;
+    isHinted[row][col] = true;
     await _roomService.incrementHintUsage(roomCode, playerId);
     hintPenalty += 5;
     _validateGrid(progressOnly: true);
 
     debugPrint("💡 Hint used at ($row, $col) = $correctValue");
+    debugPrint("   Hints remaining: $hintsRemaining");
+    debugPrint("   Total penalty: $hintPenalty points");
+
     return true;
   }
 
@@ -545,19 +619,28 @@ class MultiplayerGameController extends ChangeNotifier {
   }
 
   // --------------------------------------------------
-  // Leave room
+  // Reset and cleanup methods
   // --------------------------------------------------
+  void resetMetrics() {
+    _gameStartTime = null;
+    _completionTimeSeconds = null;
+    _correctAnswers = 0;
+    _totalPlayerCells = 0;
+    _accuracyPercentage = 0.0;
+    hintPenalty = 0;
+    debugPrint("🔄 Metrics reset");
+  }
+
   Future<void> leaveRoom() async {
     await _roomService.removePlayer(roomCode, playerId);
     _roomSubscription?.cancel();
     _timerCountdown?.cancel();
     isPlaying = false;
+    resetMetrics();
+    debugPrint("👋 Left room and cleaned up");
     notifyListeners();
   }
 
-  // --------------------------------------------------
-  // Cleanup
-  // --------------------------------------------------
   @override
   void dispose() {
     _roomSubscription?.cancel();
@@ -565,6 +648,8 @@ class MultiplayerGameController extends ChangeNotifier {
     super.dispose();
   }
 }
+
+
 // multiplayer_puzzle_generator.dart
 // Use this to generate puzzles for multiplayer games
 enum PuzzleOperation { addition, subtraction }

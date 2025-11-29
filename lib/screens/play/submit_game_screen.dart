@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:jol_app/screens/play/result_screen.dart';
 
 class SubmitGameScreen extends StatefulWidget {
   const SubmitGameScreen({super.key});
@@ -313,8 +312,6 @@ class _SubmitGameScreenState extends State<SubmitGameScreen> {
                     width: double.infinity,
                     child: ElevatedButton(
                       onPressed: () {
-                        // Handle submit action
-                        Navigator.push(context, MaterialPageRoute(builder: (context) => const GameResultScreen()));
                       },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: textBlue,

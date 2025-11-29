@@ -16,7 +16,7 @@ class _GameScreenState extends State<GameScreen> {
   static const Color textBlue = Color(0xFF0734A5);
   static const Color textGreen = Color(0xFF43AC45);
   static const Color textPink = Color(0xFFF82A87);
-  static const Color hintColor = Color(0xFFFF9800); // Orange for hints
+  static const Color hintColor = Color(0xFFFF9800);
 
   final Map<String, TextEditingController> _inputControllers = {};
   final Map<String, FocusNode> _focusNodes = {};
@@ -35,12 +35,153 @@ class _GameScreenState extends State<GameScreen> {
 
   String _getKey(int row, int col) => '$row-$col';
 
-  Future<void> _saveGameToBackend(BuildContext context, GameController controller) async {
-    if (_isSaving) return; // Prevent double saves
+  // NEW: Handle back button press
+  Future<bool> _onWillPop(GameController controller) async {
+    if (!_isGameStarted) {
+      return true; // Allow back navigation if game hasn't started
+    }
+
+    // Show abandon game dialog
+    final shouldLeave = await _showAbandonGameDialog(context, controller);
+    return shouldLeave ?? false;
+  }
+
+  // NEW: Show abandon game dialog
+  Future<bool?> _showAbandonGameDialog(BuildContext context, GameController controller) async {
+    return showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) => Dialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 50,
+                height: 50,
+                decoration: BoxDecoration(
+                  color: Colors.red.withOpacity(0.2),
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: Colors.red,
+                    width: 2,
+                  ),
+                ),
+                child: const Icon(
+                  Icons.exit_to_app,
+                  color: Colors.red,
+                  size: 28,
+                ),
+              ),
+              const SizedBox(height: 16),
+
+              const Text(
+                "LEAVE GAME?",
+                style: TextStyle(
+                  fontFamily: 'Digitalt',
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.red,
+                  letterSpacing: 1,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 8),
+
+              Text(
+                "Are you sure you want to leave?\n\nYour current progress will be saved as abandoned.\n\nCurrent Score: ${controller.score}",
+                style: const TextStyle(
+                  fontFamily: 'Rubik',
+                  fontSize: 12,
+                  color: Colors.black87,
+                  height: 1.3,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 16),
+
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () => Navigator.pop(dialogContext, false),
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 10),
+                        side: const BorderSide(color: Colors.black26, width: 1.5),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
+                      child: const Text(
+                        "STAY",
+                        style: TextStyle(
+                          fontFamily: 'Digitalt',
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.black54,
+                          letterSpacing: 0.8,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: () async {
+                        // Close dialog first
+                        Navigator.pop(dialogContext, true);
+
+                        // Save game with abandoned status
+                        await _saveGameToBackend(context, controller, 'abandoned');
+
+                        // Pop the game screen
+                        if (mounted) {
+                          Navigator.pop(context);
+                        }
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.red,
+                        padding: const EdgeInsets.symmetric(vertical: 10),
+                        elevation: 0,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
+                      child: const Text(
+                        "LEAVE",
+                        style: TextStyle(
+                          fontFamily: 'Digitalt',
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                          letterSpacing: 0.8,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  // MODIFIED: Added gameStatus parameter with default value
+  Future<void> _saveGameToBackend(
+      BuildContext context,
+      GameController controller,
+      [String gameStatus = 'completed']
+      ) async {
+    if (_isSaving) return;
 
     setState(() => _isSaving = true);
 
-    // Show loading indicator
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -52,25 +193,22 @@ class _GameScreenState extends State<GameScreen> {
     try {
       final result = await _gameSaveHelper.saveSoloGame(
         controller: controller,
-        gameStatus: 'completed',
+        gameStatus: gameStatus,
       );
 
-      // Close loading dialog
       if (mounted) Navigator.pop(context);
 
       if (result['success'] == true) {
-        // Show success message
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(result['message'] ?? 'Game saved successfully!'),
-              backgroundColor: textGreen,
+              backgroundColor: gameStatus == 'abandoned' ? Colors.orange : textGreen,
               duration: const Duration(seconds: 3),
             ),
           );
         }
       } else {
-        // Show error message
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -82,10 +220,8 @@ class _GameScreenState extends State<GameScreen> {
         }
       }
     } catch (e) {
-      // Close loading dialog
       if (mounted) Navigator.pop(context);
 
-      // Show error
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -160,7 +296,6 @@ class _GameScreenState extends State<GameScreen> {
     }
   }
 
-  // NEW: Show hint dialog
   void _showHintDialog(BuildContext context, GameController controller) {
     if (_selectedCell == null) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -176,7 +311,6 @@ class _GameScreenState extends State<GameScreen> {
     final row = int.parse(parts[0]);
     final col = int.parse(parts[1]);
 
-    // Check if cell is fixed or corner
     if (controller.isFixed[row][col] || (row == 0 && col == 0)) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -187,7 +321,6 @@ class _GameScreenState extends State<GameScreen> {
       return;
     }
 
-    // Check if already hinted
     if (controller.isHinted[row][col]) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -284,7 +417,6 @@ class _GameScreenState extends State<GameScreen> {
                         Navigator.pop(dialogContext);
                         bool success = controller.useHint(row, col);
                         if (success) {
-                          // Update the text field
                           _inputControllers[_selectedCell]?.text =
                               controller.grid[row][col]?.toString() ?? '';
 
@@ -334,6 +466,7 @@ class _GameScreenState extends State<GameScreen> {
     );
   }
 
+// Modified _showStopGameDialog method
   void _showStopGameDialog(BuildContext context, GameController controller) {
     showDialog(
       context: context,
@@ -380,7 +513,7 @@ class _GameScreenState extends State<GameScreen> {
               const SizedBox(height: 8),
 
               const Text(
-                "Do you want to stop and check your score?",
+                "Do you want to stop and submit your score?",
                 style: TextStyle(
                   fontFamily: 'Rubik',
                   fontSize: 12,
@@ -418,11 +551,21 @@ class _GameScreenState extends State<GameScreen> {
                   const SizedBox(width: 10),
                   Expanded(
                     child: ElevatedButton(
-                      onPressed: () {
+                      onPressed: () async {
+                        // Close the dialog first
+                        Navigator.pop(dialogContext);
+
+                        // Stop the game
                         setState(() => _isGameStarted = false);
                         controller.validateGrid();
-                        Navigator.pop(dialogContext);
-                        _showResultDialog(context, controller);
+
+                        // Save game to backend
+                        await _saveGameToBackend(context, controller, 'completed');
+
+                        // Show result dialog without submit button
+                        if (mounted) {
+                          _showResultDialog(context, controller, showSubmitButton: false);
+                        }
                       },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.orange,
@@ -453,8 +596,9 @@ class _GameScreenState extends State<GameScreen> {
     );
   }
 
-  void _showResultDialog(BuildContext context, GameController controller) {
-    final score = controller.score;
+// Modified _showResultDialog method - added showSubmitButton parameter
+  void _showResultDialog(BuildContext context, GameController controller, {bool showSubmitButton = true}) {
+    final accuracyPercentage = controller.accuracyPercentage;
     final totalCells = (controller.gridSize * controller.gridSize) - 1 - controller.seedNumbers;
     int correctCount = 0;
 
@@ -501,7 +645,7 @@ class _GameScreenState extends State<GameScreen> {
               const SizedBox(height: 20),
 
               const Text(
-                "GAME RESULTS",
+                "GAME STATUS",
                 style: TextStyle(
                   fontFamily: 'Digitalt',
                   fontSize: 22,
@@ -523,7 +667,7 @@ class _GameScreenState extends State<GameScreen> {
                 child: Column(
                   children: [
                     const Text(
-                      "YOUR SCORE",
+                      "YOUR ACCURACY",
                       style: TextStyle(
                         fontFamily: 'Digitalt',
                         fontSize: 14,
@@ -534,22 +678,12 @@ class _GameScreenState extends State<GameScreen> {
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      "$score",
+                      "${accuracyPercentage.toStringAsFixed(2)} %",
                       style: const TextStyle(
                         fontFamily: 'Digitalt',
                         fontSize: 48,
                         fontWeight: FontWeight.bold,
                         color: textPink,
-                      ),
-                    ),
-                    const Text(
-                      "POINTS",
-                      style: TextStyle(
-                        fontFamily: 'Digitalt',
-                        fontSize: 12,
-                        fontWeight: FontWeight.w500,
-                        color: textPink,
-                        letterSpacing: 1,
                       ),
                     ),
                   ],
@@ -589,80 +723,112 @@ class _GameScreenState extends State<GameScreen> {
               ),
               const SizedBox(height: 24),
 
-              Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton(
-                      onPressed: () {
-                        Navigator.pop(dialogContext);
-                        controller.resetGame();
-                        _inputControllers.clear();
-                        _focusNodes.clear();
-                        setState(() => _selectedCell = null);
-                      },
-                      style: OutlinedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                        side: BorderSide(color: textBlue, width: 2),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                      child: const Text(
-                        "CLOSE",
-                        style: TextStyle(
-                          fontFamily: 'Digitalt',
-                          fontSize: 13,
-                          fontWeight: FontWeight.bold,
-                          color: textBlue,
-                          letterSpacing: 1,
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: ElevatedButton(
-                      onPressed: () async {
-                        Navigator.pop(dialogContext);
-
-                        // Save game to backend
-                        await _saveGameToBackend(context, controller);
-
-                        // Navigate to submit screen
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => SubmitGameScreen(),
-                          ),
-                        ).then((_) {
+              // Conditional button layout based on showSubmitButton
+              if (showSubmitButton)
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: () {
+                          Navigator.pop(dialogContext);
                           controller.resetGame();
                           _inputControllers.clear();
                           _focusNodes.clear();
                           setState(() => _selectedCell = null);
-                        });
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: textGreen,
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                        elevation: 0,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
+                        },
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          side: BorderSide(color: textBlue, width: 2),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
                         ),
-                      ),
-                      child: const Text(
-                        "SUBMIT",
-                        style: TextStyle(
-                          fontFamily: 'Digitalt',
-                          fontSize: 13,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                          letterSpacing: 1,
+                        child: const Text(
+                          "CLOSE",
+                          style: TextStyle(
+                            fontFamily: 'Digitalt',
+                            fontSize: 13,
+                            fontWeight: FontWeight.bold,
+                            color: textBlue,
+                            letterSpacing: 1,
+                          ),
                         ),
                       ),
                     ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: () async {
+                          Navigator.pop(dialogContext);
+
+                          await _saveGameToBackend(context, controller, 'completed');
+
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => SubmitGameScreen(),
+                            ),
+                          ).then((_) {
+                            controller.resetGame();
+                            _inputControllers.clear();
+                            _focusNodes.clear();
+                            setState(() => _selectedCell = null);
+                          });
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: textGreen,
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          elevation: 0,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        child: const Text(
+                          "SUBMIT",
+                          style: TextStyle(
+                            fontFamily: 'Digitalt',
+                            fontSize: 13,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                            letterSpacing: 1,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                )
+              else
+              // Only show CLOSE button when submit button is hidden
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: () {
+                      Navigator.pop(dialogContext);
+                      controller.resetGame();
+                      _inputControllers.clear();
+                      _focusNodes.clear();
+                      setState(() => _selectedCell = null);
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: textBlue,
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      elevation: 0,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    child: const Text(
+                      "CLOSE",
+                      style: TextStyle(
+                        fontFamily: 'Digitalt',
+                        fontSize: 13,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                        letterSpacing: 1,
+                      ),
+                    ),
                   ),
-                ],
-              ),
+                ),
             ],
           ),
         ),
@@ -728,279 +894,213 @@ class _GameScreenState extends State<GameScreen> {
             }
           }
 
-          return Scaffold(
-            body: Container(
-              decoration: const BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [
-                    Color(0xFFFFC0CB),
-                    Color(0xFFADD8E6),
-                    Color(0xFFE6E6FA),
-                  ],
+          // MODIFIED: Wrap Scaffold with WillPopScope
+          return WillPopScope(
+            onWillPop: () => _onWillPop(controller),
+            child: Scaffold(
+              body: Container(
+                decoration: const BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      Color(0xFFFFC0CB),
+                      Color(0xFFADD8E6),
+                      Color(0xFFE6E6FA),
+                    ],
+                  ),
                 ),
-              ),
-              child: SafeArea(
-                child: LayoutBuilder(
-                  builder: (context, constraints) {
-                    final screenHeight = constraints.maxHeight;
-                    final screenWidth = constraints.maxWidth;
+                child: // Replace the build method's body (inside SafeArea) with this responsive version:
 
-                    final headerSize = screenHeight * 0.04;
-                    final iconSize = screenHeight * 0.035;
-                    final scoreFontSize = screenHeight * 0.016;
-                    final buttonFontSize = screenHeight * 0.015;
-                    final buttonPadding = screenHeight * 0.01;
+                SafeArea(
+                  child: LayoutBuilder(
+                    builder: (context, constraints) {
+                      final screenHeight = constraints.maxHeight;
+                      final screenWidth = constraints.maxWidth;
 
-                    final gridPadding = screenWidth * 0.1;
-                    final gridAreaHeight = screenHeight * 0.35;
-                    final spacing = screenHeight * 0.01;
+                      // Responsive font and icon sizes
+                      final headerSize = screenHeight * 0.04;
+                      final iconSize = screenHeight * 0.035;
+                      final scoreFontSize = screenHeight * 0.016;
+                      final buttonFontSize = screenHeight * 0.015;
+                      final buttonPadding = screenHeight * 0.01;
 
-                    final keyboardHeight = screenHeight * 0.30;
-                    final keyHeight = keyboardHeight * 0.20;
-
-                    return SingleChildScrollView(
-                      physics: const ClampingScrollPhysics(),
-                      child: ConstrainedBox(
-                        constraints: BoxConstraints(
-                          minHeight: screenHeight,
-                        ),
-                        child: IntrinsicHeight(
-                          child: Column(
-                            children: [
-                              /// 1. Header Bar
-                              Padding(
-                                padding: EdgeInsets.symmetric(
-                                  horizontal: screenWidth * 0.03,
-                                  vertical: screenHeight * 0.008,
+                      return Column(
+                        children: [
+                          // Header Bar - Fixed size
+                          Padding(
+                            padding: EdgeInsets.symmetric(
+                              horizontal: screenWidth * 0.03,
+                              vertical: screenHeight * 0.008,
+                            ),
+                            child: Row(
+                              children: [
+                                InkWell(
+                                  onTap: () async {
+                                    final shouldPop = await _onWillPop(controller);
+                                    if (shouldPop && mounted) {
+                                      Navigator.pop(context);
+                                    }
+                                  },
+                                  child: Container(
+                                    width: iconSize,
+                                    height: iconSize,
+                                    decoration: const BoxDecoration(
+                                      color: textPink,
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: Icon(Icons.arrow_back_ios_new,
+                                        color: Colors.white, size: iconSize * 0.6),
+                                  ),
                                 ),
-                                child: Row(
-                                  children: [
-                                    InkWell(
-                                      onTap: () => Navigator.pop(context),
+                                const Spacer(),
+                                Text(
+                                  "Jol Puzzle",
+                                  style: TextStyle(
+                                    fontFamily: "Rubik",
+                                    fontSize: headerSize,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                const Spacer(),
+                                Builder(
+                                  builder: (innerContext) {
+                                    return InkWell(
+                                      onTap: _isGameStarted ? null : () {
+                                        showSettingsDialog(innerContext);
+                                      },
                                       child: Container(
                                         width: iconSize,
                                         height: iconSize,
-                                        decoration: const BoxDecoration(
-                                          color: textPink,
-                                          shape: BoxShape.circle,
-                                        ),
-                                        child: Icon(Icons.arrow_back_ios_new,
-                                            color: Colors.white, size: iconSize * 0.6),
-                                      ),
-                                    ),
-                                    const Spacer(),
-                                    Text(
-                                      "Jol Puzzle",
-                                      style: TextStyle(
-                                        fontFamily: "Rubik",
-                                        fontSize: headerSize,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                    const Spacer(),
-                                    Builder(
-                                      builder: (innerContext) {
-                                        return InkWell(
-                                          onTap: _isGameStarted ? null : () {
-                                            showSettingsDialog(innerContext);
-                                          },
-                                          child: Container(
-                                            width: iconSize,
-                                            height: iconSize,
-                                            decoration: BoxDecoration(
-                                              color: _isGameStarted
-                                                  ? Colors.grey
-                                                  : textGreen,
-                                              shape: BoxShape.circle,
-                                            ),
-                                            child: Icon(Icons.settings,
-                                                color: Colors.white, size: iconSize * 0.6),
-                                          ),
-                                        );
-                                      },
-                                    ),
-                                  ],
-                                ),
-                              ),
-
-                              SizedBox(height: screenHeight * 0.008),
-
-                              /// 2. Timer/Mode Bar with Hints Counter
-                              Padding(
-                                padding: EdgeInsets.symmetric(horizontal: screenWidth * 0.05),
-                                child: Row(
-                                  children: [
-                                    Expanded(
-                                      child: Container(
-                                        padding: EdgeInsets.symmetric(
-                                          horizontal: screenWidth * 0.04,
-                                          vertical: screenHeight * 0.01,
-                                        ),
-                                        decoration: BoxDecoration(
-                                          color: textPink,
-                                          borderRadius: BorderRadius.circular(10),
-                                        ),
-                                        child: Row(
-                                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                          children: [
-                                            isTimed
-                                                ? Text(
-                                              "Time: ${controller.timeLeft.inMinutes.toString().padLeft(2, '0')}:${(controller.timeLeft.inSeconds % 60).toString().padLeft(2, '0')}",
-                                              style: TextStyle(
-                                                color: Colors.white,
-                                                fontWeight: FontWeight.w700,
-                                                fontSize: scoreFontSize,
-                                              ),
-                                            )
-                                                : Text(
-                                              "Mode: Untimed",
-                                              style: TextStyle(
-                                                color: Colors.white,
-                                                fontWeight: FontWeight.w700,
-                                                fontSize: scoreFontSize,
-                                              ),
-                                            ),
-                                            if (!_isGameStarted)
-                                              Text(
-                                                "Score: ${controller.score}",
-                                                style: TextStyle(
-                                                  color: Colors.white,
-                                                  fontWeight: FontWeight.w700,
-                                                  fontSize: scoreFontSize,
-                                                ),
-                                              ),
-                                            // NEW: Hints counter
-                                            Text(
-                                              "Hints: ${controller.hintsRemaining}",
-                                              style: TextStyle(
-                                                color: Colors.white,
-                                                fontWeight: FontWeight.w700,
-                                                fontSize: scoreFontSize,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                    ),
-                                    SizedBox(width: screenWidth * 0.02),
-                                    InkWell(
-                                      onTap: _isGameStarted ? null : () {
-                                        controller.toggleMode();
-                                      },
-                                      child: Container(
-                                        padding: EdgeInsets.all(screenHeight * 0.012),
                                         decoration: BoxDecoration(
                                           color: _isGameStarted
                                               ? Colors.grey
                                               : textGreen,
-                                          borderRadius: BorderRadius.circular(10),
+                                          shape: BoxShape.circle,
                                         ),
-                                        child: Icon(
-                                          isTimed ? Icons.timer : Icons.timer_off,
-                                          color: Colors.white,
-                                          size: iconSize * 0.8,
-                                        ),
+                                        child: Icon(Icons.settings,
+                                            color: Colors.white, size: iconSize * 0.6),
                                       ),
-                                    ),
-                                  ],
+                                    );
+                                  },
                                 ),
-                              ),
+                              ],
+                            ),
+                          ),
 
-                              SizedBox(height: screenHeight * 0.01),
+                          SizedBox(height: screenHeight * 0.008),
 
-                              /// 3. Action Buttons Row (3 buttons)
-                              Padding(
-                                padding: EdgeInsets.symmetric(horizontal: screenWidth * 0.05),
-                                child: Row(
-                                  children: [
-                                    // Solve Puzzle Button
-                                    Expanded(
-                                      child: ElevatedButton(
-                                        onPressed: _isGameStarted ? null : controller.solvePuzzle,
-                                        style: ElevatedButton.styleFrom(
-                                          backgroundColor: textGreen,
-                                          disabledBackgroundColor: Colors.grey,
-                                          padding: EdgeInsets.symmetric(vertical: buttonPadding),
-                                          shape: RoundedRectangleBorder(
-                                            borderRadius: BorderRadius.circular(8),
-                                          ),
-                                        ),
-                                        child: Text(
-                                          "Solve",
-                                          style: TextStyle(
-                                            fontFamily: "Rubik",
-                                            fontSize: buttonFontSize,
-                                            fontWeight: FontWeight.bold,
-                                            color: Colors.white,
-                                          ),
-                                        ),
-                                      ),
+                          // Timer/Mode Bar - Fixed size
+                          Padding(
+                            padding: EdgeInsets.symmetric(horizontal: screenWidth * 0.05),
+                            child: Row(
+                              children: [
+                                Expanded(
+                                  child: Container(
+                                    padding: EdgeInsets.symmetric(
+                                      horizontal: screenWidth * 0.04,
+                                      vertical: screenHeight * 0.01,
                                     ),
-                                    SizedBox(width: screenWidth * 0.02),
-                                    // NEW: Hint Button
-                                    Expanded(
-                                      child: ElevatedButton(
-                                        onPressed: (_isGameStarted && controller.hintsRemaining > 0)
-                                            ? () => _showHintDialog(context, controller)
-                                            : null,
-                                        style: ElevatedButton.styleFrom(
-                                          backgroundColor: hintColor,
-                                          disabledBackgroundColor: Colors.grey,
-                                          padding: EdgeInsets.symmetric(vertical: buttonPadding),
-                                          shape: RoundedRectangleBorder(
-                                            borderRadius: BorderRadius.circular(8),
+                                    decoration: BoxDecoration(
+                                      color: textPink,
+                                      borderRadius: BorderRadius.circular(10),
+                                    ),
+                                    child: Row(
+                                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                      children: [
+                                        isTimed
+                                            ? Text(
+                                          "Time: ${controller.timeLeft.inMinutes.toString().padLeft(2, '0')}:${(controller.timeLeft.inSeconds % 60).toString().padLeft(2, '0')}",
+                                          style: TextStyle(
+                                            color: Colors.white,
+                                            fontWeight: FontWeight.w700,
+                                            fontSize: scoreFontSize,
+                                          ),
+                                        )
+                                            : Text(
+                                          "Mode: Untimed",
+                                          style: TextStyle(
+                                            color: Colors.white,
+                                            fontWeight: FontWeight.w700,
+                                            fontSize: scoreFontSize,
                                           ),
                                         ),
-                                        child: Row(
-                                          mainAxisAlignment: MainAxisAlignment.center,
-                                          children: [
-                                            Icon(
-                                              Icons.lightbulb_outline,
-                                              size: buttonFontSize * 1.2,
+                                        if (!_isGameStarted)
+                                          Text(
+                                            "Score: ${controller.score}",
+                                            style: TextStyle(
                                               color: Colors.white,
+                                              fontWeight: FontWeight.w700,
+                                              fontSize: scoreFontSize,
                                             ),
-                                            SizedBox(width: 4),
-                                            Text(
-                                              "Hint",
-                                              style: TextStyle(
-                                                fontFamily: "Rubik",
-                                                fontSize: buttonFontSize,
-                                                fontWeight: FontWeight.bold,
-                                                color: Colors.white,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                    ),
-                                    SizedBox(width: screenWidth * 0.02),
-                                    // Start/Stop Button
-                                    Expanded(
-                                      child: ElevatedButton(
-                                        onPressed: () {
-                                          if (_isGameStarted) {
-                                            _showStopGameDialog(context, controller);
-                                          } else {
-                                            setState(() => _isGameStarted = true);
-                                            controller.startGame(); // Record start time
-                                            if (controller.mode == GameMode.timed) {
-                                              controller.startTimer();
-                                            }
-                                          }
-                                        },
-                                        style: ElevatedButton.styleFrom(
-                                          backgroundColor: _isGameStarted
-                                              ? Colors.orange
-                                              : textGreen,
-                                          padding: EdgeInsets.symmetric(vertical: buttonPadding),
-                                          shape: RoundedRectangleBorder(
-                                            borderRadius: BorderRadius.circular(8),
+                                          ),
+                                        Text(
+                                          "Hints: ${controller.hintsRemaining}",
+                                          style: TextStyle(
+                                            color: Colors.white,
+                                            fontWeight: FontWeight.w700,
+                                            fontSize: scoreFontSize,
                                           ),
                                         ),
-                                        child: Text(
-                                          _isGameStarted ? "Stop" : "Start",
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                                SizedBox(width: screenWidth * 0.02),
+                                InkWell(
+                                  onTap: _isGameStarted ? null : () {
+                                    controller.toggleMode();
+                                  },
+                                  child: Container(
+                                    padding: EdgeInsets.all(screenHeight * 0.012),
+                                    decoration: BoxDecoration(
+                                      color: _isGameStarted
+                                          ? Colors.grey
+                                          : textGreen,
+                                      borderRadius: BorderRadius.circular(10),
+                                    ),
+                                    child: Icon(
+                                      isTimed ? Icons.timer : Icons.timer_off,
+                                      color: Colors.white,
+                                      size: iconSize * 0.8,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+
+                          SizedBox(height: screenHeight * 0.01),
+
+                          // Action Buttons Row - Fixed size
+                          Padding(
+                            padding: EdgeInsets.symmetric(horizontal: screenWidth * 0.05),
+                            child: Row(
+                              children: [
+                                Expanded(
+                                  child: ElevatedButton(
+                                    onPressed: (_isGameStarted && controller.hintsRemaining > 0)
+                                        ? () => _showHintDialog(context, controller)
+                                        : null,
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: hintColor,
+                                      disabledBackgroundColor: Colors.grey,
+                                      padding: EdgeInsets.symmetric(vertical: buttonPadding),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                    ),
+                                    child: Row(
+                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      children: [
+                                        Icon(
+                                          Icons.lightbulb_outline,
+                                          size: buttonFontSize * 1.2,
+                                          color: Colors.white,
+                                        ),
+                                        SizedBox(width: 4),
+                                        Text(
+                                          "Hint",
                                           style: TextStyle(
                                             fontFamily: "Rubik",
                                             fontSize: buttonFontSize,
@@ -1008,293 +1108,345 @@ class _GameScreenState extends State<GameScreen> {
                                             color: Colors.white,
                                           ),
                                         ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                                SizedBox(width: screenWidth * 0.02),
+                                Expanded(
+                                  child: ElevatedButton(
+                                    onPressed: () {
+                                      if (_isGameStarted) {
+                                        _showStopGameDialog(context, controller);
+                                      } else {
+                                        setState(() => _isGameStarted = true);
+                                        controller.startGame();
+                                        if (controller.mode == GameMode.timed) {
+                                          controller.startTimer();
+                                        }
+                                      }
+                                    },
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: _isGameStarted
+                                          ? Colors.orange
+                                          : textGreen,
+                                      padding: EdgeInsets.symmetric(vertical: buttonPadding),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(8),
                                       ),
+                                    ),
+                                    child: Text(
+                                      _isGameStarted ? "Stop" : "Start",
+                                      style: TextStyle(
+                                        fontFamily: "Rubik",
+                                        fontSize: buttonFontSize,
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.white,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+
+                          SizedBox(height: screenHeight * 0.015),
+
+                          // FLEXIBLE GRID - Takes available space
+                          Flexible(
+                            flex: 5, // Takes proportional space
+                            child: Padding(
+                              padding: EdgeInsets.symmetric(horizontal: screenWidth * 0.1),
+                              child: Container(
+                                padding: EdgeInsets.all(screenHeight * 0.015),
+                                decoration: BoxDecoration(
+                                  color: Colors.grey.shade300,
+                                  borderRadius: BorderRadius.circular(12),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.black.withOpacity(0.15),
+                                      blurRadius: 8,
+                                      offset: const Offset(0, 2),
                                     ),
                                   ],
                                 ),
-                              ),
+                                child: LayoutBuilder(
+                                  builder: (context, gridConstraints) {
+                                    final availableSize = gridConstraints.maxWidth < gridConstraints.maxHeight
+                                        ? gridConstraints.maxWidth
+                                        : gridConstraints.maxHeight;
 
-                              SizedBox(height: screenHeight * 0.015),
+                                    final spacing = availableSize * 0.02;
+                                    final cellSize = (availableSize - (spacing * (gridSize - 1)) - (screenHeight * 0.03)) / gridSize;
+                                    final unifiedFontSize = cellSize * 0.35; // Font size relative to cell size
 
-                              /// 4. Grid with Container Background
-                              Padding(
-                                padding: EdgeInsets.symmetric(horizontal: gridPadding),
-                                child: Container(
-                                  padding: EdgeInsets.all(screenHeight * 0.015),
-                                  decoration: BoxDecoration(
-                                    color: Colors.grey.shade300,
-                                    borderRadius: BorderRadius.circular(12),
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: Colors.black.withOpacity(0.15),
-                                        blurRadius: 8,
-                                        offset: const Offset(0, 2),
+                                    return GridView.builder(
+                                      shrinkWrap: true,
+                                      physics: const NeverScrollableScrollPhysics(),
+                                      itemCount: gridSize * gridSize,
+                                      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                                        crossAxisCount: gridSize,
+                                        mainAxisSpacing: spacing,
+                                        crossAxisSpacing: spacing,
+                                        childAspectRatio: 1,
                                       ),
-                                    ],
-                                  ),
-                                  child: SizedBox(
-                                    height: gridAreaHeight,
-                                    child: LayoutBuilder(
-                                      builder: (context, gridConstraints) {
-                                        final gridWidth = gridConstraints.maxWidth;
-                                        final cellSize = (gridWidth - (spacing * (gridSize - 1))) / gridSize;
-                                        final unifiedFontSize = screenHeight * 0.024;
+                                      itemBuilder: (context, index) {
+                                        int row = index ~/ gridSize;
+                                        int col = index % gridSize;
+                                        bool isFixedCell = controller.isFixed[row][col];
+                                        bool isHintedCell = controller.isHinted[row][col];
+                                        final value = controller.grid[row][col];
 
-                                        return GridView.builder(
-                                          physics: const NeverScrollableScrollPhysics(),
-                                          itemCount: gridSize * gridSize,
-                                          gridDelegate:
-                                          SliverGridDelegateWithFixedCrossAxisCount(
-                                            crossAxisCount: gridSize,
-                                            mainAxisSpacing: spacing,
-                                            crossAxisSpacing: spacing,
-                                            childAspectRatio: 1,
+                                        Color cellColor = Colors.white;
+
+                                        if (row == 0 && col == 0) {
+                                          cellColor = const Color(0xFFFFD54F);
+                                        } else if (isFixedCell) {
+                                          cellColor = const Color(0xFFFFD54F);
+                                        } else if (isHintedCell) {
+                                          cellColor = hintColor.withOpacity(0.3);
+                                        }
+
+                                        if (controller.isWrong[row][col] == true) {
+                                          cellColor = Colors.red.shade300;
+                                        }
+
+                                        return Container(
+                                          decoration: BoxDecoration(
+                                            color: cellColor,
+                                            borderRadius: BorderRadius.circular(6),
+                                            border: isHintedCell
+                                                ? Border.all(color: hintColor, width: 2)
+                                                : null,
                                           ),
-                                          itemBuilder: (context, index) {
-                                            int row = index ~/ gridSize;
-                                            int col = index % gridSize;
-                                            bool isFixedCell = controller.isFixed[row][col];
-                                            bool isHintedCell = controller.isHinted[row][col]; // NEW
-                                            final value = controller.grid[row][col];
-
-                                            Color cellColor = Colors.white;
-
-                                            if (row == 0 && col == 0) {
-                                              cellColor = const Color(0xFFFFD54F);
-                                            } else if (isFixedCell) {
-                                              cellColor = const Color(0xFFFFD54F);
-                                            } else if (isHintedCell) {
-                                              // NEW: Different color for hinted cells
-                                              cellColor = hintColor.withOpacity(0.3);
-                                            }
-
-                                            if (controller.isWrong[row][col] == true) {
-                                              cellColor = Colors.red.shade300;
-                                            }
-
-                                            return Container(
-                                              decoration: BoxDecoration(
-                                                color: cellColor,
-                                                borderRadius: BorderRadius.circular(6),
-                                                // NEW: Border for hinted cells
-                                                border: isHintedCell
-                                                    ? Border.all(color: hintColor, width: 2)
-                                                    : null,
-                                              ),
-                                              child: Center(
-                                                child: (row == 0 && col == 0)
-                                                    ? GestureDetector(
-                                                  onTap: _isGameStarted ? null : () {
-                                                    setState(() {
-                                                      _showMinus = !_showMinus;
-                                                    });
-                                                    controller.setOperation(
-                                                        _showMinus
-                                                            ? PuzzleOperation.subtraction
-                                                            : PuzzleOperation.addition
-                                                    );
-                                                    _inputControllers.clear();
-                                                    _focusNodes.clear();
-                                                    setState(() => _selectedCell = null);
-                                                  },
-                                                  child: Text(
-                                                    _showMinus ? "-" : "+",
-                                                    style: TextStyle(
-                                                      fontSize: unifiedFontSize * 1.3,
-                                                      fontWeight: FontWeight.bold,
-                                                      color: Colors.black,
-                                                    ),
-                                                  ),
-                                                )
-                                                    : isFixedCell
-                                                    ? Text(
-                                                  value?.toString() ?? "",
-                                                  style: TextStyle(
-                                                    fontWeight: FontWeight.bold,
-                                                    fontSize: unifiedFontSize,
-                                                    color: Colors.black,
-                                                  ),
-                                                )
-                                                    : TextField(
-                                                  controller:
-                                                  _inputControllers[_getKey(row, col)],
-                                                  focusNode: _focusNodes[_getKey(row, col)],
-                                                  textAlign: TextAlign.center,
-                                                  readOnly: true,
-                                                  enabled: _isGameStarted,
-                                                  showCursor: _isGameStarted,
-                                                  decoration: const InputDecoration(
-                                                    border: InputBorder.none,
-                                                    hintText: "",
-                                                    counterText: "",
-                                                    isCollapsed: true,
-                                                  ),
-                                                  style: TextStyle(
-                                                    fontSize: unifiedFontSize,
-                                                    fontWeight: FontWeight.bold,
-                                                    // NEW: Different color for hinted text
-                                                    color: isHintedCell ? hintColor : Colors.black,
-                                                  ),
+                                          child: Center(
+                                            child: (row == 0 && col == 0)
+                                                ? GestureDetector(
+                                              onTap: _isGameStarted ? null : () {
+                                                setState(() {
+                                                  _showMinus = !_showMinus;
+                                                });
+                                                controller.setOperation(
+                                                    _showMinus
+                                                        ? PuzzleOperation.subtraction
+                                                        : PuzzleOperation.addition
+                                                );
+                                                _inputControllers.clear();
+                                                _focusNodes.clear();
+                                                setState(() => _selectedCell = null);
+                                              },
+                                              child: Text(
+                                                _showMinus ? "-" : "+",
+                                                style: TextStyle(
+                                                  fontSize: unifiedFontSize * 1.3,
+                                                  fontWeight: FontWeight.bold,
+                                                  color: Colors.black,
                                                 ),
                                               ),
-                                            );
-                                          },
+                                            )
+                                                : isFixedCell
+                                                ? Text(
+                                              value?.toString() ?? "",
+                                              style: TextStyle(
+                                                fontWeight: FontWeight.bold,
+                                                fontSize: unifiedFontSize,
+                                                color: Colors.black,
+                                              ),
+                                            )
+                                                : TextField(
+                                              controller: _inputControllers[_getKey(row, col)],
+                                              focusNode: _focusNodes[_getKey(row, col)],
+                                              textAlign: TextAlign.center,
+                                              readOnly: true,
+                                              enabled: _isGameStarted,
+                                              showCursor: _isGameStarted,
+                                              decoration: const InputDecoration(
+                                                border: InputBorder.none,
+                                                hintText: "",
+                                                counterText: "",
+                                                isCollapsed: true,
+                                              ),
+                                              style: TextStyle(
+                                                fontSize: unifiedFontSize,
+                                                fontWeight: FontWeight.bold,
+                                                color: isHintedCell ? hintColor : Colors.black,
+                                              ),
+                                            ),
+                                          ),
                                         );
                                       },
-                                    ),
-                                  ),
+                                    );
+                                  },
                                 ),
                               ),
+                            ),
+                          ),
 
-                              SizedBox(height: screenHeight * 0.015),
+                          SizedBox(height: screenHeight * 0.015),
 
-                              /// 5. Custom Numeric Keyboard
-                              Padding(
-                                padding: EdgeInsets.symmetric(horizontal: gridPadding),
-                                child: Container(
-                                  height: keyboardHeight,
-                                  padding: EdgeInsets.all(screenHeight * 0.015),
-                                  decoration: BoxDecoration(
-                                    color: Colors.grey.shade300,
-                                    borderRadius: BorderRadius.circular(12),
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: Colors.black.withOpacity(0.15),
-                                        blurRadius: 8,
-                                        offset: const Offset(0, -2),
-                                      ),
-                                    ],
-                                  ),
-                                  child: Column(
-                                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                                    children: [
-                                      Row(
-                                        children: [
-                                          _buildKeyButton('1', controller, keyHeight, screenHeight * 0.024),
-                                          SizedBox(width: screenWidth * 0.02),
-                                          _buildKeyButton('2', controller, keyHeight, screenHeight * 0.024),
-                                          SizedBox(width: screenWidth * 0.02),
-                                          _buildKeyButton('3', controller, keyHeight, screenHeight * 0.024),
-                                        ],
-                                      ),
-                                      SizedBox(height: screenHeight * 0.01),
-                                      Row(
-                                        children: [
-                                          _buildKeyButton('4', controller, keyHeight, screenHeight * 0.024),
-                                          SizedBox(width: screenWidth * 0.02),
-                                          _buildKeyButton('5', controller, keyHeight, screenHeight * 0.024),
-                                          SizedBox(width: screenWidth * 0.02),
-                                          _buildKeyButton('6', controller, keyHeight, screenHeight * 0.024),
-                                        ],
-                                      ),
-                                      SizedBox(height: screenHeight * 0.01),
-                                      Row(
-                                        children: [
-                                          _buildKeyButton('7', controller, keyHeight, screenHeight * 0.024),
-                                          SizedBox(width: screenWidth * 0.02),
-                                          _buildKeyButton('8', controller, keyHeight, screenHeight * 0.024),
-                                          SizedBox(width: screenWidth * 0.02),
-                                          _buildKeyButton('9', controller, keyHeight, screenHeight * 0.024),
-                                        ],
-                                      ),
-                                      SizedBox(height: screenHeight * 0.01),
-                                      Row(
-                                        children: [
-                                          Expanded(child: Container()),
-                                          SizedBox(width: screenWidth * 0.02),
-                                          _buildKeyButton('0', controller, keyHeight, screenHeight * 0.024),
-                                          SizedBox(width: screenWidth * 0.02),
-                                          _buildClearButton(controller, keyHeight, screenHeight * 0.022),
-                                        ],
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ),
-
-                              SizedBox(height: screenHeight * 0.015),
-
-                              /// 6. Bottom Actions
-                              Padding(
-                                padding: EdgeInsets.symmetric(
-                                  horizontal: screenWidth * 0.05,
-                                  vertical: screenHeight * 0.008,
-                                ),
-                                child: Row(
-                                  children: [
-                                    Expanded(
-                                      child: ElevatedButton(
-                                        onPressed: _isGameStarted ? null : () {
-                                          controller.resetGame();
-                                          _inputControllers.clear();
-                                          _focusNodes.clear();
-                                          setState(() => _selectedCell = null);
-                                        },
-                                        style: ElevatedButton.styleFrom(
-                                          backgroundColor: Colors.orange,
-                                          disabledBackgroundColor: Colors.grey,
-                                          padding: EdgeInsets.symmetric(vertical: buttonPadding),
-                                          shape: RoundedRectangleBorder(
-                                            borderRadius: BorderRadius.circular(8),
-                                          ),
-                                        ),
-                                        child: Text(
-                                          "Reset",
-                                          style: TextStyle(
-                                            fontFamily: "Rubik",
-                                            fontSize: buttonFontSize,
-                                            fontWeight: FontWeight.bold,
-                                            color: Colors.white,
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                    SizedBox(width: screenWidth * 0.02),
-                                    Expanded(
-                                      flex: 2,
-                                      child: ElevatedButton(
-                                        onPressed: _isGameStarted ? null : () {
-                                          controller.validateGrid();
-                                          Navigator.push(
-                                            context,
-                                            MaterialPageRoute(
-                                              builder: (_) => SubmitGameScreen(),
-                                            ),
-                                          ).then((_) {
-                                            controller.resetGame();
-                                            _inputControllers.clear();
-                                            _focusNodes.clear();
-                                            setState(() => _selectedCell = null);
-                                          });
-                                        },
-                                        style: ElevatedButton.styleFrom(
-                                          backgroundColor: textBlue,
-                                          disabledBackgroundColor: Colors.grey,
-                                          padding: EdgeInsets.symmetric(vertical: buttonPadding),
-                                          shape: RoundedRectangleBorder(
-                                            borderRadius: BorderRadius.circular(8),
-                                          ),
-                                        ),
-                                        child: Text(
-                                          "Check & Submit Score",
-                                          style: TextStyle(
-                                            fontFamily: "Rubik",
-                                            fontSize: buttonFontSize,
-                                            fontWeight: FontWeight.bold,
-                                            color: Colors.white,
-                                          ),
-                                        ),
-                                      ),
+                          // FLEXIBLE KEYBOARD - Takes available space
+                          Flexible(
+                            flex: 4, // Takes proportional space
+                            child: Padding(
+                              padding: EdgeInsets.symmetric(horizontal: screenWidth * 0.1),
+                              child: Container(
+                                padding: EdgeInsets.all(screenHeight * 0.015),
+                                decoration: BoxDecoration(
+                                  color: Colors.grey.shade300,
+                                  borderRadius: BorderRadius.circular(12),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.black.withOpacity(0.15),
+                                      blurRadius: 8,
+                                      offset: const Offset(0, -2),
                                     ),
                                   ],
                                 ),
+                                child: LayoutBuilder(
+                                  builder: (context, keyboardConstraints) {
+                                    final keyHeight = keyboardConstraints.maxHeight * 0.20;
+                                    final fontSize = keyHeight * 0.4;
+                                    final iconSize = keyHeight * 0.35;
+
+                                    return Column(
+                                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                                      children: [
+                                        Expanded(
+                                          child: Row(
+                                            children: [
+                                              _buildKeyButton('1', controller, keyHeight, fontSize),
+                                              SizedBox(width: screenWidth * 0.02),
+                                              _buildKeyButton('2', controller, keyHeight, fontSize),
+                                              SizedBox(width: screenWidth * 0.02),
+                                              _buildKeyButton('3', controller, keyHeight, fontSize),
+                                            ],
+                                          ),
+                                        ),
+                                        SizedBox(height: keyboardConstraints.maxHeight * 0.02),
+                                        Expanded(
+                                          child: Row(
+                                            children: [
+                                              _buildKeyButton('4', controller, keyHeight, fontSize),
+                                              SizedBox(width: screenWidth * 0.02),
+                                              _buildKeyButton('5', controller, keyHeight, fontSize),
+                                              SizedBox(width: screenWidth * 0.02),
+                                              _buildKeyButton('6', controller, keyHeight, fontSize),
+                                            ],
+                                          ),
+                                        ),
+                                        SizedBox(height: keyboardConstraints.maxHeight * 0.02),
+                                        Expanded(
+                                          child: Row(
+                                            children: [
+                                              _buildKeyButton('7', controller, keyHeight, fontSize),
+                                              SizedBox(width: screenWidth * 0.02),
+                                              _buildKeyButton('8', controller, keyHeight, fontSize),
+                                              SizedBox(width: screenWidth * 0.02),
+                                              _buildKeyButton('9', controller, keyHeight, fontSize),
+                                            ],
+                                          ),
+                                        ),
+                                        SizedBox(height: keyboardConstraints.maxHeight * 0.02),
+                                        Expanded(
+                                          child: Row(
+                                            children: [
+                                              Expanded(child: Container()),
+                                              SizedBox(width: screenWidth * 0.02),
+                                              _buildKeyButton('0', controller, keyHeight, fontSize),
+                                              SizedBox(width: screenWidth * 0.02),
+                                              _buildClearButton(controller, keyHeight, iconSize),
+                                            ],
+                                          ),
+                                        ),
+                                      ],
+                                    );
+                                  },
+                                ),
                               ),
-                            ],
+                            ),
                           ),
-                        ),
-                      ),
-                    );
-                  },
+
+                          SizedBox(height: screenHeight * 0.015),
+
+                          // Bottom Actions - Fixed size
+                          Padding(
+                            padding: EdgeInsets.symmetric(
+                              horizontal: screenWidth * 0.05,
+                              vertical: screenHeight * 0.008,
+                            ),
+                            child: Row(
+                              children: [
+                                Expanded(
+                                  child: ElevatedButton(
+                                    onPressed: _isGameStarted ? null : () {
+                                      controller.resetGame();
+                                      _inputControllers.clear();
+                                      _focusNodes.clear();
+                                      setState(() => _selectedCell = null);
+                                    },
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: Colors.orange,
+                                      disabledBackgroundColor: Colors.grey,
+                                      padding: EdgeInsets.symmetric(vertical: buttonPadding),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                    ),
+                                    child: Text(
+                                      "Reset",
+                                      style: TextStyle(
+                                        fontFamily: "Rubik",
+                                        fontSize: buttonFontSize,
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.white,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                                SizedBox(width: screenWidth * 0.02),
+                                Expanded(
+                                  flex: 2,
+                                  child: ElevatedButton(
+                                    onPressed: _isGameStarted ? null : () {
+                                      controller.validateGrid();
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (_) => SubmitGameScreen(),
+                                        ),
+                                      ).then((_) {
+                                        controller.resetGame();
+                                        _inputControllers.clear();
+                                        _focusNodes.clear();
+                                        setState(() => _selectedCell = null);
+                                      });
+                                    },
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: textBlue,
+                                      disabledBackgroundColor: Colors.grey,
+                                      padding: EdgeInsets.symmetric(vertical: buttonPadding),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                    ),
+                                    child: Text(
+                                      "Check & Submit Score",
+                                      style: TextStyle(
+                                        fontFamily: "Rubik",
+                                        fontSize: buttonFontSize,
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.white,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      );
+                    },
+                  ),
                 ),
               ),
             ),

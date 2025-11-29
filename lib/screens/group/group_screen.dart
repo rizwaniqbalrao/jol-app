@@ -1,47 +1,64 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
-import '../dashboard/notification_screen.dart';
-import '../onboarding/onboarding_screen.dart';
-import '../settings/account_screen.dart';
+import 'controller/group_controller.dart';
+import 'group_detail_screen.dart';
+import 'models/group_metadata.dart';
+
+class GroupsScreenWrapper extends StatelessWidget {
+  final String userId;
+  final String userName;
+
+  const GroupsScreenWrapper({
+    super.key,
+    required this.userId,
+    required this.userName,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return ChangeNotifierProvider(
+      create: (_) => GroupController(
+        userId: userId,
+        userName: userName,
+      ),
+      child: GroupsScreen(),
+    );
+  }
+}
 
 class GroupsScreen extends StatefulWidget {
   const GroupsScreen({super.key});
-
   @override
   State<GroupsScreen> createState() => _GroupsScreenState();
 }
 
-class _GroupsScreenState extends State<GroupsScreen> {
+class _GroupsScreenState extends State<GroupsScreen> with SingleTickerProviderStateMixin {
   static const Color textPink = Color(0xFFF82A87);
   static const Color textOrange = Color(0xFFfc6839);
   static const Color textGreen = Color(0xFF4CAF50);
+  static const Color textYellow = Color(0xFFf8bc64);
+  static const Color textPurple = Color(0xFFC42AF8);
+  late TabController _tabController;
+  final TextEditingController _searchController = TextEditingController();
 
-  final List<Map<String, dynamic>> groups = [
-    {
-      "name": "YOUTH GROUP",
-      "members": 24,
-      "created": "2 MONTHS AGO",
-      "games": 21,
-    },
-    {
-      "name": "GAME BREAKERS",
-      "members": 11,
-      "created": "2 MONTHS AGO",
-      "games": 21,
-    },
-    {
-      "name": "BROKEN GAMERS",
-      "members": 92,
-      "created": "2 MONTHS AGO",
-      "games": 21,
-    },
-    {
-      "name": "WINNERS SQUAD",
-      "members": 124,
-      "created": "2 MONTHS AGO",
-      "games": 21,
-    },
-  ];
+  @override
+  void initState() {
+    super.initState();
+    _tabController = TabController(length: 2, vsync: this);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final controller = context.read<GroupController>();
+      controller.loadMyGroups();
+      controller.loadBrowseGroups();
+    });
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    _searchController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -60,405 +77,736 @@ class _GroupsScreenState extends State<GroupsScreen> {
             ],
           ),
         ),
-        child: SingleChildScrollView(
+        child: SafeArea(
           child: Column(
             children: [
-              // 📌 App Bar
-              _buildAppBar(context),
-
-              // 📋 Groups Container
+              const SizedBox(height: 20),
+              // Header with improved action buttons
               Padding(
-                padding:
-                const EdgeInsets.symmetric(vertical: 16.0, horizontal: 25),
+                padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: _headerActionButton(
+                        icon: Icons.code_rounded,
+                        title: "Join by Code",
+                        onTap: () => _showJoinByCodeDialog(),
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: _headerActionButton(
+                        icon: Icons.add_circle_outline,
+                        title: "Create Group",
+                        onTap: () => _showCreateGroupDialog(),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 24),
+              // Improved Tab Bar with better padding
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 24.0),
                 child: Container(
+                  padding: const EdgeInsets.all(4),
                   decoration: BoxDecoration(
-                    color: textPink.withOpacity(0.5),
-                    borderRadius: BorderRadius.circular(16),
+                    color: Colors.white.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(20),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.1),
+                        blurRadius: 8,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
                   ),
-                  padding: const EdgeInsets.symmetric(vertical: 8),
-                  height: MediaQuery.of(context).size.height * 0.65,
-                  child: Column(
-                    children: [
-                      // 🔝 Header Row
-                      Padding(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 12.0, vertical: 4),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text(
-                              "GROUPS: ${groups.length.toString().padLeft(2, '0')}",
-                              style: const TextStyle(
-                                fontFamily: 'Digitalt',
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.white,
-                                letterSpacing: 1.5,
-                              ),
-                            ),
-                            InkWell(
-                              onTap: () async {
-                                final newGroupName = await showDialog<String>(
-                                  context: context,
-                                  builder: (context) => const CreateNewGroup(),
-                                );
-
-                                if (newGroupName != null && newGroupName.isNotEmpty) {
-                                  setState(() {
-                                    groups.add({
-                                      "name": newGroupName,
-                                      "members": 1, // default
-                                      "created": "JUST NOW",
-                                      "games": 0,
-                                    });
-                                  });
-                                }
-                              },
-                              child: Container(
-                                decoration: BoxDecoration(
-                                    color: textOrange,
-                                    borderRadius: BorderRadius.circular(12),
-                                    border: Border.all(
-                                      color: Colors.white,
-                                      width: 1.5,
-                                    )
-                                ),
-                                child: Padding(
-                                  padding: const EdgeInsets.all(4.0),
-                                  child: Row(
-                                    children: [
-                                      Container(
-                                        decoration: BoxDecoration(
-                                          color: Colors.white,
-                                          borderRadius: BorderRadius.circular(12),
-                                        ),
-                                        child: Icon(Icons.add,
-                                            size: 16, color: Colors.black),
-                                      ),
-                                      const SizedBox(width: 4),
-                                      Padding(
-                                        padding: const EdgeInsets.symmetric(horizontal: 8.0),
-                                        child: const Text(
-                                          "CREATE NEW GROUP",
-                                          style: TextStyle(
-                                            fontFamily: 'Digitalt',
-                                            fontSize: 14,
-                                            fontWeight: FontWeight.bold,
-                                            color: Colors.white,
-                                          ),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ],
+                  child: TabBar(
+                    controller: _tabController,
+                    indicator: BoxDecoration(
+                      color: textPink,
+                      borderRadius: BorderRadius.circular(16),
+                      boxShadow: [
+                        BoxShadow(
+                          color: textPink.withOpacity(0.4),
+                          blurRadius: 8,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    labelColor: Colors.white,
+                    unselectedLabelColor: Colors.white.withOpacity(0.8),
+                    labelStyle: const TextStyle(
+                      fontFamily: 'Digitalt',
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                    ),
+                    dividerColor: Colors.transparent,
+                    tabs: const [
+                      Tab(
+                        child: Padding(
+                          padding: EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+                          child: Text("MY GROUPS"),
                         ),
                       ),
-                      const SizedBox(height: 6),
-
-                      // 📋 Groups List
-                      Expanded(
-                        child: ListView.builder(
-                          padding: const EdgeInsets.symmetric(horizontal: 12),
-                          itemCount: groups.length,
-                          itemBuilder: (context, index) {
-                            final group = groups[index];
-                            return GroupCard(
-                              name: group["name"],
-                              members: group["members"],
-                              created: group["created"],
-                              games: group["games"],
-                              onDelete: () {
-                                setState(() => groups.removeAt(index));
-                              },
-                            );
-                          },
+                      Tab(
+                        child: Padding(
+                          padding: EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+                          child: Text("BROWSE"),
                         ),
                       ),
                     ],
                   ),
                 ),
               ),
+              const SizedBox(height: 24),
+              // Content
+              Expanded(
+                child: TabBarView(
+                  controller: _tabController,
+                  children: [
+                    _buildMyGroupsTab(),
+                    _buildBrowseTab(),
+                  ],
+                ),
+              ),
             ],
           ),
         ),
       ),
     );
   }
-  // 🔠 JOL logo builder
-  Widget _buildJolLogo() {
-    const letters = ["J", "O", "L"];
-    const colors = [Color(0xFFf8bc64), textPink, Color(0xFFfc6839)];
 
-    return Row(
-      children: List.generate(
-        letters.length,
-            (index) => Text(
-          letters[index],
-          style: const TextStyle(
-            fontFamily: 'Digitalt',
-            fontWeight: FontWeight.w500,
-            fontSize: 35,
-            height: 0.82,
-          ).copyWith(
-            color: colors[index],
-            letterSpacing: 1.5,
+  // MY GROUPS TAB - Always shows container
+  Widget _buildMyGroupsTab() {
+    return Consumer<GroupController>(
+      builder: (context, controller, _) {
+        return Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 24.0),
+          child: Container(
+            decoration: BoxDecoration(
+              color: textPink.withOpacity(0.15),
+              borderRadius: BorderRadius.circular(20),
+              boxShadow: [
+                BoxShadow(
+                  color: textPink.withOpacity(0.2),
+                  blurRadius: 12,
+                  offset: const Offset(0, 6),
+                ),
+              ],
+            ),
+            padding: const EdgeInsets.all(20),
+            child: controller.isLoadingMyGroups
+                ? const Center(
+              child: CircularProgressIndicator(color: textPink),
+            )
+                : controller.myGroups.isEmpty
+                ? _buildEmptyState(
+              icon: Icons.group_outlined,
+              title: "NO GROUPS YET",
+              subtitle: "Create or join a group to get started!",
+            )
+                : Column(
+              children: [
+                // Header
+                Row(
+                  children: [
+                    Text(
+                      "GROUPS: ${controller.myGroups.length.toString().padLeft(2, '0')}",
+                      style: const TextStyle(
+                        fontFamily: 'Digitalt',
+                        fontSize: 20,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.white,
+                        letterSpacing: 1.2,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                // List
+                Expanded(
+                  child: RefreshIndicator(
+                    color: textPink,
+                    backgroundColor: Colors.white.withOpacity(0.1),
+                    onRefresh: controller.loadMyGroups,
+                    child: ListView.builder(
+                      padding: EdgeInsets.zero,
+                      itemCount: controller.myGroups.length,
+                      itemBuilder: (context, index) {
+                        final group = controller.myGroups[index];
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 12),
+                          child: GroupCard(
+                            group: group,
+                            onTap: () async {
+                              await Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => ChangeNotifierProvider.value(
+                                    value: controller,
+                                    child: GroupDetailScreen(
+                                      groupId: group.metadata.id,
+                                    ),
+                                  ),
+                                ),
+                              );
+                              // Refresh groups list when returning
+                              if (mounted) {
+                                controller.loadMyGroups();
+                                controller.loadBrowseGroups();
+                              }
+                            },
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  // BROWSE TAB
+  Widget _buildBrowseTab() {
+    return Consumer<GroupController>(
+      builder: (context, controller, _) {
+        return Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 24.0),
+          child: Container(
+            decoration: BoxDecoration(
+              color: textOrange.withOpacity(0.15),
+              borderRadius: BorderRadius.circular(20),
+              boxShadow: [
+                BoxShadow(
+                  color: textOrange.withOpacity(0.2),
+                  blurRadius: 12,
+                  offset: const Offset(0, 6),
+                ),
+              ],
+            ),
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              children: [
+                // Search Bar
+                TextField(
+                  controller: _searchController,
+                  onChanged: (value) {
+                    if (value.isEmpty) {
+                      controller.loadBrowseGroups();
+                    } else {
+                      controller.searchGroups(value);
+                    }
+                  },
+                  decoration: InputDecoration(
+                    hintText: "SEARCH GROUPS...",
+                    hintStyle: const TextStyle(
+                      fontFamily: 'Digitalt',
+                      color: Colors.white70,
+                      fontSize: 14,
+                    ),
+                    prefixIcon: const Icon(Icons.search, color: Colors.white70),
+                    filled: true,
+                    fillColor: Colors.white.withOpacity(0.15),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(16),
+                      borderSide: BorderSide(
+                        color: Colors.white.withOpacity(0.3),
+                        width: 1,
+                      ),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(16),
+                      borderSide: BorderSide(
+                        color: Colors.white.withOpacity(0.3),
+                        width: 1,
+                      ),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(16),
+                      borderSide: BorderSide(
+                        color: textOrange,
+                        width: 2,
+                      ),
+                    ),
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 12,
+                    ),
+                  ),
+                  style: const TextStyle(
+                    fontFamily: 'Digitalt',
+                    color: Colors.white,
+                    fontSize: 16,
+                  ),
+                ),
+                const SizedBox(height: 20),
+                // Results
+                if (controller.isLoadingBrowse)
+                  const Expanded(
+                    child: Center(
+                      child: CircularProgressIndicator(color: textOrange),
+                    ),
+                  )
+                else if (controller.browseGroups.isEmpty)
+                  Expanded(
+                    child: _buildEmptyState(
+                      icon: Icons.search_off,
+                      title: "NO GROUPS FOUND",
+                      subtitle: "Try a different search term",
+                    ),
+                  )
+                else
+                  Expanded(
+                    child: ListView.builder(
+                      padding: EdgeInsets.zero,
+                      itemCount: controller.browseGroups.length,
+                      itemBuilder: (context, index) {
+                        final group = controller.browseGroups[index];
+                        final isMember = group.isMember(controller.userId);
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 12),
+                          child: BrowseGroupCard(
+                            group: group,
+                            isMember: isMember,
+                            onJoin: () async {
+                              final success = await controller.joinGroup(
+                                group.metadata.id,
+                              );
+                              if (success && mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text('Joined group!'),
+                                    backgroundColor: textGreen,
+                                  ),
+                                );
+                              }
+                            },
+                            onTap: () async {
+                              await Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => ChangeNotifierProvider.value(
+                                    value: controller,
+                                    child: GroupDetailScreen(
+                                      groupId: group.metadata.id,
+                                    ),
+                                  ),
+                                ),
+                              );
+                              // Refresh groups list when returning
+                              if (mounted) {
+                                controller.loadMyGroups();
+                                controller.loadBrowseGroups();
+                              }
+                            },
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  // Empty State Widget
+  Widget _buildEmptyState({
+    required IconData icon,
+    required String title,
+    required String subtitle,
+  }) {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.1),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(icon, size: 64, color: Colors.white70),
+          ),
+          const SizedBox(height: 20),
+          Text(
+            title,
+            style: const TextStyle(
+              fontFamily: 'Digitalt',
+              fontSize: 20,
+              fontWeight: FontWeight.w700,
+              color: Colors.white,
+            ),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            subtitle,
+            style: const TextStyle(
+              fontFamily: 'Rubik',
+              fontSize: 16,
+              color: Colors.white70,
+            ),
+            textAlign: TextAlign.center,
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Improved Header Button with modern design
+  Widget _headerActionButton({
+    required IconData icon,
+    required String title,
+    required VoidCallback onTap,
+  }) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(16),
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 20),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [
+                Colors.white.withOpacity(0.3),
+                Colors.white.withOpacity(0.15),
+              ],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: Colors.white.withOpacity(0.4),
+              width: 1.5,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.1),
+                blurRadius: 8,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(icon, size: 22, color: Colors.white),
+              const SizedBox(width: 8),
+              Text(
+                title,
+                style: const TextStyle(
+                  fontFamily: 'Digitalt',
+                  color: Colors.white,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  letterSpacing: 0.5,
+                ),
+              ),
+            ],
           ),
         ),
       ),
     );
   }
 
-  Widget _buildAppBar(BuildContext context) {
-    return Container(
-      padding: EdgeInsets.only(
-        top: MediaQuery.of(context).padding.top + 6,
-        left: 12,
-        right: 12,
-        bottom: 6,
+  // Create Group Dialog
+  void _showCreateGroupDialog() async {
+    final controller = context.read<GroupController>();
+    final result = await showDialog<Map<String, String?>>(
+      context: context,
+      builder: (context) => const CreateGroupDialog(),
+    );
+    if (result != null && mounted) {
+      final groupId = await controller.createGroup(
+        groupName: result['name']!,
+        description: result['description'],
+      );
+      if (groupId != null && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Group created!'),
+            backgroundColor: textGreen,
+          ),
+        );
+        // Navigate to the new group
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => ChangeNotifierProvider.value(
+              value: controller,
+              child: GroupDetailScreen(groupId: groupId),
+            ),
+          ),
+        );
+      }
+    }
+  }
+
+  // Join by Code Dialog
+  void _showJoinByCodeDialog() async {
+    final controller = context.read<GroupController>();
+    final code = await showDialog<String>(
+      context: context,
+      builder: (context) => const JoinByCodeDialog(),
+    );
+    if (code != null && mounted) {
+      final success = await controller.joinGroupByCode(code);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(success ? 'Joined group!' : 'Group not found'),
+            backgroundColor: success ? textGreen : Colors.red,
+          ),
+        );
+      }
+    }
+  }
+}
+
+// ============================================
+// GROUP CARD (for My Groups)
+// ============================================
+class GroupCard extends StatelessWidget {
+  final Group group;
+  final VoidCallback onTap;
+
+  const GroupCard({
+    super.key,
+    required this.group,
+    required this.onTap,
+  });
+
+  static const Color textPink = Color(0xFFF82A87);
+  static const Color textOrange = Color(0xFFfc6839);
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(14),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Name + Admin Badge
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Expanded(
+                  child: Text(
+                    group.metadata.name.toUpperCase(),
+                    style: const TextStyle(
+                      fontFamily: 'Digitalt',
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: textPink,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                if (group.isAdmin(context.read<GroupController>().userId))
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: textOrange,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Text(
+                      "ADMIN",
+                      style: TextStyle(
+                        fontFamily: 'Digitalt',
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 4),
+
+            Text(
+              "${group.memberCount} MEMBERS",
+              style: const TextStyle(
+                fontFamily: 'Rubik',
+                fontSize: 12,
+                color: textPink,
+              ),
+            ),
+
+            const Divider(thickness: 0.5, color: Colors.grey),
+
+            // Bottom Row
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  "CODE: ${group.metadata.code}",
+                  style: const TextStyle(
+                    fontFamily: 'Digitalt',
+                    fontSize: 11,
+                    fontWeight: FontWeight.bold,
+                    color: textOrange,
+                  ),
+                ),
+                Text(
+                  "GAMES: ${group.stats.totalGames}",
+                  style: const TextStyle(
+                    fontFamily: 'Digitalt',
+                    fontSize: 11,
+                    fontWeight: FontWeight.bold,
+                    color: textOrange,
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
-      decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.5),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          _buildJolLogo(),
-          Row(
-            children: [
-              // ✅ HOW TO PLAY (pill button)
-              InkWell(
-                onTap: () {
-                  showDialog(
-                    context: context,
-                    builder: (_) => const HelpDialog(),
-                  );
-                },
-                child: Container(
-                  padding:
-                  const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-                  decoration: BoxDecoration(
+    );
+  }
+}
+
+// ============================================
+// BROWSE GROUP CARD
+// ============================================
+class BrowseGroupCard extends StatelessWidget {
+  final Group group;
+  final bool isMember;
+  final VoidCallback onJoin;
+  final VoidCallback onTap;
+
+  const BrowseGroupCard({
+    super.key,
+    required this.group,
+    required this.isMember,
+    required this.onJoin,
+    required this.onTap,
+  });
+
+  static const Color textPink = Color(0xFFF82A87);
+  static const Color textOrange = Color(0xFFfc6839);
+  static const Color textGreen = Color(0xFF4CAF50);
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 8),
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(14),
+        ),
+        child: Row(
+          children: [
+            // Group Info
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    group.metadata.name.toUpperCase(),
+                    style: const TextStyle(
+                      fontFamily: 'Digitalt',
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: textPink,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    "${group.memberCount} members • ${group.stats.totalGames} games",
+                    style: const TextStyle(
+                      fontFamily: 'Rubik',
+                      fontSize: 11,
+                      color: textOrange,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            // Join Button or Joined Badge
+            if (isMember)
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                  color: textGreen.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: textGreen, width: 1),
+                ),
+                child: const Text(
+                  "JOINED",
+                  style: TextStyle(
+                    fontFamily: 'Digitalt',
+                    fontSize: 11,
+                    fontWeight: FontWeight.bold,
                     color: textGreen,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
-                        color: Colors.white.withOpacity(0.9), width: 2.5),
+                  ),
+                ),
+              )
+            else
+              InkWell(
+                onTap: onJoin,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: textPink,
+                    borderRadius: BorderRadius.circular(10),
                   ),
                   child: const Text(
-                    "HOW TO PLAY",
+                    "JOIN",
                     style: TextStyle(
                       fontFamily: 'Digitalt',
-                      fontSize: 12,
+                      fontSize: 11,
                       fontWeight: FontWeight.bold,
                       color: Colors.white,
                     ),
                   ),
                 ),
               ),
-              const SizedBox(width: 8),
-
-              // 🔔 Notification Bell
-              InkWell(
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (context) => NotificationScreen()), // Replace with NotificationScreen()
-                  );
-                },
-                child: Container(
-                  width: 30,
-                  height: 30,
-                  decoration: const BoxDecoration(
-                    color: Colors.white,
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(
-                    Icons.notifications,
-                    size: 20,
-                    color: textPink,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 8),
-
-              // 💰 Coins
-              Container(
-                padding:
-                const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
-                decoration: BoxDecoration(
-                  border: Border.all(color: Colors.white),
-                  color: textPink,
-                  borderRadius: BorderRadius.circular(30),
-                ),
-                child: Row(
-                  children: [
-                    // Circle with "J"
-                    Container(
-                      width: 20,
-                      height: 20,
-                      decoration: const BoxDecoration(
-                        color: Colors.white,
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Center(
-                        child: Text(
-                          "J",
-                          style: TextStyle(
-                            fontFamily: 'Digitalt',
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                            color: textPink,
-                          ),
-                        ),
-                      ),
-                    ),
-                    const Padding(
-                      padding: EdgeInsets.symmetric(horizontal: 8.0),
-                      child: Text(
-                        "5M",
-                        style: TextStyle(
-                          fontFamily: 'Digitalt',
-                          fontSize: 14,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 8),
-
-              // 👤 Profile Avatar
-              InkWell(
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) =>
-                      const AccountScreen(),),
-                  );
-                },
-                child: const CircleAvatar(
-                  radius: 18,
-                  backgroundImage:
-                  AssetImage("lib/assets/images/settings_emoji.png"),
-                ),
-              ),
-            ],
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
 }
 
-// 🎴 Group Card Widget
-class GroupCard extends StatelessWidget {
-  final String name;
-  final int members;
-  final String created;
-  final int games;
-  final VoidCallback onDelete;
-
-  const GroupCard({
-    super.key,
-    required this.name,
-    required this.members,
-    required this.created,
-    required this.games,
-    required this.onDelete,
-  });
+// ============================================
+// CREATE GROUP DIALOG
+// ============================================
+class CreateGroupDialog extends StatefulWidget {
+  const CreateGroupDialog({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.symmetric(vertical: 6),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // 🏷 Group Name + Delete
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                name,
-                style: const TextStyle(
-                  fontFamily: 'Digitalt',
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  color: Color(0xFFF82A87),
-                ),
-              ),
-              InkWell(
-                onTap: onDelete,
-                child: const Icon(
-                  Icons.delete_outline_outlined,
-                  color: Color(0xFFF82A87),
-                  size: 20,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 2),
-          Text(
-            "$members Members",
-            style: const TextStyle(
-              fontFamily: 'Rubik',
-              fontSize: 12,
-              color: _GroupsScreenState.textPink,
-            ),
-          ),
-
-          Divider(thickness: 0.1, color: Colors.grey),
-          // 📌 Bottom Row
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                "CREATED $created",
-                style: const TextStyle(
-                  fontFamily: 'Digitalt',
-                  fontSize: 11,
-                  fontWeight: FontWeight.bold,
-                  color: Color(0xFFfc6839),
-                ),
-              ),
-              Text(
-                "GAMES PLAYED: $games",
-                style: const TextStyle(
-                  fontFamily: 'Digitalt',
-                  fontSize: 11,
-                  fontWeight: FontWeight.bold,
-                  color: Color(0xFFfc6839),
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
+  State<CreateGroupDialog> createState() => _CreateGroupDialogState();
 }
 
-
-class CreateNewGroup extends StatefulWidget {
-  const CreateNewGroup({super.key});
-
-  @override
-  State<CreateNewGroup> createState() => _CreateNewGroupState();
-}
-
-class _CreateNewGroupState extends State<CreateNewGroup> {
+class _CreateGroupDialogState extends State<CreateGroupDialog> {
   final TextEditingController _nameController = TextEditingController();
+  final TextEditingController _descController = TextEditingController();
 
-  static const Color textPink = Color(0xFFC42AF8);
+  static const Color textPink = Color(0xFFF82A87);
+  static const Color textOrange = Color(0xFFfc6839);
+  static const Color textPurple = Color(0xFFC42AF8);
 
   @override
   Widget build(BuildContext context) {
@@ -487,79 +835,156 @@ class _CreateNewGroupState extends State<CreateNewGroup> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   const Text(
-                    "Create a new group",
+                    "CREATE NEW GROUP",
                     style: TextStyle(
-                      fontFamily: "Rubik",
+                      fontFamily: "Digitalt",
                       fontSize: 20,
                       fontWeight: FontWeight.bold,
-                      color: Color(0xFFfc6839),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-        
-                  // 📝 TextField for group name
-                  TextField(
-                    controller: _nameController,
-                    decoration: InputDecoration(
-                      hintText: "Enter group name",
-                      hintStyle: const TextStyle(
-                        color: Color(0xFFF82A87),
-                      ),
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-
-                      // 👇 Default border (very grey)
-                      enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: const BorderSide(
-                          color: Colors.grey, // light grey border
-                          width: 0.5,
-                        ),
-                      ),
-
-                      // 👇 Focused border (pink when clicked)
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: const BorderSide(
-                          color: Color(0xFFF82A87), // pink border
-                          width: 0.5,
-                        ),
-                      ),
+                      color: textOrange,
                     ),
                   ),
                   const SizedBox(height: 16),
-        
-                  ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: textPink,
-                      shape: RoundedRectangleBorder(
+
+                  // Group Name
+                  TextField(
+                    controller: _nameController,
+                    decoration: InputDecoration(
+                      labelText: "Group Name",
+                      labelStyle: const TextStyle(
+                        fontFamily: 'Rubik',
+                        color: textPink,
+                      ),
+                      hintText: "e.g., Math Warriors",
+                      hintStyle: const TextStyle(
+                        color: Colors.grey,
+                        fontSize: 14,
+                      ),
+                      enabledBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
+                        borderSide: const BorderSide(color: Colors.grey, width: 0.5),
                       ),
-                      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 14),
-                    ),
-                    onPressed: () {
-                      final name = _nameController.text.trim();
-                      if (name.isNotEmpty) {
-                        Navigator.pop(context, name); // return the name
-                      }
-                    },
-                    child: const Text(
-                      "Create Group",
-                      style: TextStyle(
-                        fontFamily: "Digitalt",
-                        fontWeight: FontWeight.bold,
-                        fontSize: 15,
-                        color: Colors.white,
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: const BorderSide(color: textPink, width: 1),
                       ),
                     ),
+                  ),
+                  const SizedBox(height: 12),
+
+                  // Description (Optional)
+                  TextField(
+                    controller: _descController,
+                    maxLines: 3,
+                    decoration: InputDecoration(
+                      labelText: "Description (Optional)",
+                      labelStyle: const TextStyle(
+                        fontFamily: 'Rubik',
+                        color: textPink,
+                      ),
+                      hintText: "Tell members what this group is about...",
+                      hintStyle: const TextStyle(
+                        color: Colors.grey,
+                        fontSize: 14,
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: const BorderSide(color: Colors.grey, width: 0.5),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: const BorderSide(color: textPink, width: 1),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+
+                  // Buttons
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton(
+                          style: OutlinedButton.styleFrom(
+                            side: const BorderSide(color: textPink),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                          ),
+                          onPressed: () => Navigator.pop(context),
+                          child: const Text(
+                            "CANCEL",
+                            style: TextStyle(
+                              fontFamily: "Digitalt",
+                              fontWeight: FontWeight.bold,
+                              color: textPink,
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: textPurple,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                          ),
+                          onPressed: () {
+                            final name = _nameController.text.trim();
+                            if (name.isEmpty) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('Please enter a group name'),
+                                  backgroundColor: Colors.red,
+                                ),
+                              );
+                              return;
+                            }
+
+                            Navigator.pop(context, {
+                              'name': name,
+                              'description': _descController.text.trim().isEmpty
+                                  ? null
+                                  : _descController.text.trim(),
+                            });
+                          },
+                          child: const Text(
+                            "CREATE",
+                            style: TextStyle(
+                              fontFamily: "Digitalt",
+                              fontWeight: FontWeight.bold,
+                              fontSize: 15,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),
             ),
             Positioned(
               top: -40,
-              child: Image.asset(
-                'lib/assets/images/settings_emoji.png',
-                height: 80,
+              child: Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  shape: BoxShape.circle,
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.1),
+                      blurRadius: 10,
+                    ),
+                  ],
+                ),
+                child: const Icon(
+                  Icons.group_add,
+                  size: 40,
+                  color: textOrange,
+                ),
               ),
             ),
           ],
@@ -569,3 +994,170 @@ class _CreateNewGroupState extends State<CreateNewGroup> {
   }
 }
 
+// ============================================
+// JOIN BY CODE DIALOG
+// ============================================
+class JoinByCodeDialog extends StatefulWidget {
+  const JoinByCodeDialog({super.key});
+
+  @override
+  State<JoinByCodeDialog> createState() => _JoinByCodeDialogState();
+}
+
+class _JoinByCodeDialogState extends State<JoinByCodeDialog> {
+  final TextEditingController _codeController = TextEditingController();
+
+  static const Color textPink = Color(0xFFF82A87);
+  static const Color textOrange = Color(0xFFfc6839);
+  static const Color textPurple = Color(0xFFC42AF8);
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      insetPadding: const EdgeInsets.symmetric(horizontal: 24),
+      backgroundColor: Colors.transparent,
+      child: Stack(
+        clipBehavior: Clip.none,
+        alignment: Alignment.topCenter,
+        children: [
+          Container(
+            padding: const EdgeInsets.fromLTRB(20, 50, 20, 20),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(24),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.15),
+                  blurRadius: 10,
+                  offset: const Offset(0, 5),
+                ),
+              ],
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text(
+                  "JOIN BY CODE",
+                  style: TextStyle(
+                    fontFamily: "Digitalt",
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: textOrange,
+                  ),
+                ),
+                const SizedBox(height: 12),
+
+                TextField(
+                  controller: _codeController,
+                  textCapitalization: TextCapitalization.characters,
+                  decoration: InputDecoration(
+                    hintText: "Enter group code (e.g., GRPABC1)",
+                    hintStyle: const TextStyle(
+                      color: Colors.grey,
+                      fontSize: 14,
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: const BorderSide(color: Colors.grey, width: 0.5),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: const BorderSide(color: textPink, width: 1),
+                    ),
+                  ),
+                  style: const TextStyle(
+                    fontFamily: 'Digitalt',
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 2,
+                  ),
+                ),
+                const SizedBox(height: 20),
+
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        style: OutlinedButton.styleFrom(
+                          side: const BorderSide(color: textPink),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                        ),
+                        onPressed: () => Navigator.pop(context),
+                        child: const Text(
+                          "CANCEL",
+                          style: TextStyle(
+                            fontFamily: "Digitalt",
+                            fontWeight: FontWeight.bold,
+                            color: textPink,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: textPurple,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                        ),
+                        onPressed: () {
+                          final code = _codeController.text.trim().toUpperCase();
+                          if (code.isEmpty) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('Please enter a group code'),
+                                backgroundColor: Colors.red,
+                              ),
+                            );
+                            return;
+                          }
+                          Navigator.pop(context, code);
+                        },
+                        child: const Text(
+                          "JOIN",
+                          style: TextStyle(
+                            fontFamily: "Digitalt",
+                            fontWeight: FontWeight.bold,
+                            fontSize: 15,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          Positioned(
+            top: -40,
+            child: Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                shape: BoxShape.circle,
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.1),
+                    blurRadius: 10,
+                  ),
+                ],
+              ),
+              child: const Icon(
+                Icons.code,
+                size: 40,
+                color: textOrange,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}

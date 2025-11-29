@@ -67,35 +67,37 @@ class _NotificationScreenState extends State<NotificationScreen> {
                 ),
               ),
               Expanded(
-                child: ListView(
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                  children: [
-                    _buildNotificationCard(
-                      icon: Icons.card_giftcard,
-                      title: "Congratulations! You've successfully unlocked 10 coupons.",
-                      subtitle: "Don't miss out—redeem them now!",
-                      time: "24-10-2024 | 12:32 PM",
-                    ),
-                    const SizedBox(height: 12),
-                    _buildNotificationCard(
-                      icon: Icons.monetization_on,
-                      title: "Treasure found! You earned 500 coins.",
-                      time: "24-10-2024 | 12:32 PM",
-                    ),
-                    const SizedBox(height: 12),
-                    _buildNotificationCard(
-                      icon: Icons.local_fire_department,
-                      title: "Combo master! 🔥 New Fire Blast Booster unlocked.",
-                      time: "24-10-2024 | 12:32 PM",
-                    ),
-                    const SizedBox(height: 12),
-                    _buildNotificationCard(
-                      icon: Icons.card_giftcard,
-                      title: "Congratulations! You've successfully unlocked 10 coupons.",
-                      subtitle: "Don't miss out—redeem them now!",
-                      time: "24-10-2024 | 12:32 PM",
-                    ),
-                  ],
+                child: Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        Icons.notifications_none,
+                        size: 100,
+                        color: textPink,
+                      ),
+                      const SizedBox(height: 20),
+                      const Text(
+                        "No Notifications Yet",
+                        style: TextStyle(
+                          fontFamily: "Rubik",
+                          fontSize: 24,
+                          fontWeight: FontWeight.w700,
+                          color: textBlue,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      const Text(
+                        "Stay tuned for updates!",
+                        style: TextStyle(
+                          fontFamily: "Rubik",
+                          fontSize: 16,
+                          fontWeight: FontWeight.w400,
+                          color: Colors.black54,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ],
