@@ -1,0 +1,459 @@
+// File: services/group_service.dart
+
+import 'dart:async';
+import 'dart:convert';
+import 'dart:math';
+import 'package:firebase_database/firebase_database.dart';
+
+import '../models/group_models.dart';
+
+class GroupService {
+  final DatabaseReference _groupsRef = FirebaseDatabase.instance.ref('groups');
+
+  /// Generates a unique 6-character group code
+  String _generateGroupCode() {
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // No ambiguous characters
+    final random = Random();
+    return List.generate(6, (index) => chars[random.nextInt(chars.length)]).join();
+  }
+
+  /// Creates a new group and returns the group code
+  /// FIXED: Removed sanitizeKey() completely — never encode user IDs as keys!
+  Future<String> createGroup({
+    required String ownerId,
+    required String ownerName,
+    required String groupName,
+    GroupSettings? settings,
+  }) async {
+    try {
+      String groupCode;
+      final now = DateTime.now().millisecondsSinceEpoch;
+
+      while (true) {
+        groupCode = _generateGroupCode();
+        final snapshot = await _groupsRef.child(groupCode).get();
+        if (!snapshot.exists) {
+          await _groupsRef.child(groupCode.set({
+            'name': groupName,
+            'ownerId': ownerId, // Raw UID — safe and correct
+            'settings': (settings ?? GroupSettings()).toJson(),
+            'members': {
+              ownerId: {
+                'id': ownerId,
+                'name': ownerName,
+                'role': 'owner',
+                'joinedAt': now,
+                'isActive': true, // Owner starts active
+                'lastSeen': now,
+              }
+            },
+            'createdAt': now,
+            'lastActivity': now,
+          });
+              return groupCode;
+          }
+          }
+          } catch (e) {
+            throw Exception('Failed to create group: $e');
+          }
+        }
+
+  Future<bool> joinGroup({
+    required String groupCode,
+    required String memberId,
+    required String memberName,
+  }) async {
+    try {
+      final groupRef = _groupsRef.child(groupCode);
+      final snapshot = await groupRef.get();
+
+      if (!snapshot.exists) throw Exception('Group not found');
+
+      final data = snapshot.value as Map<dynamic, dynamic>;
+      final settings = GroupSettings.fromJson(data['settings'] ?? {});
+      final members = data['members'] as Map<dynamic, dynamic>? ?? {};
+
+      if (members.length >= settings.maxMembers) {
+        throw Exception('Group is full');
+      }
+      if (members.containsKey(memberId)) return true; // Already member
+
+      final now = DateTime.now().millisecondsSinceEpoch;
+      await groupRef.child('members/$memberId').set({
+        'id': memberId,
+        'name': memberName,
+        'role': 'member',
+        'joinedAt': now,
+        'isActive': true,
+        'lastSeen': now,
+      });
+      await groupRef.child('lastActivity').set(now);
+
+      return true;
+    } catch (e) {
+      throw Exception('Failed to join group: $e');
+    }
+  }
+
+  /// Joins an existing group
+  Future<bool> joinGroup({
+    required String groupCode,
+    required String memberId,
+    required String memberName,
+  }) async {
+    try {
+      final groupRef = _groupsRef.child(groupCode);
+      final snapshot = await groupRef.get();
+
+      if (!snapshot.exists) {
+        throw Exception('Group not found');
+      }
+
+      final groupData = snapshot.value as Map<dynamic, dynamic>;
+      final settings = GroupSettings.fromJson(groupData['settings'] ?? {});
+
+      // Parse members
+      final membersData = groupData['members'] as Map<dynamic, dynamic>? ?? {};
+      final currentMemberCount = membersData.length;
+
+      // Check if group is full
+      if (currentMemberCount >= settings.maxMembers) {
+        throw Exception('Group is full');
+      }
+
+      // Check if already a member
+      if (membersData.containsKey(memberId)) {
+        return true; // Already a member
+      }
+
+      // ✅ FIX: Use current timestamp
+      final now = DateTime.now().millisecondsSinceEpoch;
+
+      // Add new member
+      await groupRef.child('members/$memberId').set({
+        'id': memberId,
+        'name': memberName,
+        'role': 'member',
+        'joinedAt': now,
+        'isActive': false,
+        'lastSeen': now,
+      });
+
+      // Update last activity
+      await groupRef.child('lastActivity').set(now);
+
+      return true;
+    } catch (e) {
+      throw Exception('Failed to join group: $e');
+    }
+  }
+
+  /// Leaves a group
+  Future<void> leaveGroup(String groupCode, String memberId) async {
+    try {
+      final groupRef = _groupsRef.child(groupCode);
+      final snapshot = await groupRef.get();
+
+      if (!snapshot.exists) {
+        throw Exception('Group not found');
+      }
+
+      final groupData = snapshot.value as Map<dynamic, dynamic>;
+      final ownerId = groupData['ownerId'] as String;
+      final membersData = groupData['members'] as Map<dynamic, dynamic>? ?? {};
+
+      // Remove member
+      await groupRef.child('members/$memberId').remove();
+
+      // If owner is leaving
+      if (memberId == ownerId) {
+        final remainingMembers = List<String>.from(membersData.keys)
+          ..remove(memberId);
+
+        if (remainingMembers.isEmpty) {
+          // Delete group if no members left
+          await groupRef.remove();
+        } else {
+          // Transfer ownership to first remaining admin, or first member
+          String? newOwnerId;
+
+          for (final remainingMemberId in remainingMembers) {
+            final memberData = membersData[remainingMemberId] as Map<dynamic, dynamic>;
+            if (memberData['role'] == 'admin') {
+              newOwnerId = remainingMemberId;
+              break;
+            }
+          }
+
+          newOwnerId ??= remainingMembers.first;
+
+          // Update new owner
+          await groupRef.child('ownerId').set(newOwnerId);
+          await groupRef.child('members/$newOwnerId/role').set('owner');
+        }
+      }
+
+      // ✅ FIX: Use current timestamp
+      await groupRef.child('lastActivity').set(DateTime.now().millisecondsSinceEpoch);
+    } catch (e) {
+      throw Exception('Failed to leave group: $e');
+    }
+  }
+
+  /// Sets member active status
+  Future<void> setMemberActive(
+      String groupCode,
+      String memberId,
+      bool isActive,
+      ) async {
+    try {
+      final memberRef = _groupsRef.child('$groupCode/members/$memberId');
+
+      // ✅ FIX: Use current timestamp
+      final updates = {
+        'isActive': isActive,
+        'lastSeen': DateTime.now().millisecondsSinceEpoch,
+      };
+      await memberRef.update(updates);
+    } catch (e) {
+      print('Error setting member active: $e');
+    }
+  }
+
+  /// Updates member role (admin can only be set by owner)
+  Future<bool> updateMemberRole({
+    required String groupCode,
+    required String memberId,
+    required String newRole, // 'admin' or 'member'
+    required String requesterId,
+  }) async {
+    try {
+      final groupRef = _groupsRef.child(groupCode);
+      final snapshot = await groupRef.get();
+
+      if (!snapshot.exists) {
+        throw Exception('Group not found');
+      }
+
+      final groupData = snapshot.value as Map<dynamic, dynamic>;
+      final ownerId = groupData['ownerId'] as String;
+
+      // Only owner can change roles
+      if (requesterId != ownerId) {
+        throw Exception('Only owner can change member roles');
+      }
+
+      // Can't change owner's role
+      if (memberId == ownerId) {
+        throw Exception('Cannot change owner role');
+      }
+
+      await groupRef.child('members/$memberId/role').set(newRole);
+
+      // ✅ FIX: Use current timestamp
+      await groupRef.child('lastActivity').set(DateTime.now().millisecondsSinceEpoch);
+
+      return true;
+    } catch (e) {
+      print('Error updating member role: $e');
+      return false;
+    }
+  }
+
+  /// Removes a member from the group
+  Future<bool> removeMember({
+    required String groupCode,
+    required String memberId,
+    required String requesterId,
+  }) async {
+    try {
+      final groupRef = _groupsRef.child(groupCode);
+      final snapshot = await groupRef.get();
+
+      if (!snapshot.exists) {
+        throw Exception('Group not found');
+      }
+
+      final groupData = snapshot.value as Map<dynamic, dynamic>;
+      final ownerId = groupData['ownerId'] as String;
+      final membersData = groupData['members'] as Map<dynamic, dynamic>? ?? {};
+
+      final requesterData = membersData[requesterId] as Map<dynamic, dynamic>?;
+      final targetData = membersData[memberId] as Map<dynamic, dynamic>?;
+
+      if (requesterData == null || targetData == null) {
+        throw Exception('Member not found');
+      }
+
+      final requesterRole = requesterData['role'] as String;
+      final targetRole = targetData['role'] as String;
+
+      // Can't remove owner
+      if (memberId == ownerId) {
+        throw Exception('Cannot remove owner');
+      }
+
+      // Owner can remove anyone
+      // Admin can remove members but not other admins
+      if (requesterId != ownerId) {
+        if (requesterRole != 'admin') {
+          throw Exception('Only admins can remove members');
+        }
+        if (targetRole == 'admin') {
+          throw Exception('Admins cannot remove other admins');
+        }
+      }
+
+      await groupRef.child('members/$memberId').remove();
+
+      // ✅ FIX: Use current timestamp
+      await groupRef.child('lastActivity').set(DateTime.now().millisecondsSinceEpoch);
+
+      return true;
+    } catch (e) {
+      print('Error removing member: $e');
+      return false;
+    }
+  }
+
+  /// Listens to a specific group
+  /// UPDATED: Now returns null if group is deleted
+  Stream<Group?> listenToGroup(String groupCode) {
+    return _groupsRef.child(groupCode).onValue.map((event) {
+      if (!event.snapshot.exists) return null;
+      final data = event.snapshot.value as Map<dynamic, dynamic>;
+      return Group.fromJson(groupCode, data);
+    });
+  }
+
+  /// NEW: Get all public groups for discovery
+  Future<List<Group>> getPublicGroups() async {
+    try {
+      final snapshot = await _groupsRef.get();
+      if (!snapshot.exists) return [];
+
+      final allGroups = snapshot.value as Map<dynamic, dynamic>;
+      final publicGroups = <Group>[];
+
+      allGroups.forEach((code, data) {
+        if (data is Map) {
+          final settings = GroupSettings.fromJson(data['settings'] ?? {});
+          if (!settings.isPrivate) {
+            publicGroups.add(Group.fromJson(code.toString(), data));
+          }
+        }
+      });
+
+      publicGroups.sort((a, b) {
+        final aTime = a.lastActivity ?? a.createdAt;
+        final bTime = b.lastActivity ?? b.createdAt;
+        return bTime.compareTo(aTime);
+      });
+
+      return publicGroups;
+    } catch (e) {
+      throw Exception('Failed to load public groups: $e');
+    }
+  }
+
+  /// Gets all groups a user is a member of
+  Future<List<Group>> getUserGroups(String userId) async {
+    try {
+      final snapshot = await _groupsRef.get();
+
+      if (!snapshot.exists) {
+        return [];
+      }
+
+      final allGroups = snapshot.value as Map<dynamic, dynamic>;
+      final userGroups = <Group>[];
+
+      allGroups.forEach((groupCode, groupData) {
+        if (groupData is Map) {
+          final members = groupData['members'] as Map<dynamic, dynamic>? ?? {};
+
+          if (members.containsKey(userId)) {
+            userGroups.add(Group.fromJson(groupCode.toString(), groupData));
+          }
+        }
+      });
+
+      // Sort by last activity (most recent first)
+      userGroups.sort((a, b) {
+        final aActivity = a.lastActivity ?? a.createdAt;
+        final bActivity = b.lastActivity ?? b.createdAt;
+        return bActivity.compareTo(aActivity);
+      });
+
+      return userGroups;
+    } catch (e) {
+      throw Exception('Failed to get user groups: $e');
+    }
+  }
+
+  /// Updates group settings (owner only)
+  Future<bool> updateGroupSettings({
+    required String groupCode,
+    required String requesterId,
+    required GroupSettings newSettings,
+  }) async {
+    try {
+      final groupRef = _groupsRef.child(groupCode);
+      final snapshot = await groupRef.get();
+
+      if (!snapshot.exists) {
+        throw Exception('Group not found');
+      }
+
+      final groupData = snapshot.value as Map<dynamic, dynamic>;
+      final ownerId = groupData['ownerId'] as String;
+
+      if (requesterId != ownerId) {
+        throw Exception('Only owner can update group settings');
+      }
+
+      await groupRef.child('settings').set(newSettings.toJson());
+
+      // ✅ FIX: Use current timestamp
+      await groupRef.child('lastActivity').set(DateTime.now().millisecondsSinceEpoch);
+
+      return true;
+    } catch (e) {
+      print('Error updating group settings: $e');
+      return false;
+    }
+  }
+
+  /// Updates group name (owner only)
+  Future<bool> updateGroupName({
+    required String groupCode,
+    required String requesterId,
+    required String newName,
+  }) async {
+    try {
+      final groupRef = _groupsRef.child(groupCode);
+      final snapshot = await groupRef.get();
+
+      if (!snapshot.exists) {
+        throw Exception('Group not found');
+      }
+
+      final groupData = snapshot.value as Map<dynamic, dynamic>;
+      final ownerId = groupData['ownerId'] as String;
+
+      if (requesterId != ownerId) {
+        throw Exception('Only owner can update group name');
+      }
+
+      await groupRef.child('name').set(newName);
+
+      // ✅ FIX: Use current timestamp
+      await groupRef.child('lastActivity').set(DateTime.now().millisecondsSinceEpoch);
+
+      return true;
+    } catch (e) {
+      print('Error updating group name: $e');
+      return false;
+    }
+  }
+}

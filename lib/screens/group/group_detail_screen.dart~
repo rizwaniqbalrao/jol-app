@@ -49,7 +49,7 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> with WidgetsBindi
     WidgetsBinding.instance.removeObserver(this);
     _setPresence(false);
     _presenceTimer?.cancel();
-    _groupSubscription?.cancel(); // Works fine with Group?
+    _groupSubscription?.cancel();
     super.dispose();
   }
 

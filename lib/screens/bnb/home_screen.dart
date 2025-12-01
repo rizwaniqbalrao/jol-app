@@ -2,12 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:jol_app/screens/dashboard/dashboard_screen.dart';
 import 'package:jol_app/screens/dashboard/notification_screen.dart';
+import 'package:jol_app/screens/group/group_list_screen.dart';
 import 'package:jol_app/screens/score%20board/score_board_screen.dart';
 import 'package:jol_app/screens/settings/account_screen.dart';
 import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
 
 import '../Affiliates/affiliates_screen.dart';
-import '../group/group_screen.dart';
 import '../play/paly_screen.dart';
 import '../settings/services/user_profile_services.dart';
 import '../auth/models/user.dart';
@@ -50,36 +50,25 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   String? _userId;
   String? _userName;
 
-  // Update screens to use the wrapper for GroupsScreen
-  List<Widget> get _screens {
-    return [
-      DashboardScreen(),
-      AffiliatesScreen(),
-      PlayScreen(),
-      // Use the wrapper for GroupsScreen if we have user data
-      _buildGroupsScreen(),
-      ScoreBoardScreen(),
-    ];
-  }
-
-  Widget _buildGroupsScreen() {
-    // If we have user data, use the wrapper. Otherwise, show loading/error.
-    if (_userId != null && _userName != null) {
-      return GroupsScreenWrapper(
-        userId: _userId!,
-        userName: _userName!,
-      );
-    } else {
-      return const Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            CircularProgressIndicator(),
-            SizedBox(height: 16),
-            Text('Loading user data...'),
-          ],
-        ),
-      );
+  // ✅ FIXED: Create screens dynamically to ensure userId and userName are available
+  Widget _getScreen(int index) {
+    switch (index) {
+      case 0:
+        return DashboardScreen();
+      case 1:
+        return AffiliatesScreen();
+      case 2:
+        return PlayScreen();
+      case 3:
+      // ✅ Pass userId and userName, with fallback to empty strings if not loaded yet
+        return GroupsListScreen(
+          userId: _userId ?? '',
+          userName: _userName ?? '',
+        );
+      case 4:
+        return ScoreBoardScreen();
+      default:
+        return DashboardScreen();
     }
   }
 
@@ -375,8 +364,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
               ),
 
               // 📱 Screen Content
+              // ✅ FIXED: Use _getScreen method instead of _screens list
               Expanded(
-                child: _screens[_selectedIndex],
+                child: _getScreen(_selectedIndex),
               ),
             ],
           ),

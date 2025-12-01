@@ -1,0 +1,499 @@
+// File: screens/groups/groups_list_screen.dart
+
+import 'package:flutter/material.dart';
+import 'package:jol_app/screens/group/services/group_service.dart';
+import 'create_group_screen.dart';
+import 'group_detail_screen.dart';
+import 'join_group_screen.dart';
+import 'models/group_models.dart';
+
+class GroupsListScreen extends StatefulWidget {
+  final String userId;
+  final String userName;
+
+  const GroupsListScreen({
+    super.key,
+    required this.userId,
+    required this.userName,
+  });
+
+  @override
+  State<GroupsListScreen> createState() => _GroupsListScreenState();
+}
+
+class _GroupsListScreenState extends State<GroupsListScreen>
+    with SingleTickerProviderStateMixin {
+  static const Color textBlue = Color(0xFF0734A5);
+  static const Color textGreen = Color(0xFF43AC45);
+  static const Color textPink = Color(0xFFF82A87);
+  static const Color textOrange = Color(0xFFFF9800);
+
+  late TabController _tabController;
+  final GroupService _groupService = GroupService();
+
+  List<Group> _myGroups = [];
+  List<Group> _publicGroups = [];
+  bool _loadingMy = true;
+  bool _loadingPublic = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _tabController = TabController(length: 2, vsync: this);
+    _loadData();
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _loadData() async {
+    setState(() {
+      _loadingMy = true;
+      _loadingPublic = true;
+    });
+
+    try {
+      final my = await _groupService.getUserGroups(widget.userId);
+      final public = await _groupService.getPublicGroups();
+
+      if (mounted) {
+        setState(() {
+          _myGroups = my;
+          _publicGroups = public;
+          _loadingMy = false;
+          _loadingPublic = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _loadingMy = false;
+          _loadingPublic = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Failed to load groups')),
+        );
+      }
+    }
+  }
+
+  void _navigateToGroupDetail(String groupCode) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => GroupDetailScreen(
+          groupCode: groupCode,
+          userId: widget.userId,
+          userName: widget.userName,
+        ),
+      ),
+    ).then((_) => _loadData());
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              Color(0xFFFFC0CB),
+              Color(0xFFADD8E6),
+              Color(0xFFE6E6FA),
+            ],
+          ),
+        ),
+        child: Column(
+          children: [
+            // TabBar + Refresh Button
+            Container(
+              color: Colors.transparent,
+              padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: TabBar(
+                      controller: _tabController,
+                      labelColor: textPink,
+                      unselectedLabelColor: Colors.black54,
+                      labelStyle: const TextStyle(
+                        fontFamily: "Rubik",
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                      indicatorColor: textPink,
+                      tabs: const [
+                        Tab(text: "MY GROUPS"),
+                        Tab(text: "DISCOVER"),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  InkWell(
+                    onTap: _loadData,
+                    borderRadius: BorderRadius.circular(30),
+                    child: Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: textPink,
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: textPink.withOpacity(0.4),
+                            blurRadius: 10,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      child: const Icon(Icons.refresh, color: Colors.white, size: 24),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            // Action Buttons (Create & Join)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => CreateGroupScreen(
+                              userId: widget.userId,
+                              userName: widget.userName,
+                            ),
+                          ),
+                        ).then((_) => _loadData());
+                      },
+                      icon: const Icon(Icons.add_circle_outline, size: 20),
+                      label: const Text(
+                        "Create Group",
+                        style: TextStyle(fontFamily: "Rubik", fontWeight: FontWeight.bold),
+                      ),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: textGreen,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                        elevation: 6,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => JoinGroupScreen(
+                              userId: widget.userId,
+                              userName: widget.userName,
+                            ),
+                          ),
+                        ).then((_) => _loadData());
+                      },
+                      icon: const Icon(Icons.group_add, size: 20),
+                      label: const Text(
+                        "Join Group",
+                        style: TextStyle(fontFamily: "Rubik", fontWeight: FontWeight.bold),
+                      ),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: textBlue,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                        elevation: 6,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            const SizedBox(height: 20),
+
+            // Tab Content
+            Expanded(
+              child: TabBarView(
+                controller: _tabController,
+                children: [
+                  _buildMyGroupsTab(),
+                  _buildDiscoverTab(),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMyGroupsTab() {
+    if (_loadingMy) {
+      return const Center(child: CircularProgressIndicator(color: textPink));
+    }
+
+    if (_myGroups.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.group_outlined, size: 80, color: Colors.white.withOpacity(0.6)),
+            const SizedBox(height: 16),
+            const Text("No groups yet", style: TextStyle(fontFamily: "Rubik", fontSize: 20, fontWeight: FontWeight.w600)),
+            const SizedBox(height: 8),
+            const Text("Create or join a group to get started", style: TextStyle(fontFamily: "Rubik", fontSize: 14, color: Colors.black54)),
+          ],
+        ),
+      );
+    }
+
+    return RefreshIndicator(
+      onRefresh: _loadData,
+      color: textPink,
+      child: ListView.builder(
+        padding: const EdgeInsets.fromLTRB(20, 0, 20, 40),
+        itemCount: _myGroups.length,
+        itemBuilder: (_, i) => _buildMyGroupCard(_myGroups[i]),
+      ),
+    );
+  }
+
+  Widget _buildDiscoverTab() {
+    if (_loadingPublic) {
+      return const Center(child: CircularProgressIndicator(color: textPink));
+    }
+
+    if (_publicGroups.isEmpty) {
+      return const Center(
+        child: Text("No public groups available", style: TextStyle(fontFamily: "Rubik", fontSize: 16, color: Colors.black54)),
+      );
+    }
+
+    return ListView.builder(
+      padding: const EdgeInsets.fromLTRB(20, 0, 20, 40),
+      itemCount: _publicGroups.length,
+      itemBuilder: (_, i) => _buildDiscoverCard(_publicGroups[i]),
+    );
+  }
+
+  // Your original beautiful card for MY GROUPS
+  Widget _buildMyGroupCard(Group group) {
+    final isOwner = group.ownerId == widget.userId;
+    final isAdmin = group.members[widget.userId]?.isAdmin ?? false;
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 8, offset: const Offset(0, 2))],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(16),
+          onTap: () => _navigateToGroupDetail(group.id),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      width: 50, height: 50,
+                      decoration: BoxDecoration(color: textBlue.withOpacity(0.2), shape: BoxShape.circle),
+                      child: const Icon(Icons.group, color: textBlue, size: 28),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Expanded(
+                                child: Text(group.name,
+                                    style: const TextStyle(fontFamily: "Rubik", fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black87),
+                                    maxLines: 1, overflow: TextOverflow.ellipsis),
+                              ),
+                              if (isOwner)
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                  decoration: BoxDecoration(color: textOrange.withOpacity(0.2), borderRadius: BorderRadius.circular(6)),
+                                  child: const Text("OWNER", style: TextStyle(fontFamily: "Digitalt", fontSize: 10, fontWeight: FontWeight.bold, color: textOrange)),
+                                )
+                              else if (isAdmin)
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                  decoration: BoxDecoration(color: textGreen.withOpacity(0.2), borderRadius: BorderRadius.circular(6)),
+                                  child: const Text("ADMIN", style: TextStyle(fontFamily: "Digitalt", fontSize: 10, fontWeight: FontWeight.bold, color: textGreen)),
+                                ),
+                            ],
+                          ),
+                          const SizedBox(height: 4),
+                          Text("Code: ${group.id}", style: TextStyle(fontFamily: "Rubik", fontSize: 12, color: Colors.black.withOpacity(0.6))),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    _buildStatChip(Icons.people, "${group.memberCount} members", textBlue),
+                    const SizedBox(width: 8),
+                    _buildStatChip(Icons.circle, "${group.activeMemberCount} active", textGreen),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  // Clean card for DISCOVER tab
+  // Replace the entire _buildDiscoverCard method with this one
+  Widget _buildDiscoverCard(Group group) {
+    final bool isAlreadyMember = _myGroups.any((g) => g.id == group.id);
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(color: Colors.black.withOpacity(0.08), blurRadius: 8, offset: const Offset(0, 2))
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(16),
+          onTap: () => _navigateToGroupDetail(group.id),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              children: [
+                Container(
+                  width: 50,
+                  height: 50,
+                  decoration: BoxDecoration(
+                    color: textBlue.withOpacity(0.2),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(Icons.public, color: textBlue, size: 26),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        group.name,
+                        style: const TextStyle(
+                          fontFamily: "Rubik",
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      Row(
+                        children: [
+                          _buildStatChip(Icons.people, "${group.memberCount}", textBlue),
+                          const SizedBox(width: 8),
+                          _buildStatChip(Icons.circle, "${group.activeMemberCount} active", textGreen),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                // Only show JOIN button if user is NOT already in the group
+                if (!isAlreadyMember)
+                  ElevatedButton(
+                    onPressed: () async {
+                      try {
+                        await _groupService.joinGroup(
+                          groupCode: group.id,
+                          memberId: widget.userId,
+                          memberName: widget.userName,
+                        );
+                        _loadData(); // Refresh both tabs
+                        _navigateToGroupDetail(group.id);
+                      } catch (e) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text("Failed to join: $e")),
+                        );
+                      }
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: textBlue,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
+                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                    ),
+                    child: const Text(
+                      "JOIN",
+                      style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                    ),
+                  )
+                else
+                // Optional: Show a nice checkmark if already joined
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: textGreen.withOpacity(0.15),
+                      borderRadius: BorderRadius.circular(30),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: const [
+                        Icon(Icons.check_circle, color: textGreen, size: 20),
+                        SizedBox(width: 6),
+                        Text(
+                          "JOINED",
+                          style: TextStyle(
+                            color: textGreen,
+                            fontWeight: FontWeight.bold,
+                            fontFamily: "Rubik",
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildStatChip(IconData icon, String label, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(color: color.withOpacity(0.1), borderRadius: BorderRadius.circular(8)),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 14, color: color),
+          const SizedBox(width: 4),
+          Text(label, style: TextStyle(fontFamily: "Rubik", fontSize: 11, fontWeight: FontWeight.w600, color: color)),
+        ],
+      ),
+    );
+  }
+}
