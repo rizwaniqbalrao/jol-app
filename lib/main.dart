@@ -6,12 +6,17 @@ import 'package:jol_app/screens/play/controller/game_controller.dart';
 import 'package:jol_app/screens/splash_screen.dart';
 import 'package:provider/provider.dart';
 
+import 'firebase_options.dart';
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized(); // 👈 Required before SystemChrome
 
   MobileAds.instance.initialize();
 
-  await Firebase.initializeApp();
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
+
   // 🔒 Lock app to portrait only
   await SystemChrome.setPreferredOrientations([
     DeviceOrientation.portraitUp,
