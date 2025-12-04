@@ -1,9 +1,9 @@
 // File: services/wallet_service.dart
 
 import 'dart:convert';
-import 'package:http/http.dart' as http;
 import 'package:jol_app/screens/auth/models/user_wallet.dart';
 import '../../auth/services/secure_storage_service.dart';
+import 'api_client.dart'; // Import the new ApiClient
 
 // Result wrapper classes
 class WalletResult {
@@ -43,8 +43,6 @@ class RedeemResult {
 }
 
 class WalletService {
-  // ✅ FIXED: Use HTTPS to match your other endpoints
-  final String baseUrl = 'https://nonabstemiously-stocky-cynthia.ngrok-free.dev/api/v1';
   final SecureStorageService _storage = SecureStorageService();
 
   // Coin value constant (points needed per coin)
@@ -67,32 +65,13 @@ class WalletService {
         );
       }
 
-      // ✅ FIXED: Removed CSRF token for GET requests (not needed)
-      final headers = {
-        'accept': 'application/json',
-        'Authorization': 'Token $token',
-      };
-
-      print('GET Wallet - URL: $baseUrl/user/wallet/');
-      print('GET Wallet - Token: ${token.substring(0, 10)}...');
-
-      final response = await http.get(
-        Uri.parse('$baseUrl/user/wallet/'),
-        headers: headers,
-      );
-
-      print('GET Wallet - Status: ${response.statusCode}');
-      print('GET Wallet - Body: ${response.body}');
+      // ✅ Use ApiClient - it handles 401 automatically
+      final response = await ApiClient.get('/v1/user/wallet/');
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         final wallet = Wallet.fromJson(data);
         return WalletResult(success: true, data: wallet);
-      } else if (response.statusCode == 401) {
-        return WalletResult(
-          success: false,
-          error: 'Session expired. Please log in again.',
-        );
       } else {
         String errorMsg = 'Unable to load wallet. Please try again.';
         try {
@@ -119,11 +98,6 @@ class WalletService {
   // ═══════════════════════════════════════════════════════════════
 
   /// Manually add or subtract coins (Admin/Test only)
-  /// Not part of normal redeem flow
-  ///
-  /// Parameters:
-  /// - coins: Amount to adjust (positive integer)
-  /// - type: "increment" to add, "decrement" to subtract
   Future<AdjustCoinsResult> adjustCoins({
     required int coins,
     required String type,
@@ -153,24 +127,15 @@ class WalletService {
         );
       }
 
-      final csrfToken = await _getCsrfToken();
-
-      final headers = {
-        'accept': 'application/json',
-        'Content-Type': 'application/json',
-        'Authorization': 'Token $token',
-      };
-      if (csrfToken != null) headers['X-CSRFTOKEN'] = csrfToken;
-
       final request = AdjustCoinsRequest(coins: coins, type: type);
       final body = request.toJson();
 
       print('POST Adjust Coins - Body: ${jsonEncode(body)}');
 
-      final response = await http.post(
-        Uri.parse('$baseUrl/user/wallet/adjust/'),
-        headers: headers,
-        body: jsonEncode(body),
+      // ✅ Use ApiClient - it handles 401 automatically
+      final response = await ApiClient.post(
+        '/v1/user/wallet/adjust/',
+        body: body,
       );
 
       print('POST Adjust Coins - Status: ${response.statusCode}');
@@ -180,11 +145,6 @@ class WalletService {
         final data = jsonDecode(response.body);
         final adjustResponse = AdjustCoinsResponse.fromJson(data);
         return AdjustCoinsResult(success: true, data: adjustResponse);
-      } else if (response.statusCode == 401) {
-        return AdjustCoinsResult(
-          success: false,
-          error: 'Session expired. Please log in again.',
-        );
       } else if (response.statusCode == 400) {
         String errorMsg = 'Unable to adjust coins.';
         try {
@@ -226,13 +186,6 @@ class WalletService {
   // ═══════════════════════════════════════════════════════════════
 
   /// Convert earned game points into coins
-  /// Points needed = coins * COIN_VALUE (currently 1000)
-  /// Requires enough available_game_points
-  ///
-  /// Parameter:
-  /// - coins: Number of coins to create
-  ///
-  /// Returns: coins_awarded, available_game_points, available_coins
   Future<RedeemResult> redeemCoins({required int coins}) async {
     try {
       final token = await _storage.getToken();
@@ -252,42 +205,30 @@ class WalletService {
         );
       }
 
-      final csrfToken = await _getCsrfToken();
-
-      final headers = {
-        'accept': 'application/json',
-        'Content-Type': 'application/json',
-        'Authorization': 'Token $token',
-      };
-      if (csrfToken != null) headers['X-CSRFTOKEN'] = csrfToken;
-
       final request = RedeemRequest(coins: coins);
       final body = request.toJson();
 
       print('POST Redeem - Body: ${jsonEncode(body)}');
       print('POST Redeem - Points needed: ${coins * COIN_VALUE}');
-      print('POST Redeem - Token: ${token.substring(0, 10)}...');
 
-      // ✅ FIXED: Handle 307 redirect by following it manually
-      var response = await http.post(
-        Uri.parse('$baseUrl/user/wallet/redeem/'),
-        headers: headers,
-        body: jsonEncode(body),
+      // ✅ Use ApiClient - it handles 401 automatically
+      var response = await ApiClient.post(
+        '/v1/user/wallet/redeem/',
+        body: body,
       );
 
       print('POST Redeem - Status: ${response.statusCode}');
       print('POST Redeem - Response: ${response.body}');
 
-      // ✅ FIXED: If redirected, follow the redirect with POST
+      // Handle 307 redirect if needed
       if (response.statusCode == 307 || response.statusCode == 308) {
         final redirectUrl = response.headers['location'];
         print('POST Redeem - Following redirect to: $redirectUrl');
 
         if (redirectUrl != null) {
-          response = await http.post(
-            Uri.parse(redirectUrl),
-            headers: headers,
-            body: jsonEncode(body),
+          response = await ApiClient.post(
+            redirectUrl.replaceFirst(ApiClient.baseUrl, ''),
+            body: body,
           );
           print('POST Redeem (after redirect) - Status: ${response.statusCode}');
           print('POST Redeem (after redirect) - Response: ${response.body}');
@@ -298,11 +239,6 @@ class WalletService {
         final data = jsonDecode(response.body);
         final redeemResponse = RedeemResponse.fromJson(data);
         return RedeemResult(success: true, data: redeemResponse);
-      } else if (response.statusCode == 401) {
-        return RedeemResult(
-          success: false,
-          error: 'Session expired. Please log in again.',
-        );
       } else if (response.statusCode == 400) {
         String errorMsg = 'Unable to redeem coins.';
         try {
@@ -364,23 +300,5 @@ class WalletService {
       }
     });
     return errors.isNotEmpty ? errors.join('\n') : 'An error occurred.';
-  }
-
-  /// Get CSRF token
-  /// ✅ FIXED: Also use HTTPS for CSRF endpoint
-  Future<String?> _getCsrfToken() async {
-    try {
-      final response = await http.get(
-        Uri.parse('https://nonabstemiously-stocky-cynthia.ngrok-free.dev/api/auth/csrf/'),
-        headers: {'accept': 'application/json'},
-      );
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        return data['csrfToken'] ?? data['csrf_token'];
-      }
-    } catch (e) {
-      print('Exception in _getCsrfToken: $e');
-    }
-    return null;
   }
 }

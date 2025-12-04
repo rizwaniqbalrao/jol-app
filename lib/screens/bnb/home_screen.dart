@@ -8,7 +8,7 @@ import 'package:jol_app/screens/settings/account_screen.dart';
 import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
 
 import '../Affiliates/affiliates_screen.dart';
-import '../play/paly_screen.dart';
+import '../play/play_screen.dart';
 import '../settings/services/user_profile_services.dart';
 import '../auth/models/user.dart';
 import '../auth/models/user_wallet.dart';

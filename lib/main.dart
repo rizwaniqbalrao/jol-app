@@ -8,6 +8,9 @@ import 'package:provider/provider.dart';
 
 import 'firebase_options.dart';
 
+// Add this at the top level (outside any class)
+final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized(); // 👈 Required before SystemChrome
 

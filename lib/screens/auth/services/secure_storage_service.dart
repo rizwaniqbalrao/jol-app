@@ -5,7 +5,8 @@ class SecureStorageService {
 
   /// Saves the auth token securely.
   Future<void> saveToken(String token) async {
-    print('********************************Saving token: $token'); // Debug print
+    print(
+        '********************************Saving token: $token'); // Debug print
     await _storage.write(key: 'auth_token', value: token);
   }
 

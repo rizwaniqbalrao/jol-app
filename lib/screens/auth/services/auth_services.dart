@@ -143,73 +143,110 @@ class AuthService {
     }
   }
 
-  // ------------------ NORMAL LOGIN ------------------ //
   Future<AuthResult> login(String username, String email, String password) async {
     try {
+      print('🔹 Starting login for: username="$username", email="$email"');
+
+      // Fetch CSRF token (may not be needed for token login)
       final csrfToken = await _getCsrfToken();
+      print('🔹 CSRF token fetched: ${csrfToken ?? "NULL"}');
+
+      // Prepare login request
       final request = LoginRequest(username: username, email: email, password: password);
       final requestBody = jsonEncode(request.toJson());
+      print('🔹 Request body JSON: $requestBody');
 
+      // Headers
       final headers = {
         'accept': 'application/json',
         'Content-Type': 'application/json',
       };
       if (csrfToken != null) headers['X-CSRFTOKEN'] = csrfToken;
 
+      print('🔹 Sending POST request to $baseUrl/auth/login/ with headers: $headers');
+
+      // Send request
       final response = await http.post(
         Uri.parse('$baseUrl/auth/login/'),
         headers: headers,
         body: requestBody,
       );
 
-      if (response.statusCode == 200) {
+      print('🔹 Response status code: ${response.statusCode}');
+      print('🔹 Response body: ${response.body}');
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        print('✅ Login successful, parsing response...');
         final data = jsonDecode(response.body);
+
         final token = data['key'];
-        if (token != null) {
-          await _storage.saveToken(token);
-          await _storage.saveUserId(data['user']['id'].toString());
+        print('🔹 Token from server: $token');
 
-          // 🔥 Process referral after successful login
-          await _processReferralAfterAuth(token);
-
-          final user = data['user'] != null
-              ? User.fromJson(data['user'])
-              : User(
-            id: 0,
-            email: email,
-            username: username,
-          );
-          return AuthResult(success: true, user: user);
+        if (token == null) {
+          print('❌ No token in response, login failed');
+          return AuthResult(success: false, error: 'No token received from server.');
         }
+
+        // Save token
+        await _storage.saveToken(token);
+        print('********************************Saving token: $token');
+
+        // Save user ID only if available
+        if (data['user'] != null && data['user']['id'] != null) {
+          await _storage.saveUserId(data['user']['id'].toString());
+        }
+
+        // Process referral
+        await _processReferralAfterAuth(token);
+
+        // Create user object safely
+        final user = data['user'] != null
+            ? User.fromJson(data['user'])
+            : User(
+          id: 0,
+          email: email,
+          username: username,
+        );
+
+        print('✅ User object created: ${user.username}');
+        return AuthResult(success: true, user: user);
       } else {
-        // Parse server errors for user-friendly display
-        String errorMsg = 'Incorrect username, email, or password. Please double-check and try again.';
+        // Handle server errors
+        print('⚠️ Login failed with status ${response.statusCode}');
+        String errorMsg = 'Incorrect username, email, or password.';
+
         try {
           final errorData = jsonDecode(response.body);
           if (errorData is Map<String, dynamic>) {
             final errors = <String>[];
             errorData.forEach((key, value) {
               if (value is List) {
-                errors.addAll(value.map((e) => value.toString()));
+                errors.addAll(value.map((e) => '$key: $e'));
               } else if (value is String) {
-                errors.add(value);
+                errors.add('$key: $value');
               }
             });
-            if (errors.isNotEmpty) {
-              errorMsg = errors.join('\n');
-            }
+            if (errors.isNotEmpty) errorMsg = errors.join('\n');
           }
         } catch (_) {
-          // If JSON parse fails, use raw body or generic
-          errorMsg = response.body.isNotEmpty ? response.body : errorMsg;
+          // Use raw body if JSON parse fails
+          if (response.body.isNotEmpty) errorMsg = response.body;
         }
+
+        print('⚠️ Parsed error: $errorMsg');
         return AuthResult(success: false, error: errorMsg);
       }
-      return AuthResult(success: false, error: 'Incorrect username, email, or password. Please double-check and try again.');
-    } catch (e) {
-      return AuthResult(success: false, error: 'Unable to connect. Please check your internet and try again.');
+    } catch (e, st) {
+      print('❌ Exception during login: $e');
+      print('❌ Stacktrace: $st');
+      return AuthResult(
+        success: false,
+        error: 'Unable to connect. Check your internet or server status.\nError: $e',
+      );
     }
   }
+
+
 
   // ------------------ REGISTER ------------------ //
   Future<AuthResult> register(

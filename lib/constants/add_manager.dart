@@ -27,6 +27,10 @@ class AdManager {
     );
   }
 
+  bool isInterstitialReady() {
+    return _interstitialAd != null;
+  }
+
   /// Show Interstitial Ad if loaded, returns true if shown and dismissed successfully
   Future<bool> showInterstitial() async {
     if (_interstitialAd == null) {

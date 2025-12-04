@@ -1,7 +1,7 @@
-// File: services/game_service.dart
+/// File: services/game_service.dart
 
 import 'dart:convert';
-import 'package:http/http.dart' as http;
+import '../../auth/services/api_client.dart';
 import '../../auth/services/secure_storage_service.dart';
 import '../models/game_models.dart';
 
@@ -30,7 +30,6 @@ class GameHistoryResult {
 }
 
 class GameService {
-  final String baseUrl = 'https://nonabstemiously-stocky-cynthia.ngrok-free.dev/api/v1';
   final SecureStorageService _storage = SecureStorageService();
 
   // ═══════════════════════════════════════════════════════════════
@@ -56,15 +55,6 @@ class GameService {
         );
       }
 
-      final csrfToken = await _getCsrfToken();
-
-      final headers = {
-        'accept': 'application/json',
-        'Content-Type': 'application/json',
-        'Authorization': 'Token $token',
-      };
-      if (csrfToken != null) headers['X-CSRFTOKEN'] = csrfToken;
-
       // Validate game data before sending
       final validationError = _validateGameData(game);
       if (validationError != null) {
@@ -75,10 +65,10 @@ class GameService {
 
       print('POST Add Game - Body: ${jsonEncode(body)}');
 
-      final response = await http.post(
-        Uri.parse('$baseUrl/game/add-game/'),
-        headers: headers,
-        body: jsonEncode(body),
+      // ✅ Use ApiClient - it handles 401 automatically
+      final response = await ApiClient.post(
+        '/v1/game/add-game/',
+        body: body,
       );
 
       print('POST Add Game - Status: ${response.statusCode}');
@@ -88,11 +78,6 @@ class GameService {
         final data = jsonDecode(response.body);
         final saveResponse = SaveGameResponse.fromJson(data);
         return SaveGameResult(success: true, data: saveResponse);
-      } else if (response.statusCode == 401) {
-        return SaveGameResult(
-          success: false,
-          error: 'Session expired. Please log in again.',
-        );
       } else {
         String errorMsg = 'Unable to save game. Please try again.';
         try {
@@ -150,27 +135,12 @@ class GameService {
       // Ensure page_size doesn't exceed 100
       if (pageSize > 100) pageSize = 100;
 
-      final queryParams = {
-        'page': page.toString(),
-        'page_size': pageSize.toString(),
-      };
+      final endpoint = '/v1/game/list/?page=$page&page_size=$pageSize';
 
-      final uri = Uri.parse('$baseUrl/game/list/').replace(
-        queryParameters: queryParams,
-      );
+      print('GET Game List - Endpoint: $endpoint');
 
-      print('GET Game List - URL: $uri');
-
-      final response = await http.get(
-        uri,
-        headers: {
-          'accept': 'application/json',
-          'Authorization': 'Token $token',
-        },
-      );
-
-      print('GET Game List - Status: ${response.statusCode}');
-      print('GET Game List - Body: ${response.body}');
+      // ✅ Use ApiClient - it handles 401 automatically
+      final response = await ApiClient.get(endpoint);
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
@@ -178,11 +148,6 @@ class GameService {
         return GameHistoryResult(
           success: true,
           data: historyResponse,
-        );
-      } else if (response.statusCode == 401) {
-        return GameHistoryResult(
-          success: false,
-          error: 'Session expired. Please log in again.',
         );
       } else {
         String errorMsg = 'Unable to load game history. Please try again.';
@@ -258,22 +223,5 @@ class GameService {
     }
 
     return null; // No validation errors
-  }
-
-  /// Get CSRF token
-  Future<String?> _getCsrfToken() async {
-    try {
-      final response = await http.get(
-        Uri.parse('https://nonabstemiously-stocky-cynthia.ngrok-free.dev/api/auth/csrf/'),
-        headers: {'accept': 'application/json'},
-      );
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        return data['csrfToken'] ?? data['csrf_token'];
-      }
-    } catch (e) {
-      print('Exception in _getCsrfToken: $e');
-    }
-    return null;
   }
 }

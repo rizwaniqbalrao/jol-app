@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:http/http.dart' as http;
 import '../../auth/models/user.dart';
+import '../../auth/services/api_client.dart';
 import '../../auth/services/secure_storage_service.dart';
 
 class ProfileResult {
@@ -21,7 +22,6 @@ class UserResult {
 }
 
 class UserProfileService {
-  final String baseUrl = 'https://nonabstemiously-stocky-cynthia.ngrok-free.dev/api/v1';
   final SecureStorageService _storage = SecureStorageService();
 
   // ═══════════════════════════════════════════════════════════════
@@ -40,26 +40,13 @@ class UserProfileService {
         );
       }
 
-      final response = await http.get(
-        Uri.parse('$baseUrl/user/detail/'),
-        headers: {
-          'accept': 'application/json',
-          'Authorization': 'Token $token',
-        },
-      );
-
-      print('GET User Detail - Status: ${response.statusCode}');
-      print('GET User Detail - Body: ${response.body}');
+      // ✅ Use ApiClient - it handles 401 automatically
+      final response = await ApiClient.get('/v1/user/detail/');
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         final user = User.fromJson(data);
         return UserResult(success: true, user: user);
-      } else if (response.statusCode == 401) {
-        return UserResult(
-          success: false,
-          error: 'Session expired. Please log in again.',
-        );
       } else {
         return UserResult(
           success: false,
@@ -91,27 +78,18 @@ class UserProfileService {
         );
       }
 
-      final csrfToken = await _getCsrfToken();
-
       final body = {
         'username': username,
         'first_name': firstName,
         'last_name': lastName,
       };
 
-      final headers = {
-        'accept': 'application/json',
-        'Content-Type': 'application/json',
-        'Authorization': 'Token $token',
-      };
-      if (csrfToken != null) headers['X-CSRFTOKEN'] = csrfToken;
-
       print('PUT User Detail - Body: ${jsonEncode(body)}');
 
-      final response = await http.put(
-        Uri.parse('$baseUrl/user/detail/'),
-        headers: headers,
-        body: jsonEncode(body),
+      // ✅ Use ApiClient - it handles 401 automatically
+      final response = await ApiClient.put(
+        '/v1/user/detail/',
+        body: body,
       );
 
       print('PUT User Detail - Status: ${response.statusCode}');
@@ -121,11 +99,6 @@ class UserProfileService {
         final data = jsonDecode(response.body);
         final user = User.fromJson(data);
         return UserResult(success: true, user: user);
-      } else if (response.statusCode == 401) {
-        return UserResult(
-          success: false,
-          error: 'Session expired. Please log in again.',
-        );
       } else {
         String errorMsg = 'Unable to update user details. Please try again.';
         try {
@@ -173,41 +146,43 @@ class UserProfileService {
         );
       }
 
-      final csrfToken = await _getCsrfToken();
-
       // Only include non-null fields
       final body = <String, dynamic>{};
       if (username != null) body['username'] = username;
       if (firstName != null) body['first_name'] = firstName;
       if (lastName != null) body['last_name'] = lastName;
 
-      final headers = {
-        'accept': 'application/json',
-        'Content-Type': 'application/json',
-        'Authorization': 'Token $token',
-      };
-      if (csrfToken != null) headers['X-CSRFTOKEN'] = csrfToken;
-
       print('PATCH User Detail - Body: ${jsonEncode(body)}');
 
+      // ✅ Use ApiClient - it handles 401 automatically
+      // Note: You'll need to add a PATCH method to ApiClient
       final response = await http.patch(
-        Uri.parse('$baseUrl/user/detail/'),
-        headers: headers,
+        Uri.parse('${ApiClient.baseUrl}/v1/user/detail/'),
+        headers: {
+          'accept': 'application/json',
+          'Content-Type': 'application/json',
+          'Authorization': 'Token $token',
+          'ngrok-skip-browser-warning': 'true',
+        },
         body: jsonEncode(body),
       );
 
       print('PATCH User Detail - Status: ${response.statusCode}');
       print('PATCH User Detail - Response: ${response.body}');
 
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        final user = User.fromJson(data);
-        return UserResult(success: true, user: user);
-      } else if (response.statusCode == 401) {
+      // Manual 401 check since we're not using ApiClient.patch yet
+      if (response.statusCode == 401) {
+        await _storage.clearAll();
         return UserResult(
           success: false,
           error: 'Session expired. Please log in again.',
         );
+      }
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        final user = User.fromJson(data);
+        return UserResult(success: true, user: user);
       } else {
         String errorMsg = 'Unable to update user details. Please try again.';
         try {
@@ -255,26 +230,13 @@ class UserProfileService {
         );
       }
 
-      final response = await http.get(
-        Uri.parse('$baseUrl/user/profile/'),
-        headers: {
-          'accept': 'application/json',
-          'Authorization': 'Token $token',
-        },
-      );
-
-      print('GET Profile - Status: ${response.statusCode}');
-      print('GET Profile - Body: ${response.body}');
+      // ✅ Use ApiClient - it handles 401 automatically
+      final response = await ApiClient.get('/v1/user/profile/');
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         final profile = UserProfile.fromJson(data);
         return ProfileResult(success: true, profile: profile);
-      } else if (response.statusCode == 401) {
-        return ProfileResult(
-          success: false,
-          error: 'Session expired. Please log in again.',
-        );
       } else {
         String errorMsg = 'Unable to load profile. Please try again.';
         try {
@@ -307,7 +269,6 @@ class UserProfileService {
   }
 
   /// Update user profile with avatar upload support (PATCH - multipart/form-data)
-  /// This method supports both avatar upload and text field updates in a single request
   Future<ProfileResult> patchUserProfileWithAvatar({
     File? avatar,
     String? bio,
@@ -324,20 +285,16 @@ class UserProfileService {
         );
       }
 
-      final csrfToken = await _getCsrfToken();
-
-      // Create multipart request
+      // Create multipart request (must use http directly for file uploads)
       var request = http.MultipartRequest(
         'PATCH',
-        Uri.parse('$baseUrl/user/profile/'),
+        Uri.parse('${ApiClient.baseUrl}/v1/user/profile/'),
       );
 
       // Add headers
       request.headers['Authorization'] = 'Token $token';
       request.headers['accept'] = 'application/json';
-      if (csrfToken != null) {
-        request.headers['X-CSRFTOKEN'] = csrfToken;
-      }
+      request.headers['ngrok-skip-browser-warning'] = 'true';
 
       // Add avatar file if provided
       if (avatar != null) {
@@ -370,15 +327,19 @@ class UserProfileService {
       print('PATCH Profile (Multipart) - Status: ${response.statusCode}');
       print('PATCH Profile (Multipart) - Response: ${response.body}');
 
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        final profile = UserProfile.fromJson(data);
-        return ProfileResult(success: true, profile: profile);
-      } else if (response.statusCode == 401) {
+      // Manual 401 check for multipart requests
+      if (response.statusCode == 401) {
+        await _storage.clearAll();
         return ProfileResult(
           success: false,
           error: 'Session expired. Please log in again.',
         );
+      }
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        final profile = UserProfile.fromJson(data);
+        return ProfileResult(success: true, profile: profile);
       } else {
         String errorMsg = 'Unable to update profile. Please try again.';
         try {
@@ -426,8 +387,6 @@ class UserProfileService {
         );
       }
 
-      final csrfToken = await _getCsrfToken();
-
       // Only include non-null fields
       final body = <String, dynamic>{};
       if (bio != null) body['bio'] = bio;
@@ -436,33 +395,36 @@ class UserProfileService {
         body['birth_date'] = birthDate.toIso8601String().split('T')[0];
       }
 
-      final headers = {
-        'accept': 'application/json',
-        'Content-Type': 'application/json',
-        'Authorization': 'Token $token',
-      };
-      if (csrfToken != null) headers['X-CSRFTOKEN'] = csrfToken;
-
       print('PATCH Profile - Body: ${jsonEncode(body)}');
 
+      // Manual PATCH request (ApiClient doesn't have PATCH method yet)
       final response = await http.patch(
-        Uri.parse('$baseUrl/user/profile/'),
-        headers: headers,
+        Uri.parse('${ApiClient.baseUrl}/v1/user/profile/'),
+        headers: {
+          'accept': 'application/json',
+          'Content-Type': 'application/json',
+          'Authorization': 'Token $token',
+          'ngrok-skip-browser-warning': 'true',
+        },
         body: jsonEncode(body),
       );
 
       print('PATCH Profile - Status: ${response.statusCode}');
       print('PATCH Profile - Response: ${response.body}');
 
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        final profile = UserProfile.fromJson(data);
-        return ProfileResult(success: true, profile: profile);
-      } else if (response.statusCode == 401) {
+      // Manual 401 check
+      if (response.statusCode == 401) {
+        await _storage.clearAll();
         return ProfileResult(
           success: false,
           error: 'Session expired. Please log in again.',
         );
+      }
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        final profile = UserProfile.fromJson(data);
+        return ProfileResult(success: true, profile: profile);
       } else {
         String errorMsg = 'Unable to update profile. Please try again.';
         try {
@@ -492,26 +454,5 @@ class UserProfileService {
         error: 'Connection issue. Please check your internet and try again.',
       );
     }
-  }
-
-  // ═══════════════════════════════════════════════════════════════
-  // HELPER METHODS
-  // ═══════════════════════════════════════════════════════════════
-
-  /// Get CSRF token
-  Future<String?> _getCsrfToken() async {
-    try {
-      final response = await http.get(
-        Uri.parse('https://nonabstemiously-stocky-cynthia.ngrok-free.dev/api/auth/csrf/'),
-        headers: {'accept': 'application/json'},
-      );
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        return data['csrfToken'] ?? data['csrf_token'];
-      }
-    } catch (e) {
-      print('Exception in _getCsrfToken: $e');
-    }
-    return null;
   }
 }

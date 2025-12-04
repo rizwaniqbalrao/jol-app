@@ -29,6 +29,12 @@ class _PlayScreenState extends State<PlayScreen> {
   }
 
   @override
+  void dispose() {
+    // Dispose ad manager if needed
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     SystemChrome.setSystemUIOverlayStyle(
       const SystemUiOverlayStyle(
@@ -179,7 +185,7 @@ class _PlayScreenState extends State<PlayScreen> {
   }
 
   // ═══════════════════════════════════════════════════════════════
-  // AD HANDLING METHODS
+  // IMPROVED AD HANDLING METHODS
   // ═══════════════════════════════════════════════════════════════
 
   /// Show ad and navigate to Join Room screen
@@ -188,25 +194,47 @@ class _PlayScreenState extends State<PlayScreen> {
 
     setState(() => _isShowingAd = true);
 
-    // Show loading indicator
-    _showLoadingDialog(context, "Loading...");
+    try {
+      // Check if ad is ready before showing loading
+      final bool isAdReady = _adManager.isInterstitialReady();
 
-    // Try to show ad
-    final adShown = await _adManager.showInterstitial();
+      // Only show loading if ad is actually ready
+      if (isAdReady && mounted) {
+        _showLoadingDialog(context, "Loading...");
+      }
 
-    // Close loading dialog
-    if (mounted) Navigator.of(context).pop();
+      // Try to show ad (non-blocking)
+      final bool adShown = await _adManager.showInterstitial();
 
-    setState(() => _isShowingAd = false);
+      // Close loading dialog if it was shown
+      if (isAdReady && mounted) {
+        Navigator.of(context).pop();
+      }
 
-    if (mounted) {
-      // Navigate to Join Room screen regardless of ad result
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) => const JoinRoomScreen(),
-        ),
-      );
+      // Preload next ad immediately
+      _adManager.loadInterstitial();
+
+    } catch (e) {
+      // Handle any errors gracefully
+      debugPrint('Ad error: $e');
+      if (mounted) {
+        // Close loading dialog if open
+        try {
+          Navigator.of(context).pop();
+        } catch (_) {}
+      }
+    } finally {
+      setState(() => _isShowingAd = false);
+
+      // Navigate immediately after ad completes or fails
+      if (mounted) {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => const JoinRoomScreen(),
+          ),
+        );
+      }
     }
   }
 
@@ -216,25 +244,47 @@ class _PlayScreenState extends State<PlayScreen> {
 
     setState(() => _isShowingAd = true);
 
-    // Show loading indicator
-    _showLoadingDialog(context, "Loading...");
+    try {
+      // Check if ad is ready before showing loading
+      final bool isAdReady = _adManager.isInterstitialReady();
 
-    // Try to show ad
-    final adShown = await _adManager.showInterstitial();
+      // Only show loading if ad is actually ready
+      if (isAdReady && mounted) {
+        _showLoadingDialog(context, "Loading...");
+      }
 
-    // Close loading dialog
-    if (mounted) Navigator.of(context).pop();
+      // Try to show ad (non-blocking)
+      final bool adShown = await _adManager.showInterstitial();
 
-    setState(() => _isShowingAd = false);
+      // Close loading dialog if it was shown
+      if (isAdReady && mounted) {
+        Navigator.of(context).pop();
+      }
 
-    if (mounted) {
-      // Navigate to Create Room screen regardless of ad result
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) => const CreateRoomScreen(),
-        ),
-      );
+      // Preload next ad immediately
+      _adManager.loadInterstitial();
+
+    } catch (e) {
+      // Handle any errors gracefully
+      debugPrint('Ad error: $e');
+      if (mounted) {
+        // Close loading dialog if open
+        try {
+          Navigator.of(context).pop();
+        } catch (_) {}
+      }
+    } finally {
+      setState(() => _isShowingAd = false);
+
+      // Navigate immediately after ad completes or fails
+      if (mounted) {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => const CreateRoomScreen(),
+          ),
+        );
+      }
     }
   }
 
@@ -244,25 +294,47 @@ class _PlayScreenState extends State<PlayScreen> {
 
     setState(() => _isShowingAd = true);
 
-    // Show loading indicator
-    _showLoadingDialog(context, "Loading game...");
+    try {
+      // Check if ad is ready before showing loading
+      final bool isAdReady = _adManager.isInterstitialReady();
 
-    // Try to show ad
-    final adShown = await _adManager.showInterstitial();
+      // Only show loading if ad is actually ready
+      if (isAdReady && mounted) {
+        _showLoadingDialog(context, "Loading game...");
+      }
 
-    // Close loading dialog
-    if (mounted) Navigator.of(context).pop();
+      // Try to show ad (non-blocking)
+      final bool adShown = await _adManager.showInterstitial();
 
-    setState(() => _isShowingAd = false);
+      // Close loading dialog if it was shown
+      if (isAdReady && mounted) {
+        Navigator.of(context).pop();
+      }
 
-    if (mounted) {
-      // Navigate to Game screen regardless of ad result
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) => const GameScreen(),
-        ),
-      );
+      // Preload next ad immediately
+      _adManager.loadInterstitial();
+
+    } catch (e) {
+      // Handle any errors gracefully
+      debugPrint('Ad error: $e');
+      if (mounted) {
+        // Close loading dialog if open
+        try {
+          Navigator.of(context).pop();
+        } catch (_) {}
+      }
+    } finally {
+      setState(() => _isShowingAd = false);
+
+      // Navigate immediately after ad completes or fails
+      if (mounted) {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => const GameScreen(),
+          ),
+        );
+      }
     }
   }
 
@@ -271,29 +343,32 @@ class _PlayScreenState extends State<PlayScreen> {
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (context) => Dialog(
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-        ),
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const CircularProgressIndicator(
-                valueColor: AlwaysStoppedAnimation<Color>(textPink),
-              ),
-              const SizedBox(height: 16),
-              Text(
-                message,
-                style: const TextStyle(
-                  fontFamily: 'Digitalt',
-                  fontSize: 14,
-                  fontWeight: FontWeight.bold,
-                  letterSpacing: 0.8,
+      builder: (context) => WillPopScope(
+        onWillPop: () async => false, // Prevent back button dismissal
+        child: Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const CircularProgressIndicator(
+                  valueColor: AlwaysStoppedAnimation<Color>(textPink),
                 ),
-              ),
-            ],
+                const SizedBox(height: 16),
+                Text(
+                  message,
+                  style: const TextStyle(
+                    fontFamily: 'Digitalt',
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 0.8,
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),
