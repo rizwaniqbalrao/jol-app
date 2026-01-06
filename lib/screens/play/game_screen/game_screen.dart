@@ -177,15 +177,14 @@ class _GameScreenState extends State<GameScreen> {
         savedGame: savedGame,
         pointsEarned: pointsEarned,
         onClose: () {
+          // 1. Close the Dialog
           Navigator.pop(ctx);
+
+          // 2. Reset the game state so the user can play again or leave
           _handleReset(controller);
-        },
-        onSubmit: () async {
-          Navigator.pop(ctx);
-          await _saveGameToBackend(context, controller, 'completed');
-          if (mounted) {
-            Navigator.push(context, MaterialPageRoute(builder: (_) => SubmitGameScreen())).then((_) => _handleReset(controller));
-          }
+
+          // Optional: If you want to take them back to a specific screen automatically
+          // Navigator.of(context).pop();
         },
       ),
     );
@@ -203,19 +202,15 @@ class _GameScreenState extends State<GameScreen> {
       create: (_) => GameController(gridSize: 4),
       child: Consumer<GameController>(
         builder: (context, controller, _) {
-          if (controller.isGenerating) {
-            return const Scaffold(
-              body: Center(
-                child: CircularProgressIndicator(color: textPink),
-              ),
-            );
+          // Initialize logic remains here
+          if (!controller.isGenerating) {
+            _initializeGridState(controller);
           }
-
-          _initializeGridState(controller);
 
           return WillPopScope(
             onWillPop: () => _onWillPop(controller),
             child: Scaffold(
+              // The Scaffold remains constant, preventing the black screen/flicker
               body: Container(
                 decoration: const BoxDecoration(
                   gradient: LinearGradient(
@@ -225,51 +220,64 @@ class _GameScreenState extends State<GameScreen> {
                   ),
                 ),
                 child: SafeArea(
-                  child: LayoutBuilder(
-                    builder: (context, constraints) {
-                      final h = constraints.maxHeight;
-                      final w = constraints.maxWidth;
+                  child: Stack( // Use Stack to layer content and loader
+                    children: [
+                      // Layer 1: The Main Game UI
+                      Opacity(
+                        // Optional: Slightly dim the UI while generating
+                        opacity: controller.isGenerating ? 0.3 : 1.0,
+                        child: LayoutBuilder(
+                          builder: (context, constraints) {
+                            final h = constraints.maxHeight;
+                            final w = constraints.maxWidth;
 
-                      return SingleChildScrollView(
-                        child: Column(
-                          children: [
-                            _buildHeader(w, h, controller),
-                            _buildStatsBar(w, h, controller),
-                            _buildControls(w, h, controller),
-
-                            SizedBox(height: h * 0.02),
-
-                            GameGridWidget(
-                              controller: controller,
-                              inputControllers: _inputControllers,
-                              focusNodes: _focusNodes,
-                              showMinus: _showMinus,
-                              isGameStarted: _isGameStarted,
-                              onOperationToggle: (val) {
-                                setState(() {
-                                  _showMinus = val;
-                                  _isInitialized = false;
-                                });
-                                controller.setOperation(val ? PuzzleOperation.subtraction : PuzzleOperation.addition);
-                                setState(() => _selectedCell = null);
-                              },
-                              screenHeight: h,
-                              screenWidth: w,
-                            ),
-
-                            SizedBox(height: h * 0.02),
-
-                            GameKeyboardWidget(
-                              controller: controller,
-                              isGameStarted: _isGameStarted,
-                              onKeyTap: (val) => _onKeyboardTap(val, controller),
-                              screenHeight: h,
-                              screenWidth: w,
-                            ),
-                          ],
+                            return SingleChildScrollView(
+                              child: Column(
+                                children: [
+                                  _buildHeader(w, h, controller),
+                                  _buildStatsBar(w, h, controller),
+                                  _buildControls(w, h, controller),
+                                  SizedBox(height: h * 0.02),
+                                  GameGridWidget(
+                                    controller: controller,
+                                    inputControllers: _inputControllers,
+                                    focusNodes: _focusNodes,
+                                    showMinus: _showMinus,
+                                    isGameStarted: _isGameStarted,
+                                    onOperationToggle: (val) {
+                                      setState(() {
+                                        _showMinus = val;
+                                        _isInitialized = false;
+                                      });
+                                      controller.setOperation(val ? PuzzleOperation.subtraction : PuzzleOperation.addition);
+                                      setState(() => _selectedCell = null);
+                                    },
+                                    screenHeight: h,
+                                    screenWidth: w,
+                                  ),
+                                  SizedBox(height: h * 0.02),
+                                  GameKeyboardWidget(
+                                    controller: controller,
+                                    isGameStarted: _isGameStarted,
+                                    onKeyTap: (val) => _onKeyboardTap(val, controller),
+                                    screenHeight: h,
+                                    screenWidth: w,
+                                  ),
+                                ],
+                              ),
+                            );
+                          },
                         ),
-                      );
-                    },
+                      ),
+
+                      // Layer 2: The Loader (Only shows when generating)
+                      if (controller.isGenerating)
+                        const Center(
+                          child: CircularProgressIndicator(
+                            color: Color(0xFFC42AF8), // textPink
+                          ),
+                        ),
+                    ],
                   ),
                 ),
               ),
