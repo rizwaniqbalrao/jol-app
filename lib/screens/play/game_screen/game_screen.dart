@@ -3,7 +3,6 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../../dashboard/models/game_models.dart';
 import '../controller/game_controller.dart';
-import '../submit_game_screen.dart';
 import '../widgets/game_helper.dart';
 import 'widgets/game_grid_widget.dart';
 import 'widgets/game_keyboard_widget.dart';
@@ -28,6 +27,9 @@ class _GameScreenState extends State<GameScreen> {
   String? _selectedCell;
   bool _isGameStarted = false;
 
+  // New flag: true when game is finished but user hasn't pressed 'Reset' yet
+  bool _needsReset = false;
+
   // Guard variables to prevent infinite loops
   bool _isInitialized = false;
   int? _lastInitializedGridSize;
@@ -51,7 +53,6 @@ class _GameScreenState extends State<GameScreen> {
 
   String _getKey(int row, int col) => '$row-$col';
 
-  // This handles the setup of UI controllers for player-input cells
   void _initializeGridState(GameController controller) {
     if (_isInitialized && _lastInitializedGridSize == controller.gridSize) return;
 
@@ -94,11 +95,14 @@ class _GameScreenState extends State<GameScreen> {
   }
 
   void _onKeyboardTap(String value, GameController controller) {
-    if (_selectedCell == null || !_isGameStarted) return;
+    // Prevent typing if game isn't running or if we are in review mode
+    if (_selectedCell == null || !_isGameStarted || _needsReset) return;
 
     final parts = _selectedCell!.split('-');
     final row = int.parse(parts[0]);
     final col = int.parse(parts[1]);
+
+    controller.isWrong[row][col] = false;
 
     if (value == 'clear') {
       final currentText = _inputControllers[_selectedCell]?.text ?? '';
@@ -143,8 +147,16 @@ class _GameScreenState extends State<GameScreen> {
 
   void _showStopGameDialog(BuildContext context, GameController controller) {
     GameDialogs.showStopGameDialog(context, controller, () async {
-      setState(() => _isGameStarted = false);
+      // STOP THE TIMER IMMEDIATELY
+      controller.stopTimer();
+
       controller.validateGrid();
+
+      setState(() {
+        _isGameStarted = false;
+        _needsReset = true;
+      });
+
       await _saveGameToBackend(context, controller, 'completed');
     });
   }
@@ -177,14 +189,8 @@ class _GameScreenState extends State<GameScreen> {
         savedGame: savedGame,
         pointsEarned: pointsEarned,
         onClose: () {
-          // 1. Close the Dialog
           Navigator.pop(ctx);
-
-          // 2. Reset the game state so the user can play again or leave
-          _handleReset(controller);
-
-          // Optional: If you want to take them back to a specific screen automatically
-          // Navigator.of(context).pop();
+          _handleReset(controller); // This cleans the board for a new game
         },
       ),
     );
@@ -193,7 +199,11 @@ class _GameScreenState extends State<GameScreen> {
   void _handleReset(GameController controller) {
     _isInitialized = false;
     controller.resetGame();
-    setState(() => _selectedCell = null);
+    setState(() {
+      _selectedCell = null;
+      _needsReset = false; // Reset the review flag
+      _isGameStarted = false;
+    });
   }
 
   @override
@@ -202,7 +212,6 @@ class _GameScreenState extends State<GameScreen> {
       create: (_) => GameController(gridSize: 4),
       child: Consumer<GameController>(
         builder: (context, controller, _) {
-          // Initialize logic remains here
           if (!controller.isGenerating) {
             _initializeGridState(controller);
           }
@@ -210,8 +219,8 @@ class _GameScreenState extends State<GameScreen> {
           return WillPopScope(
             onWillPop: () => _onWillPop(controller),
             child: Scaffold(
-              // The Scaffold remains constant, preventing the black screen/flicker
               body: Container(
+                height: double.infinity,
                 decoration: const BoxDecoration(
                   gradient: LinearGradient(
                     begin: Alignment.topCenter,
@@ -220,11 +229,9 @@ class _GameScreenState extends State<GameScreen> {
                   ),
                 ),
                 child: SafeArea(
-                  child: Stack( // Use Stack to layer content and loader
+                  child: Stack(
                     children: [
-                      // Layer 1: The Main Game UI
                       Opacity(
-                        // Optional: Slightly dim the UI while generating
                         opacity: controller.isGenerating ? 0.3 : 1.0,
                         child: LayoutBuilder(
                           builder: (context, constraints) {
@@ -263,18 +270,17 @@ class _GameScreenState extends State<GameScreen> {
                                     screenHeight: h,
                                     screenWidth: w,
                                   ),
+                                  SizedBox(height: h * 0.02),
                                 ],
                               ),
                             );
                           },
                         ),
                       ),
-
-                      // Layer 2: The Loader (Only shows when generating)
                       if (controller.isGenerating)
                         const Center(
                           child: CircularProgressIndicator(
-                            color: Color(0xFFC42AF8), // textPink
+                            color: textPink,
                           ),
                         ),
                     ],
@@ -300,7 +306,7 @@ class _GameScreenState extends State<GameScreen> {
             icon: const CircleAvatar(backgroundColor: textPink, child: Icon(Icons.arrow_back_ios_new, color: Colors.white, size: 18)),
           ),
           const Spacer(),
-          Text("Jol Puzzle", style: TextStyle(fontSize: h * 0.035, fontWeight: FontWeight.bold)),
+          const Text("Jol Puzzle", style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
           const Spacer(),
           const SizedBox(width: 40),
         ],
@@ -317,23 +323,25 @@ class _GameScreenState extends State<GameScreen> {
             child: Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(color: textPink, borderRadius: BorderRadius.circular(10)),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center, // Centered now that Hint is gone
-                children: [
-                  Text(controller.mode == GameMode.timed
+              child: Center(
+                child: Text(
+                  controller.mode == GameMode.timed
                       ? "Time: ${controller.timeLeft.inMinutes}:${(controller.timeLeft.inSeconds % 60).toString().padLeft(2, '0')}"
                       : "Mode: Untimed",
-                      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-                ],
+                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                ),
               ),
             ),
           ),
           const SizedBox(width: 10),
           GestureDetector(
-            onTap: _isGameStarted ? null : () => controller.toggleMode(),
+            onTap: (_isGameStarted || _needsReset) ? null : () => controller.toggleMode(),
             child: Container(
               padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(color: _isGameStarted ? Colors.grey : textGreen, borderRadius: BorderRadius.circular(10)),
+              decoration: BoxDecoration(
+                  color: (_isGameStarted || _needsReset) ? Colors.grey : textGreen,
+                  borderRadius: BorderRadius.circular(10)
+              ),
               child: Icon(controller.mode == GameMode.timed ? Icons.timer : Icons.timer_off, color: Colors.white),
             ),
           )
@@ -349,17 +357,23 @@ class _GameScreenState extends State<GameScreen> {
         children: [
           _actionBtn("Reset", Icons.refresh, Colors.orange, _isGameStarted ? null : () => _handleReset(controller)),
           const SizedBox(width: 8),
-          // Hint button removed from here
-          _actionBtn(_isGameStarted ? "Stop" : "Start", Icons.play_arrow, _isGameStarted ? Colors.orange : textGreen, () {
-            if (_isGameStarted) {
-              _showStopGameDialog(context, controller);
-            } else {
-              setState(() => _isGameStarted = true);
-              // THIS LINE IS CRITICAL:
-              controller.startGame();
-              if (controller.mode == GameMode.timed) controller.startTimer();
-            }
-          }),
+          _actionBtn(
+              _isGameStarted ? "Stop" : "Start",
+              Icons.play_arrow,
+              _isGameStarted ? Colors.orange : textGreen,
+              (_needsReset && !_isGameStarted) ? null : () { // Disable Start button if needs reset
+                if (_isGameStarted) {
+                  _showStopGameDialog(context, controller);
+                } else {
+                  setState(() {
+                    _isGameStarted = true;
+                    _needsReset = false;
+                  });
+                  controller.startGame();
+                  if (controller.mode == GameMode.timed) controller.startTimer();
+                }
+              }
+          ),
         ],
       ),
     );
@@ -371,7 +385,7 @@ class _GameScreenState extends State<GameScreen> {
         onPressed: onPressed,
         style: ElevatedButton.styleFrom(
             backgroundColor: color,
-            disabledBackgroundColor: Colors.grey,
+            disabledBackgroundColor: Colors.grey.shade400,
             padding: const EdgeInsets.symmetric(vertical: 12),
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8))
         ),

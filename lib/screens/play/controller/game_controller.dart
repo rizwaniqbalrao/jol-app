@@ -39,6 +39,13 @@ class GameController extends ChangeNotifier {
   GameMode get mode => _mode;
 
   GameController({this.gridSize = 4}) {
+    // Initialize all late fields immediately with default values
+    grid = List.generate(gridSize, (_) => List.filled(gridSize, null));
+    _solutionGrid = List.generate(gridSize, (_) => List.filled(gridSize, null));
+    isFixed = List.generate(gridSize, (_) => List.filled(gridSize, false));
+    isWrong = List.generate(gridSize, (_) => List.filled(gridSize, false));
+
+    // Then start the async initialization
     _initGrid();
   }
 
@@ -57,10 +64,16 @@ class GameController extends ChangeNotifier {
     await Future.delayed(const Duration(milliseconds: 50));
 
     final random = Random();
-    grid = List.generate(gridSize, (_) => List.filled(gridSize, null));
-    _solutionGrid = List.generate(gridSize, (_) => List.filled(gridSize, null));
-    isFixed = List.generate(gridSize, (_) => List.filled(gridSize, false));
-    isWrong = List.generate(gridSize, (_) => List.filled(gridSize, false));
+
+    // Reset the grids instead of creating new ones
+    for (int i = 0; i < gridSize; i++) {
+      for (int j = 0; j < gridSize; j++) {
+        grid[i][j] = null;
+        _solutionGrid[i][j] = null;
+        isFixed[i][j] = false;
+        isWrong[i][j] = false;
+      }
+    }
 
     grid[0][0] = -1;
     _solutionGrid[0][0] = -1;
@@ -406,48 +419,57 @@ class GameController extends ChangeNotifier {
   // LOOPHOLE-FREE VALIDATION (Checks math logic, not just hardcoded values)
   bool validateGrid() {
     int correctCount = 0;
-    int totalCells = (gridSize * gridSize) - 1;
-    int playerInputCount = 0;
+    int totalPlayerCells = 0;
 
+    // 1. Reset isWrong grid
     for (int i = 0; i < gridSize; i++) {
       for (int j = 0; j < gridSize; j++) {
+        isWrong[i][j] = false;
+      }
+    }
+
+    // 2. Compare player grid against the solution grid
+    for (int i = 0; i < gridSize; i++) {
+      for (int j = 0; j < gridSize; j++) {
+        // Skip the operation cell at [0,0]
         if (i == 0 && j == 0) continue;
-        if (!isFixed[i][j]) playerInputCount++;
 
-        if (grid[i][j] != null) {
-          if (isFixed[i][j]) {
-            correctCount++;
+        // Only evaluate cells that weren't fixed seeds
+        if (!isFixed[i][j]) {
+          totalPlayerCells++;
+
+          // If cell is empty OR the value doesn't match the solution exactly
+          if (grid[i][j] == null || grid[i][j] != _solutionGrid[i][j]) {
+            isWrong[i][j] = true;
           } else {
-            int? rH = grid[i][0];
-            int? cH = grid[0][j];
-            int current = grid[i][j]!;
-
-            if (rH != null && cH != null) {
-              bool mathOk = operation == PuzzleOperation.addition
-                  ? (rH + cH == current)
-                  : ((rH - cH).abs() == current);
-              if (mathOk) correctCount++;
-            }
+            correctCount++;
           }
         }
       }
     }
 
-    _totalPlayerCells = playerInputCount;
+    // 3. Update Metrics
+    _totalPlayerCells = totalPlayerCells;
     _correctAnswers = correctCount;
-    _accuracyPercentage = (playerInputCount > 0) ? (correctCount / totalCells) * 100 : 0;
 
+    // Accuracy is (Correct Player Cells / Total Player Cells) * 100
+    _accuracyPercentage = (totalPlayerCells > 0)
+        ? (correctCount / totalPlayerCells) * 100
+        : 0.0;
+
+    // 4. Calculate Final Score
     if (mode == GameMode.untimed) {
-      score = ((correctCount / totalCells) * 100).round();
+      score = _accuracyPercentage.round();
     } else {
-      int baseScore = ((correctCount / totalCells) * 70).round();
+      // Timed mode: 70% based on accuracy, 30% potential time bonus
+      int baseScore = (_accuracyPercentage * 0.7).round();
       int timeBonus = (timeLeft.inSeconds > 240) ? 30 : (timeLeft.inSeconds > 120 ? 15 : 5);
       score = baseScore + timeBonus;
     }
-    score = max(0, score);
 
-    bool isComplete = correctCount == totalCells;
-    if (isComplete) {
+    // 5. Final State Update
+    bool isPerfect = correctCount == totalPlayerCells;
+    if (isPerfect) {
       isPlaying = false;
       stopTimer();
       if (_gameStartTime != null) {
@@ -456,7 +478,7 @@ class GameController extends ChangeNotifier {
     }
 
     notifyListeners();
-    return isComplete;
+    return isPerfect;
   }
 
   void startTimer() {
@@ -466,10 +488,11 @@ class GameController extends ChangeNotifier {
     _timer = Timer.periodic(const Duration(seconds: 1), (t) {
       if (timeLeft.inSeconds > 0 && isPlaying) {
         timeLeft -= const Duration(seconds: 1);
-        validateGrid();
+        notifyListeners();
       } else {
         stopTimer();
         isPlaying = false;
+        validateGrid(); // Final validation when time is up
         notifyListeners();
       }
     });
