@@ -12,12 +12,14 @@ class MultiplayerGameSaveHelper {
   final UserProfileService _userService = UserProfileService();
   final _uuid = Uuid();
 
-  /// Save a completed multiplayer game to the backend
+  /// Save a completed multiplayer game_screen to the backend
   ///
   /// Returns a map with:
   /// - 'success': bool
   /// - 'message': String
   /// - 'matchId': String? (if successful)
+  /// - 'pointsEarned': int? (if successful)
+  /// - 'game_screen': Game? (if successful) - The saved game_screen as a Game model object
   Future<Map<String, dynamic>> saveMultiplayerGame({
     required MultiplayerGameController controller,
     required Room room,
@@ -59,7 +61,7 @@ class MultiplayerGameSaveHelper {
         completionTime = DateTime.now().difference(controller.gameStartTime!).inSeconds;
       }
 
-      // Step 4: Determine final game status
+      // Step 4: Determine final game_screen status
       String finalStatus = gameStatus;
       if (room.settings.mode == 'timed' && controller.timeLeft.inSeconds <= 0) {
         finalStatus = 'timed_out';
@@ -84,7 +86,7 @@ class MultiplayerGameSaveHelper {
         totalPlayers: totalPlayers,
       );
 
-      // Step 6: Validate game data
+      // Step 6: Validate game_screen data
       final validationError = _validateMultiplayerGameData(game, room);
       if (validationError != null) {
         return {
@@ -97,15 +99,20 @@ class MultiplayerGameSaveHelper {
       final saveResult = await _gameService.saveGame(game);
 
       if (saveResult.success && saveResult.data != null) {
+        // Convert SaveGameResponse back to Game model for consistent usage
+        final savedGame = _convertResponseToGame(saveResult.data!);
+
         return {
           'success': true,
-          'message': saveResult.data!.detail,
+          'message': 'Game saved successfully! You earned ${saveResult.data!.pointsEarned} points.',
           'matchId': saveResult.data!.matchId,
+          'pointsEarned': saveResult.data!.pointsEarned,
+          'game_screen': savedGame,  // ✅ Return the Game object
         };
       } else {
         return {
           'success': false,
-          'message': saveResult.error ?? 'Failed to save game',
+          'message': saveResult.error ?? 'Failed to save game_screen',
         };
       }
     } catch (e) {
@@ -117,7 +124,28 @@ class MultiplayerGameSaveHelper {
     }
   }
 
-  /// Validate multiplayer game data before saving
+  /// Convert SaveGameResponse to Game model
+  Game _convertResponseToGame(SaveGameResponse response) {
+    return Game(
+      matchId: response.matchId,
+      playerId: response.playerId ?? 'N/A',  // Use playerId from response if available
+      gameType: response.gameType,
+      gameMode: response.gameMode,
+      operation: response.operation,
+      gridSize: response.gridSize,
+      timestamp: response.timestamp,
+      status: response.status,
+      finalScore: response.finalScore,
+      accuracyPercentage: response.accuracyPercentage,
+      hintsUsed: response.hintsUsed,
+      completionTime: response.completionTime,
+      roomCode: response.roomCode,
+      position: response.position,
+      totalPlayers: response.totalPlayers,
+    );
+  }
+
+  /// Validate multiplayer game_screen data before saving
   String? _validateMultiplayerGameData(Game game, Room room) {
     // Ensure room code exists and is 6 characters
     if (game.roomCode == null || game.roomCode!.isEmpty) {
@@ -166,7 +194,7 @@ class MultiplayerGameSaveHelper {
     return null; // No errors
   }
 
-  /// Helper method to determine game status based on controller state
+  /// Helper method to determine game_screen status based on controller state
   String determineMultiplayerGameStatus(
       MultiplayerGameController controller,
       Room room,

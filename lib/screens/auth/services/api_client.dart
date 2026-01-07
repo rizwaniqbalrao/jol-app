@@ -6,7 +6,7 @@ import '../login_screen.dart';
 import 'secure_storage_service.dart';
 
 class ApiClient {
-  static const String baseUrl = 'https://nonabstemiously-stocky-cynthia.ngrok-free.dev/api';
+  static const String baseUrl = 'http://13.53.102.145/api';
   static final SecureStorageService _storage = SecureStorageService();
 
   // Track if we're already handling logout to prevent multiple calls

@@ -399,7 +399,7 @@ class LeaderboardCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const String baseUrl = "https://nonabstemiously-stocky-cynthia.ngrok-free.dev";
+    const String baseUrl = "http://13.53.102.145";
 
     return Container(
       margin: const EdgeInsets.symmetric(vertical: 8),

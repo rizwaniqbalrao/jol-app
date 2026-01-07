@@ -176,7 +176,7 @@ class _WaitingLobbyScreenState extends State<WaitingLobbyScreen> {
 
   void _shareRoomCode() {
     Share.share(
-      'Join my Jaloo Puzzle game!\nRoom Code: ${widget.roomCode}',
+      'Join my Jaloo Puzzle game_screen!\nRoom Code: ${widget.roomCode}',
       subject: 'Join Jaloo Puzzle Game',
     );
   }

@@ -391,7 +391,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     } else if (_avatarUrl != null && _avatarUrl!.isNotEmpty) {
       String fullAvatarUrl = _avatarUrl!.startsWith('http')
           ? _avatarUrl!
-          : 'https://nonabstemiously-stocky-cynthia.ngrok-free.dev$_avatarUrl';
+          : 'http://13.53.102.145$_avatarUrl';
       imageProvider = NetworkImage(fullAvatarUrl);
     }
 

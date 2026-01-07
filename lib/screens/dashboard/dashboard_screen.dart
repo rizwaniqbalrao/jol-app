@@ -43,7 +43,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           _gameHistory = result.data!.results;
           _gamesError = null;
         } else {
-          _gamesError = result.error ?? 'Failed to load game history';
+          _gamesError = result.error ?? 'Failed to load game_screen history';
           _gameHistory = [];
         }
       });

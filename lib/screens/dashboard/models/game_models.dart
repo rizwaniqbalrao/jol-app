@@ -1,4 +1,4 @@
-// Game Models - models/game.dart
+// Game Models - models/game_models.dart
 
 class Game {
   final String matchId;
@@ -134,7 +134,7 @@ class Game {
   }
 }
 
-// Response for game history list
+// Response for game_screen history list
 class GameHistoryResponse {
   final int count;
   final String? next;
@@ -175,32 +175,92 @@ class GameHistoryResponse {
   }
 }
 
-// Response for saving a game
+// Response for saving a game_screen - Updated to match new API response
 class SaveGameResponse {
-  final String detail;
   final String matchId;
+  final String? playerId;  // May not be in response, but needed for Game conversion
+  final String gameType;
+  final String gameMode;
+  final String operation;
+  final int gridSize;
+  final String timestamp;
+  final String status;
+  final int finalScore;
+  final double accuracyPercentage;
+  final int hintsUsed;
+  final int? completionTime;
+  final String? roomCode;
+  final int? position;
+  final int? totalPlayers;
+  final int pointsEarned;  // NEW: Points awarded for this game_screen
 
   SaveGameResponse({
-    required this.detail,
     required this.matchId,
+    this.playerId,
+    required this.gameType,
+    required this.gameMode,
+    required this.operation,
+    required this.gridSize,
+    required this.timestamp,
+    required this.status,
+    required this.finalScore,
+    required this.accuracyPercentage,
+    required this.hintsUsed,
+    this.completionTime,
+    this.roomCode,
+    this.position,
+    this.totalPlayers,
+    required this.pointsEarned,
   });
 
   factory SaveGameResponse.fromJson(Map<String, dynamic> json) {
     return SaveGameResponse(
-      detail: json['detail'] as String? ?? '',
       matchId: json['match_id'] as String? ?? '',
+      playerId: json['player_id'] as String?,  // May not be in response
+      gameType: json['game_type'] as String? ?? 'solo',
+      gameMode: json['game_mode'] as String? ?? 'untimed',
+      operation: json['operation'] as String? ?? 'addition',
+      gridSize: json['grid_size'] as int? ?? 4,
+      timestamp: json['timestamp'] as String? ?? '',
+      status: json['status'] as String? ?? 'completed',
+      finalScore: json['final_score'] as int? ?? 0,
+      accuracyPercentage: (json['accuracy_percentage'] as num?)?.toDouble() ?? 0.0,
+      hintsUsed: json['hints_used'] as int? ?? 0,
+      completionTime: json['completion_time'] as int?,
+      roomCode: json['room_code'] as String?,
+      position: json['position'] as int?,
+      totalPlayers: json['total_players'] as int?,
+      pointsEarned: json['points_earned'] as int? ?? 0,
     );
   }
 
   Map<String, dynamic> toJson() {
-    return {
-      'detail': detail,
+    final json = <String, dynamic>{
       'match_id': matchId,
+      'game_type': gameType,
+      'game_mode': gameMode,
+      'operation': operation,
+      'grid_size': gridSize,
+      'timestamp': timestamp,
+      'status': status,
+      'final_score': finalScore,
+      'accuracy_percentage': accuracyPercentage,
+      'hints_used': hintsUsed,
+      'points_earned': pointsEarned,
     };
+
+    if (playerId != null) json['player_id'] = playerId;
+    if (completionTime != null) json['completion_time'] = completionTime;
+    if (roomCode != null) json['room_code'] = roomCode;
+    if (position != null) json['position'] = position;
+    if (totalPlayers != null) json['total_players'] = totalPlayers;
+
+    return json;
   }
 
   @override
   String toString() {
-    return 'SaveGameResponse(detail: $detail, matchId: $matchId)';
+    return 'SaveGameResponse(matchId: $matchId, gameType: $gameType, '
+        'finalScore: $finalScore, pointsEarned: $pointsEarned)';
   }
 }

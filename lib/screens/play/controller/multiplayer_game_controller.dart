@@ -71,12 +71,12 @@ class MultiplayerGameController extends ChangeNotifier {
           }
         }
 
-        // Start timer when game starts
+        // Start timer when game_screen starts
         if (room.gameState.status == 'playing' && !isPlaying) {
           _startGame();
         }
 
-        // End game when status changes
+        // End game_screen when status changes
         if (room.gameState.status == 'ended' && isPlaying) {
           _endGame();
         }
@@ -447,7 +447,7 @@ class MultiplayerGameController extends ChangeNotifier {
   int _calculateTimeBonus() {
     if (_room?.settings.mode != 'timed') return 0;
 
-    // Get all players who have completed the game
+    // Get all players who have completed the game_screen
     final completedPlayers = _room!.players.values
         .where((player) => player.isCompleted && player.completedAt != null)
         .toList();
@@ -498,7 +498,7 @@ class MultiplayerGameController extends ChangeNotifier {
     }
 
     if (allDone) {
-      debugPrint("✅ All players completed, ending game");
+      debugPrint("✅ All players completed, ending game_screen");
       await _roomService.endGame(roomCode);
     }
   }
@@ -509,7 +509,7 @@ class MultiplayerGameController extends ChangeNotifier {
       return;
     }
 
-    debugPrint("🎯 Submitting game...");
+    debugPrint("🎯 Submitting game_screen...");
 
     // Stop timer if timed mode
     if (_room?.settings.mode == 'timed') {
@@ -546,7 +546,7 @@ class MultiplayerGameController extends ChangeNotifier {
   // --------------------------------------------------
   Future<bool> useHint(int row, int col) async {
     if (!isPlaying || _room?.puzzle == null || isSubmitted) {
-      debugPrint("⚠️ Cannot use hint: game not active");
+      debugPrint("⚠️ Cannot use hint: game_screen not active");
       return false;
     }
 

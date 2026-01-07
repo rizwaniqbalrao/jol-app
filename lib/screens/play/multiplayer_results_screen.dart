@@ -38,7 +38,7 @@ class _MultiplayerResultsScreenState extends State<MultiplayerResultsScreen> {
   }
 
   Future<void> _loadRoomData() async {
-    // First check if this is a group game
+    // First check if this is a group game_screen
     await _checkIfGroupGame();
 
     _roomService.listenToRoom(widget.roomCode).listen((room) async {
@@ -65,12 +65,12 @@ class _MultiplayerResultsScreenState extends State<MultiplayerResultsScreen> {
           _isGroupGame = true;
           _groupId = snapshot.value as String;
         });
-        debugPrint('🎮 This is a group game: $_groupId');
+        debugPrint('🎮 This is a group game_screen: $_groupId');
       } else {
-        debugPrint('ℹ️ This is not a group game');
+        debugPrint('ℹ️ This is not a group game_screen');
       }
     } catch (e) {
-      debugPrint('❌ Error checking if group game: $e');
+      debugPrint('❌ Error checking if group game_screen: $e');
     }
   }
 
@@ -78,7 +78,7 @@ class _MultiplayerResultsScreenState extends State<MultiplayerResultsScreen> {
     if (_hasRecordedToGroup || _groupId == null) return;
 
     try {
-      debugPrint('📝 Recording game to group: $_groupId');
+      debugPrint('📝 Recording game_screen to group: $_groupId');
 
       // Get all players who participated
       final playerIds = room.players.keys.toList();
@@ -100,7 +100,7 @@ class _MultiplayerResultsScreenState extends State<MultiplayerResultsScreen> {
         }
       });
 
-      // Create game record in group history
+      // Create game_screen record in group history
       final gameRef = _database.ref('groups/$_groupId/gameHistory').push();
       final gameId = gameRef.key!;
 
@@ -161,12 +161,12 @@ class _MultiplayerResultsScreenState extends State<MultiplayerResultsScreen> {
       debugPrint('🎉 Game successfully recorded to group!');
 
     } catch (e) {
-      debugPrint('❌ Error recording game to group: $e');
+      debugPrint('❌ Error recording game_screen to group: $e');
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Failed to save game to group: $e'),
+            content: Text('Failed to save game_screen to group: $e'),
             backgroundColor: Colors.red,
             duration: const Duration(seconds: 3),
           ),

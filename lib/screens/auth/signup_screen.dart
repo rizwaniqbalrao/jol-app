@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:jol_app/screens/auth/login_screen.dart';  // Import LoginScreen for navigation
+import 'package:jol_app/screens/auth/login_screen.dart';
 import 'package:jol_app/screens/auth/services/auth_services.dart';
-import 'package:jol_app/screens/bnb/home_screen.dart';  // Import HomeScreen for success navigation
+import 'package:jol_app/screens/bnb/home_screen.dart';
 
 class SignupScreen extends StatefulWidget {
   const SignupScreen({super.key});
@@ -9,19 +9,32 @@ class SignupScreen extends StatefulWidget {
   static const Color textBlue = Color(0xFF0734A5);
   static const Color textGreen = Color(0xFF43AC45);
   static const Color textPink = Color(0xFFC42AF8);
+  static const Color accentPink = Color(0xFFF82A87);
 
   @override
   State<SignupScreen> createState() => _SignupScreenState();
 }
 
 class _SignupScreenState extends State<SignupScreen> {
-  final AuthService _authService = AuthService();  // AuthService instance
-  final _usernameController = TextEditingController();  // For Username
-  final _emailController = TextEditingController();  // For Email
-  final _passwordController = TextEditingController();  // For Password
-  final _confirmPasswordController = TextEditingController();  // For Confirm Password
-  bool _isLoading = false;  // Loading state for register
-  bool _isGoogleLoading = false;  // Loading state for Google
+  final AuthService _authService = AuthService();
+  final _usernameController = TextEditingController();
+  final _emailController = TextEditingController();
+  final _passwordController = TextEditingController();
+  final _confirmPasswordController = TextEditingController();
+
+  bool _isLoading = false;
+  bool _isGoogleLoading = false;
+  bool _obscurePassword = true;
+  bool _obscureConfirmPassword = true;
+
+  @override
+  void dispose() {
+    _usernameController.dispose();
+    _emailController.dispose();
+    _passwordController.dispose();
+    _confirmPasswordController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -35,190 +48,168 @@ class _SignupScreenState extends State<SignupScreen> {
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
             colors: [
-              Color(0xFFFFC0CB), // light pink
-              Color(0xFFADD8E6), // light blue
-              Color(0xFFE6E6FA), // lavender
+              Color(0xFFFFC0CB),
+              Color(0xFFADD8E6),
+              Color(0xFFE6E6FA),
             ],
           ),
         ),
         child: SafeArea(
           child: Stack(
             children: [
-              // Scrollable content
               SingleChildScrollView(
-                padding: const EdgeInsets.only(bottom: 160),
+                physics: const BouncingScrollPhysics(),
+                padding: const EdgeInsets.symmetric(horizontal: 28),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     const SizedBox(height: 60),
-
-                    // Title
-                    Text(
+                    const Text(
                       'CREATE NEW ACCOUNT',
                       textAlign: TextAlign.center,
                       style: TextStyle(
                         fontFamily: 'Digitalt',
                         fontWeight: FontWeight.w800,
-                        fontSize: 24,
-                        color: Color(0xFFF82A87),
+                        fontSize: 26,
+                        color: SignupScreen.accentPink,
                         letterSpacing: 1.4,
                       ),
                     ),
-                    const SizedBox(height: 25),
+                    const SizedBox(height: 35),
 
-                    // Username (replaced Nick Name)
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 28),
-                      child: _inputField(
-                        icon: Icons.person_pin_circle_outlined,
-                        hint: "USERNAME",
-                        controller: _usernameController,  // Assign controller
-                      ),
+                    // Username
+                    _inputField(
+                      icon: Icons.person_pin_circle_outlined,
+                      hint: "USERNAME",
+                      controller: _usernameController,
+                      textInputAction: TextInputAction.next,
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 18),
 
-                    // Email/Phone (as Email)
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 28),
-                      child: _inputField(
-                        icon: Icons.email_outlined,
-                        hint: "EMAIL",
-                        controller: _emailController,  // Assign controller
-                      ),
+                    // Email
+                    _inputField(
+                      icon: Icons.email_outlined,
+                      hint: "EMAIL",
+                      controller: _emailController,
+                      keyboardType: TextInputType.emailAddress,
+                      textInputAction: TextInputAction.next,
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 18),
 
                     // Password
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 28),
-                      child: _inputField(
-                        icon: Icons.lock_outline,
-                        hint: "PASSWORD",
-                        obscure: true,
-                        controller: _passwordController,  // Assign controller
-                      ),
+                    _inputField(
+                      icon: Icons.lock_outline,
+                      hint: "PASSWORD",
+                      controller: _passwordController,
+                      obscure: _obscurePassword,
+                      isPassword: true,
+                      textInputAction: TextInputAction.next,
+                      toggleObscure: () => setState(() => _obscurePassword = !_obscurePassword),
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 18),
 
                     // Confirm Password
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 28),
-                      child: _inputField(
-                        icon: Icons.lock_outline,
-                        hint: "CONFIRM PASSWORD",
-                        obscure: true,
-                        controller: _confirmPasswordController,  // Assign controller
-                      ),
+                    _inputField(
+                      icon: Icons.lock_reset_outlined,
+                      hint: "CONFIRM PASSWORD",
+                      controller: _confirmPasswordController,
+                      obscure: _obscureConfirmPassword,
+                      isPassword: true,
+                      textInputAction: TextInputAction.done,
+                      toggleObscure: () => setState(() => _obscureConfirmPassword = !_obscureConfirmPassword),
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 20),
 
                     // Terms text
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 28),
+                    const Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 10),
                       child: Text(
                         "BY CONTINUING TO USE SALSIVO, YOU AGREE WITH THE JOLPUZZLE TERMS AND PRIVACY NOTICE.",
                         textAlign: TextAlign.center,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontFamily: 'Digitalt',
                           fontWeight: FontWeight.w700,
                           fontSize: 12,
-                          color: Colors.black,
+                          color: Colors.black54,
+                          height: 1.4,
                         ),
                       ),
                     ),
-                    const SizedBox(height: 24),
+                    const SizedBox(height: 30),
 
-                    // Divider with OR
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 28),
-                      child: Row(
-                        children: [
-                          const Expanded(
-                            child: Divider(thickness: 1, color: SignupScreen.textPink),
-                          ),
-                          Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 8),
-                            child: Text(
-                              "OR",
-                              style: TextStyle(
-                                fontFamily: 'Digitalt',
-                                fontWeight: FontWeight.w700,
-                                fontSize: 14,
-                                color: SignupScreen.textPink,
-                              ),
+                    // Divider
+                    Row(
+                      children: [
+                        Expanded(child: Divider(thickness: 1.2, color: SignupScreen.textPink.withOpacity(0.4))),
+                        const Padding(
+                          padding: EdgeInsets.symmetric(horizontal: 12),
+                          child: Text(
+                            "OR",
+                            style: TextStyle(
+                              fontFamily: 'Digitalt',
+                              fontWeight: FontWeight.w700,
+                              fontSize: 14,
+                              color: SignupScreen.textPink,
                             ),
                           ),
-                          const Expanded(
-                            child: Divider(thickness: 1, color: SignupScreen.textPink),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 24),
-
-                    // Google button
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 28),
-                      child: _socialButton(
-                        text: _isGoogleLoading ? "SIGNING UP..." : "CONTINUE WITH GMAIL",
-                        icon: Image.asset(
-                          "lib/assets/images/google.png",
-                          height: 22,
-                          width: 22,
                         ),
-                        onTap: _isGoogleLoading ? null : _handleGoogleSignup,
-                      ),
+                        Expanded(child: Divider(thickness: 1.2, color: SignupScreen.textPink.withOpacity(0.4))),
+                      ],
                     ),
-                    const SizedBox(height: 14),
+                    const SizedBox(height: 30),
 
-                    // Apple button
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 28),
-                      child: _socialButton(
-                        text: "CONTINUE WITH APPLE",
-                        icon: Image.asset(
-                          "lib/assets/images/apple.png",
-                          height: 22,
-                          width: 22,
-                        ),
-                        onTap: () {
-                          _showSocialDialog(context, "Apple");
-                        },
-                      ),
+                    // Social Buttons
+                    _socialButton(
+                      text: _isGoogleLoading ? "SIGNING UP..." : "CONTINUE WITH GMAIL",
+                      icon: Image.asset("lib/assets/images/google.png", height: 22),
+                      onTap: _isGoogleLoading ? null : _handleGoogleSignup,
                     ),
-                    const SizedBox(height: 40),
+                    const SizedBox(height: 16),
+                    _socialButton(
+                      text: "CONTINUE WITH APPLE",
+                      icon: Image.asset("lib/assets/images/apple.png", height: 22),
+                      onTap: () => _showSocialDialog(context, "Apple"),
+                    ),
+                    const SizedBox(height: 160), // Space for bottom fixed elements
                   ],
                 ),
               ),
 
               // Bottom fixed elements
               Positioned(
-                left: 0,
-                right: 0,
+                left: 28,
+                right: 28,
                 bottom: 24,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    // Register button
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 28),
+                    // Register button with shadow
+                    Container(
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(12),
+                        boxShadow: [
+                          BoxShadow(
+                            color: SignupScreen.textPink.withOpacity(0.3),
+                            blurRadius: 8,
+                            offset: const Offset(0, 4),
+                          )
+                        ],
+                      ),
                       child: ElevatedButton(
                         style: ElevatedButton.styleFrom(
                           backgroundColor: SignupScreen.textPink,
-                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          padding: const EdgeInsets.symmetric(vertical: 16),
                           shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8),
+                            borderRadius: BorderRadius.circular(12),
                           ),
+                          elevation: 0,
                         ),
-                        onPressed: _isLoading ? null : _handleRegister,  // Add handler, disable if loading
-                        child: _isLoading  // Show loading if in progress
+                        onPressed: _isLoading ? null : _handleRegister,
+                        child: _isLoading
                             ? const SizedBox(
-                          height: 20,
-                          width: 20,
-                          child: CircularProgressIndicator(
-                            color: Colors.white,
-                            strokeWidth: 2,
-                          ),
+                          height: 22,
+                          width: 22,
+                          child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
                         )
                             : const Text(
                           "REGISTER",
@@ -232,9 +223,9 @@ class _SignupScreenState extends State<SignupScreen> {
                         ),
                       ),
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 20),
 
-                    // Bottom row
+                    // Sign in link
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
@@ -250,18 +241,19 @@ class _SignupScreenState extends State<SignupScreen> {
                         const SizedBox(width: 6),
                         InkWell(
                           onTap: () {
-                            Navigator.pushReplacement(  // Or pushNamed if using routes
+                            Navigator.pushReplacement(
                               context,
                               MaterialPageRoute(builder: (context) => const LoginScreen()),
                             );
                           },
-                          child: Text(
+                          child: const Text(
                             "SIGN IN",
                             style: TextStyle(
                               fontFamily: 'Digitalt',
                               fontWeight: FontWeight.w800,
                               fontSize: 14,
                               color: SignupScreen.textPink,
+                              decoration: TextDecoration.underline,
                             ),
                           ),
                         ),
@@ -277,7 +269,7 @@ class _SignupScreenState extends State<SignupScreen> {
     );
   }
 
-  // Add this method: Handle register logic
+  // Handle register logic (Logic preserved from your original code)
   Future<void> _handleRegister() async {
     final username = _usernameController.text.trim();
     final email = _emailController.text.trim();
@@ -285,16 +277,12 @@ class _SignupScreenState extends State<SignupScreen> {
     final confirmPassword = _confirmPasswordController.text;
 
     if (username.isEmpty || email.isEmpty || password.isEmpty || confirmPassword.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please fill in all fields.')),
-      );
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please fill in all fields.')));
       return;
     }
 
     if (password != confirmPassword) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Passwords do not match.')),
-      );
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Passwords do not match.')));
       return;
     }
 
@@ -303,31 +291,26 @@ class _SignupScreenState extends State<SignupScreen> {
     setState(() => _isLoading = false);
 
     if (result.success) {
-      // Success: Navigate to home (no verification)
       Navigator.pushAndRemoveUntil(
         context,
         MaterialPageRoute(builder: (context) => const HomeScreen()),
             (route) => false,
       );
     } else {
-      // Failure: Show error from service
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(result.error ?? 'Registration failed. Try again.')),
       );
     }
   }
 
-  // 🟢 Handle Google signup (mirroring login implementation)
+  // Handle Google signup
   Future<void> _handleGoogleSignup() async {
     setState(() => _isGoogleLoading = true);
     final result = await _authService.googleSignIn();
     setState(() => _isGoogleLoading = false);
 
     if (result.success) {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (context) => const HomeScreen()),
-      );
+      Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const HomeScreen()));
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(result.error ?? 'Google signup failed.')),
@@ -335,127 +318,122 @@ class _SignupScreenState extends State<SignupScreen> {
     }
   }
 
-  @override
-  void dispose() {
-    _usernameController.dispose();
-    _emailController.dispose();
-    _passwordController.dispose();
-    _confirmPasswordController.dispose();
-    super.dispose();
-  }
-
-  // Input field widget (updated to accept controller and prevent capitalization)
+  // Professional Input field
   Widget _inputField({
     required IconData icon,
     required String hint,
-    TextEditingController? controller,
+    required TextEditingController controller,
     bool obscure = false,
+    bool isPassword = false,
+    VoidCallback? toggleObscure,
+    TextInputType keyboardType = TextInputType.text,
+    TextInputAction textInputAction = TextInputAction.next,
   }) {
     return Container(
-      height: 52,
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: SignupScreen.textPink, width: 1.4),
-        color: Colors.white.withOpacity(0.4),
+        borderRadius: BorderRadius.circular(12),
+        color: Colors.white.withOpacity(0.5),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 4,
+            offset: const Offset(0, 2),
+          )
+        ],
       ),
       child: TextField(
-        controller: controller,  // Use controller
-        textCapitalization: TextCapitalization.none,  // Prevent auto-capitalization
+        controller: controller,
         obscureText: obscure,
-        style: const TextStyle(
-          // fontFamily: 'Digitalt',  // Simplified for input (system font to avoid issues)
-          fontWeight: FontWeight.w700,
-          fontSize: 16,
-          color: Colors.black,
-        ),
+        keyboardType: keyboardType,
+        textInputAction: textInputAction,
+        textCapitalization: TextCapitalization.none,
+        style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16, color: Colors.black),
         decoration: InputDecoration(
-          prefixIcon: Icon(icon, color: SignupScreen.textPink),
+          prefixIcon: Icon(icon, color: SignupScreen.textPink, size: 22),
+          suffixIcon: isPassword
+              ? IconButton(
+            icon: Icon(obscure ? Icons.visibility_off : Icons.visibility, color: SignupScreen.textPink.withOpacity(0.6)),
+            onPressed: toggleObscure,
+          )
+              : null,
           hintText: hint,
           hintStyle: TextStyle(
             fontFamily: 'Digitalt',
             fontWeight: FontWeight.w700,
             fontSize: 14,
-            color: SignupScreen.textPink,
+            color: SignupScreen.textPink.withOpacity(0.5),
           ),
-          border: InputBorder.none,
-          contentPadding: const EdgeInsets.symmetric(vertical: 14),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide(color: SignupScreen.textPink.withOpacity(0.5), width: 1.5),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: const BorderSide(color: SignupScreen.textPink, width: 2),
+          ),
+          contentPadding: const EdgeInsets.symmetric(vertical: 16),
         ),
       ),
     );
   }
 
-  // Social button widget
+  // Social button with Ripple
   Widget _socialButton({
     required String text,
     required Widget icon,
     required VoidCallback? onTap,
   }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        height: 50,
-        decoration: BoxDecoration(
-          border: Border.all(color: SignupScreen.textPink, width: 1.4),
-          borderRadius: BorderRadius.circular(8),
-          color: Colors.white.withOpacity(0.5),
-        ),
-        child: Row(
-          children: [
-            const SizedBox(width: 14),
-            icon,
-            const SizedBox(width: 12),
-            Text(
-              text,
-              style: const TextStyle(
-                fontFamily: 'Digitalt',
-                fontWeight: FontWeight.w700,
-                fontSize: 16,
-                color: SignupScreen.textPink,
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: Container(
+          height: 54,
+          decoration: BoxDecoration(
+            border: Border.all(color: SignupScreen.textPink.withOpacity(0.6), width: 1.5),
+            borderRadius: BorderRadius.circular(12),
+            color: Colors.white.withOpacity(0.3),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              icon,
+              const SizedBox(width: 14),
+              Text(
+                text,
+                style: const TextStyle(
+                  fontFamily: 'Digitalt',
+                  fontWeight: FontWeight.w700,
+                  fontSize: 16,
+                  color: SignupScreen.textPink,
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
   }
 
-  // Social login dialog
   void _showSocialDialog(BuildContext context, String provider) {
     showDialog(
       context: context,
       builder: (ctx) {
         return AlertDialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           title: Text(
-            "$provider Sign Up",  // Updated to Sign Up
-            style: const TextStyle(
-              fontFamily: 'Digitalt',
-              fontWeight: FontWeight.w800,
-              fontSize: 20,
-              color: SignupScreen.textPink,
-            ),
+            "$provider Sign Up",
+            style: const TextStyle(fontFamily: 'Digitalt', fontWeight: FontWeight.w800, fontSize: 22, color: SignupScreen.textPink),
           ),
           content: Text(
             "This is where $provider authentication will happen.",
-            style: const TextStyle(
-              fontFamily: 'Digitalt',
-              fontSize: 14,
-              color: Colors.black87,
-            ),
+            style: const TextStyle(fontFamily: 'Digitalt', fontSize: 16, color: Colors.black87),
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(ctx).pop(),
-              child: const Text(
-                "CLOSE",
-                style: TextStyle(
-                  fontFamily: 'Digitalt',
-                  fontWeight: FontWeight.w700,
-                  color: SignupScreen.textPink,
-                ),
-              ),
+              child: const Text("CLOSE", style: TextStyle(fontFamily: 'Digitalt', fontWeight: FontWeight.w700, color: SignupScreen.textPink)),
             ),
           ],
         );

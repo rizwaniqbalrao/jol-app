@@ -185,7 +185,7 @@ class WalletService {
   // POST /v1/wallet/redeem/ - Redeem Game Points to Coins
   // ═══════════════════════════════════════════════════════════════
 
-  /// Convert earned game points into coins
+  /// Convert earned game_screen points into coins
   Future<RedeemResult> redeemCoins({required int coins}) async {
     try {
       final token = await _storage.getToken();

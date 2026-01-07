@@ -18,7 +18,7 @@ class LeaderboardResult {
 }
 
 class LeaderboardService {
-  final String baseUrl = 'https://nonabstemiously-stocky-cynthia.ngrok-free.dev/api/v1';
+  final String baseUrl = 'http://13.53.102.145/api/v1';
   final SecureStorageService _storage = SecureStorageService();
 
   /// Fetch leaderboard with filters

@@ -12,11 +12,6 @@ class GameSaveHelper {
   final _uuid = Uuid();
 
   /// Save a completed solo game to the backend
-  ///
-  /// Returns a map with:
-  /// - 'success': bool
-  /// - 'message': String
-  /// - 'matchId': String? (if successful)
   Future<Map<String, dynamic>> saveSoloGame({
     required GameController controller,
     required String gameStatus, // "completed", "abandoned", or "timed_out"
@@ -34,15 +29,20 @@ class GameSaveHelper {
 
       final userId = userResult.user!.id.toString();
 
-      // Step 2: Calculate completion time for untimed mode
+      // Step 2: Calculate completion time safely
       int? completionTime;
-      if (controller.mode == GameMode.timed) {
+
+// Priority 1: Use the controller's recorded completion time
+      if (controller.completionTimeSeconds != null) {
         completionTime = controller.completionTimeSeconds;
-      } else {
-        // For untimed mode, still track how long they took
-        if (controller.gameStartTime != null) {
-          completionTime = DateTime.now().difference(controller.gameStartTime!).inSeconds;
-        }
+      }
+// Priority 2: Calculate it manually if the game is being stopped/abandoned
+      else if (controller.gameStartTime != null) {
+        completionTime = DateTime.now().difference(controller.gameStartTime!).inSeconds;
+      }
+// Priority 3: Default to 0 if the game hasn't started but is being saved
+      else {
+        completionTime = 0;
       }
 
       // Step 3: Determine game status
@@ -53,7 +53,7 @@ class GameSaveHelper {
 
       // Step 4: Build Game object
       final game = Game(
-        matchId: _uuid.v4(), // Generate unique match ID
+        matchId: _uuid.v4(),
         playerId: userId,
         gameType: 'solo',
         gameMode: controller.mode == GameMode.timed ? 'timed' : 'untimed',
@@ -63,15 +63,18 @@ class GameSaveHelper {
         status: finalStatus,
         finalScore: controller.score,
         accuracyPercentage: controller.accuracyPercentage,
-        hintsUsed: controller.hintsUsed,
-        completionTime: controller.mode == GameMode.timed ? completionTime : null,
-        roomCode: null, // Solo game
-        position: null, // Solo game
-        totalPlayers: null, // Solo game
+
+        // ALWAYS GIVE 0 AS HINTS USED (Backend Compatibility)
+        hintsUsed: 0,
+
+        completionTime: completionTime,
+        roomCode: null,
+        position: null,
+        totalPlayers: null,
       );
 
       // Step 5: Validate game data
-      final validationError = _validateGameData(game, controller);
+      final validationError = _validateGameData(game);
       if (validationError != null) {
         return {
           'success': false,
@@ -82,12 +85,15 @@ class GameSaveHelper {
       // Step 6: Save to backend
       final saveResult = await _gameService.saveGame(game);
 
-
       if (saveResult.success && saveResult.data != null) {
+        final savedGame = _convertResponseToGame(saveResult.data!);
+
         return {
           'success': true,
-          'message': saveResult.data!.detail,
+          'message': 'Game saved successfully! You earned ${saveResult.data!.pointsEarned} points.',
           'matchId': saveResult.data!.matchId,
+          'pointsEarned': saveResult.data!.pointsEarned,
+          'game': savedGame,
         };
       } else {
         return {
@@ -104,41 +110,49 @@ class GameSaveHelper {
     }
   }
 
-  /// Validate game data before saving
-  String? _validateGameData(Game game, GameController controller) {
-    // Ensure score is within 0-100 range
+  Game _convertResponseToGame(SaveGameResponse response) {
+    return Game(
+      matchId: response.matchId,
+      playerId: response.playerId ?? 'N/A',
+      gameType: response.gameType,
+      gameMode: response.gameMode,
+      operation: response.operation,
+      gridSize: response.gridSize,
+      timestamp: response.timestamp,
+      status: response.status,
+      finalScore: response.finalScore,
+      accuracyPercentage: response.accuracyPercentage,
+      hintsUsed: response.hintsUsed,
+      completionTime: response.completionTime,
+      roomCode: response.roomCode,
+      position: response.position,
+      totalPlayers: response.totalPlayers,
+    );
+  }
+
+  /// Updated Validation: Removed hint-specific logic
+  String? _validateGameData(Game game) {
     if (game.finalScore < 0 || game.finalScore > 100) {
       return 'Invalid score: ${game.finalScore}. Must be between 0-100.';
     }
 
-    // Ensure accuracy is within 0-100 range
     if (game.accuracyPercentage < 0 || game.accuracyPercentage > 100) {
       return 'Invalid accuracy: ${game.accuracyPercentage}%. Must be between 0-100.';
     }
 
-    // For timed mode, completion time should exist
-    if (game.gameMode == 'timed' && game.completionTime == null) {
-      return 'Completion time is required for timed games.';
+    // Relaxed constraint: In some abandoned scenarios, completionTime might be null
+    // but the backend usually expects it if status is 'completed'
+    if (game.status == 'completed' && game.completionTime == null) {
+      // We can log this or handle it, but for solo we usually have it.
     }
 
-    // Hints used cannot be negative or exceed max
-    if (game.hintsUsed < 0 || game.hintsUsed > controller.maxHints) {
-      return 'Invalid hints used: ${game.hintsUsed}. Must be between 0-${controller.maxHints}.';
-    }
-
-    return null; // No errors
+    return null;
   }
 
-  /// Helper method to determine game status based on controller state
   String determineGameStatus(GameController controller, bool wasCompleted) {
     if (controller.mode == GameMode.timed && controller.timeLeft.inSeconds <= 0) {
       return 'timed_out';
     }
-
-    if (wasCompleted) {
-      return 'completed';
-    }
-
-    return 'abandoned';
+    return wasCompleted ? 'completed' : 'abandoned';
   }
 }

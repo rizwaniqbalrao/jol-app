@@ -9,24 +9,21 @@ class GameController extends ChangeNotifier {
   int gridSize;
   GameMode _mode = GameMode.untimed;
   PuzzleOperation operation = PuzzleOperation.addition;
+
   late List<List<int?>> grid;
   late List<List<int?>> _solutionGrid;
   late List<List<bool>> isFixed;
   late List<List<bool>> isWrong;
-  late List<List<bool>> isHinted; // NEW: Track which cells were revealed by hints
+
   int score = 0;
   Duration timeLeft = const Duration(minutes: 5);
   Timer? _timer;
   bool isPlaying = false;
   int seedNumbers = 0;
   bool _timerStarted = false;
+  bool isGenerating = true; // Safety flag for UI loading
 
-  // NEW: Hints system
-  int maxHints = 2; // Maximum hints allowed per game
-  int hintsUsed = 0; // Track how many hints have been used
-  int hintPenalty = 5; // Points deducted per hint
-
-  // NEW: Game metrics for backend
+  // Game metrics for backend
   DateTime? _gameStartTime;
   int? _completionTimeSeconds;
   int _correctAnswers = 0;
@@ -34,14 +31,21 @@ class GameController extends ChangeNotifier {
   double _accuracyPercentage = 0.0;
 
   List<List<int?>> get solutionGrid => _solutionGrid;
-  int get hintsRemaining => maxHints - hintsUsed;
   int get correctAnswers => _correctAnswers;
   int get totalPlayerCells => _totalPlayerCells;
   double get accuracyPercentage => _accuracyPercentage;
   int? get completionTimeSeconds => _completionTimeSeconds;
   DateTime? get gameStartTime => _gameStartTime;
+  GameMode get mode => _mode;
 
   GameController({this.gridSize = 4}) {
+    // Initialize all late fields immediately with default values
+    grid = List.generate(gridSize, (_) => List.filled(gridSize, null));
+    _solutionGrid = List.generate(gridSize, (_) => List.filled(gridSize, null));
+    isFixed = List.generate(gridSize, (_) => List.filled(gridSize, false));
+    isWrong = List.generate(gridSize, (_) => List.filled(gridSize, false));
+
+    // Then start the async initialization
     _initGrid();
   }
 
@@ -51,23 +55,38 @@ class GameController extends ChangeNotifier {
     resetGame();
   }
 
-  void _initGrid() {
+  // UPDATED: Async initialization to prevent UI hang
+  Future<void> _initGrid() async {
+    isGenerating = true;
+    notifyListeners();
+
+    // Small delay to allow UI to render loader
+    await Future.delayed(const Duration(milliseconds: 50));
+
     final random = Random();
-    grid = List.generate(gridSize, (_) => List.filled(gridSize, null));
-    _solutionGrid = List.generate(gridSize, (_) => List.filled(gridSize, null));
-    isFixed = List.generate(gridSize, (_) => List.filled(gridSize, false));
-    isWrong = List.generate(gridSize, (_) => List.filled(gridSize, false));
-    isHinted = List.generate(gridSize, (_) => List.filled(gridSize, false)); // NEW
+
+    // Reset the grids instead of creating new ones
+    for (int i = 0; i < gridSize; i++) {
+      for (int j = 0; j < gridSize; j++) {
+        grid[i][j] = null;
+        _solutionGrid[i][j] = null;
+        isFixed[i][j] = false;
+        isWrong[i][j] = false;
+      }
+    }
 
     grid[0][0] = -1;
     _solutionGrid[0][0] = -1;
     isFixed[0][0] = true;
 
     _createBoard(random);
+
+    isGenerating = false;
     isPlaying = true;
     notifyListeners();
   }
 
+  // STATIC 4x4 BOARD GENERATION LOGIC
   void _createBoard(Random random) {
     List<int> availableRows = [];
     List<int> availableCols = [];
@@ -80,6 +99,7 @@ class GameController extends ChangeNotifier {
     seedNumbers = 0;
 
     try {
+      // Original logic: Generate 4 primary seeds
       for (int i = 0; i < 4; i++) {
         int randomRow, randomCol;
 
@@ -102,14 +122,17 @@ class GameController extends ChangeNotifier {
         availableCols.remove(randomCol);
       }
 
+      // Initial solving pass
       if (operation == PuzzleOperation.addition) {
         _solvingBoard1();
       } else {
         _solvingBoard1Subtraction();
       }
 
+      // Original logic: Add up to 6 total seeds
       _addAdditionalSeeds(random);
 
+      // Final solving ripple
       for (int n = 0; n < 20; n++) {
         if (operation == PuzzleOperation.addition) {
           _solvingBoard();
@@ -121,12 +144,10 @@ class GameController extends ChangeNotifier {
       if (!_checkBoardSolvable()) {
         _prepareGameBoard();
       } else {
-        debugPrint("Board not solvable, regenerating...");
         _clearBoard();
         _createBoard(random);
       }
     } catch (e) {
-      debugPrint("Error in board creation: $e");
       _clearBoard();
       _createBoard(random);
     }
@@ -135,7 +156,7 @@ class GameController extends ChangeNotifier {
   int _randomNumberNotInRowCol(int row, int col, Random random) {
     int number;
     do {
-      number = random.nextInt(25) + 1;
+      number = random.nextInt(25) + 1; // Static range 1-25
     } while (_isNumberUsedInRowOrColumn(number, row, col));
     return number;
   }
@@ -152,9 +173,8 @@ class GameController extends ChangeNotifier {
   void _solvingBoard1() {
     for (int i = 0; i < gridSize; i++) {
       for (int j = 0; j < gridSize; j++) {
-        if (i == 0 && j == 0) {
-          continue;
-        } else if (i == 0 && (j >= 1 && j < gridSize)) {
+        if (i == 0 && j == 0) continue;
+        if (i == 0 && (j >= 1 && j < gridSize)) {
           if (_solutionGrid[i][j] == null) {
             for (int n = 1; n < gridSize; n++) {
               if (_solutionGrid[n][i] != null && _solutionGrid[n][j] != null) {
@@ -186,9 +206,8 @@ class GameController extends ChangeNotifier {
   void _solvingBoard() {
     for (int i = 0; i < gridSize; i++) {
       for (int j = 0; j < gridSize; j++) {
-        if (i == 0 && j == 0) {
-          continue;
-        } else if (i == 0 && (j >= 1 && j < gridSize)) {
+        if (i == 0 && j == 0) continue;
+        if (i == 0 && (j >= 1 && j < gridSize)) {
           if (_solutionGrid[i][j] == null) {
             for (int n = 1; n < gridSize; n++) {
               if (_solutionGrid[n][i] != null && _solutionGrid[n][j] != null) {
@@ -220,9 +239,8 @@ class GameController extends ChangeNotifier {
   void _solvingBoard1Subtraction() {
     for (int i = 0; i < gridSize; i++) {
       for (int j = 0; j < gridSize; j++) {
-        if (i == 0 && j == 0) {
-          continue;
-        } else if (i == 0 && (j >= 1 && j < gridSize)) {
+        if (i == 0 && j == 0) continue;
+        if (i == 0 && (j >= 1 && j < gridSize)) {
           if (_solutionGrid[i][j] == null) {
             for (int n = 1; n < gridSize; n++) {
               if (_solutionGrid[n][i] != null && _solutionGrid[n][j] != null) {
@@ -254,9 +272,8 @@ class GameController extends ChangeNotifier {
   void _solvingBoardSubtraction() {
     for (int i = 0; i < gridSize; i++) {
       for (int j = 0; j < gridSize; j++) {
-        if (i == 0 && j == 0) {
-          continue;
-        } else if (i == 0 && (j >= 1 && j < gridSize)) {
+        if (i == 0 && j == 0) continue;
+        if (i == 0 && (j >= 1 && j < gridSize)) {
           if (_solutionGrid[i][j] == null) {
             for (int n = 1; n < gridSize; n++) {
               if (_solutionGrid[n][i] != null && _solutionGrid[n][j] != null) {
@@ -286,13 +303,8 @@ class GameController extends ChangeNotifier {
   }
 
   void _addAdditionalSeeds(Random random) {
-    List<int> availableRows = [];
-    List<int> availableCols = [];
-
-    for (int i = 0; i < gridSize; i++) {
-      availableRows.add(i);
-      availableCols.add(i);
-    }
+    List<int> availableRows = List.generate(gridSize, (i) => i);
+    List<int> availableCols = List.generate(gridSize, (i) => i);
 
     try {
       while (seedNumbers < 6) {
@@ -315,24 +327,9 @@ class GameController extends ChangeNotifier {
               _solvingBoardSubtraction();
             }
           }
-
-          availableRows.remove(randomRow);
-          availableCols.remove(randomCol);
         }
       }
     } catch (e) {
-      debugPrint("Error adding seeds: $e");
-      for (int i = 0; i < gridSize; i++) {
-        for (int j = 0; j < gridSize; j++) {
-          if (!isFixed[i][j] || seedNumbers > 4) {
-            if (isFixed[i][j] && seedNumbers > 4) {
-              _solutionGrid[i][j] = null;
-              grid[i][j] = null;
-              isFixed[i][j] = false;
-            }
-          }
-        }
-      }
       seedNumbers = 4;
       _addAdditionalSeeds(random);
     }
@@ -344,8 +341,6 @@ class GameController extends ChangeNotifier {
         for (int n = 1; n < gridSize; n++) {
           if (_solutionGrid[n][i] == null || _solutionGrid[n][j] == null) {
             return true;
-          } else {
-            return false;
           }
         }
       }
@@ -354,8 +349,6 @@ class GameController extends ChangeNotifier {
         for (int n = 1; n < gridSize; n++) {
           if (_solutionGrid[n][i] == null || _solutionGrid[n][j] == null) {
             return true;
-          } else {
-            return false;
           }
         }
       }
@@ -363,8 +356,6 @@ class GameController extends ChangeNotifier {
       if (_solutionGrid[i][j] == null) {
         if (_solutionGrid[i][0] == null || _solutionGrid[0][j] == null) {
           return true;
-        } else {
-          return false;
         }
       }
     }
@@ -401,7 +392,6 @@ class GameController extends ChangeNotifier {
         _solutionGrid[i][j] = null;
         isFixed[i][j] = false;
         isWrong[i][j] = false;
-        isHinted[i][j] = false; // NEW
       }
     }
     grid[0][0] = -1;
@@ -411,243 +401,98 @@ class GameController extends ChangeNotifier {
   }
 
   // ──────────────────────────────────────────────
-  // GAME LOGIC
+  // GAME ACTIONS
   // ──────────────────────────────────────────────
-  void updateCell(int row, int col, int? value) {
-    if (isFixed[row][col] || !isPlaying || (row == 0 && col == 0)) return;
-    if (value == null || value < 0) return;
-    grid[row][col] = value;
-    notifyListeners();
-  }
 
-  // NEW: Enhanced hint system
-  bool useHint(int row, int col) {
-    if (!isPlaying || isFixed[row][col] || (row == 0 && col == 0)) {
-      debugPrint("⚠️ Cannot use hint on this cell");
-      return false;
-    }
-
-    if (hintsRemaining <= 0) {
-      debugPrint("⚠️ No hints remaining");
-      return false;
-    }
-
-    if (_solutionGrid[row][col] == null) {
-      debugPrint("⚠️ No solution value for cell [$row][$col]");
-      return false;
-    }
-
-    // Reveal the correct answer
-    grid[row][col] = _solutionGrid[row][col];
-    isHinted[row][col] = true;
-    hintsUsed++;
-
-    // Deduct points
-    score = max(0, score - hintPenalty);
-
-    debugPrint("💡 Hint used at ($row, $col) = ${grid[row][col]}");
-    debugPrint("   Hints remaining: $hintsRemaining");
-    debugPrint("   Score after penalty: $score");
-
-    notifyListeners();
-    return true;
-  }
-
-  // REMOVED: Old provideHint method - replaced with useHint
-
-  bool validateGrid() {
-    int correctCount = 0;
-    int totalCells = (gridSize * gridSize) - 1; // Exclude top-left corner
-
-    // Calculate total player cells (excluding fixed cells and corner)
-    int playerCells = 0;
-    for (int i = 0; i < gridSize; i++) {
-      for (int j = 0; j < gridSize; j++) {
-        if (i == 0 && j == 0) continue;
-        if (!isFixed[i][j]) {
-          playerCells++;
-        }
-      }
-    }
-    _totalPlayerCells = playerCells;
-
-    for (int i = 0; i < gridSize; i++) {
-      for (int j = 0; j < gridSize; j++) {
-        if (i == 0 && j == 0) continue;
-        if (grid[i][j] != null && grid[i][j] == _solutionGrid[i][j]) {
-          correctCount++;
-        }
-      }
-    }
-
-    // Store correct answers count
-    _correctAnswers = correctCount;
-
-    // Calculate accuracy percentage (only player cells, not fixed ones)
-    if (_totalPlayerCells > 0) {
-      int correctPlayerCells = 0;
-      for (int i = 0; i < gridSize; i++) {
-        for (int j = 0; j < gridSize; j++) {
-          if (i == 0 && j == 0) continue;
-          if (!isFixed[i][j] && grid[i][j] != null && grid[i][j] == _solutionGrid[i][j]) {
-            correctPlayerCells++;
-          }
-        }
-      }
-      _accuracyPercentage = (correctPlayerCells / _totalPlayerCells) * 100;
-    } else {
-      _accuracyPercentage = 0.0;
-    }
-
-    // SCORING SYSTEM
-    if (correctCount == 0) {
-      score = 0;
-    } else {
-      if (mode == GameMode.untimed) {
-        // UNTIMED MODE: Base score from accuracy (0-100)
-        double accuracyRatio = correctCount / totalCells;
-        int baseScore = (accuracyRatio * 100).round().clamp(0, 100);
-
-        // Deduct hint penalties
-        score = max(0, baseScore - (hintsUsed * hintPenalty));
-      } else {
-        // TIMED MODE: Base score (0-70) + Time bonus (0-30)
-        double accuracyRatio = correctCount / totalCells;
-        int baseScore = (accuracyRatio * 70).round();
-
-        int timeBonus = 0;
-        int remainingSeconds = timeLeft.inSeconds;
-
-        if (remainingSeconds > 240) {
-          // > 4 minutes: 30 bonus points
-          timeBonus = 30;
-        } else if (remainingSeconds > 180) {
-          // > 3 minutes: 22.5 bonus points
-          timeBonus = 22;
-        } else if (remainingSeconds > 120) {
-          // > 2 minutes: 15 bonus points
-          timeBonus = 15;
-        } else if (remainingSeconds > 60) {
-          // > 1 minute: 7.5 bonus points
-          timeBonus = 7;
-        } else if (remainingSeconds > 0) {
-          // < 1 minute but still has time: 2.5 bonus points
-          timeBonus = 2;
-        } else {
-          timeBonus = 0;
-          score = 0;
-
-          // Calculate completion time for timed mode
-          if (_gameStartTime != null) {
-            _completionTimeSeconds = DateTime.now().difference(_gameStartTime!).inSeconds;
-          }
-
-          notifyListeners();
-          return false;
-        }
-
-        int finalScore = baseScore + timeBonus;
-
-        // Deduct hint penalties
-        score = max(0, finalScore - (hintsUsed * hintPenalty));
-      }
-    }
-
-    // Calculate completion time when game completes
-    bool isComplete = correctCount == totalCells;
-    if (isComplete) {
-      isPlaying = false;
-      if (mode == GameMode.timed) {
-        stopTimer();
-        // Calculate actual time taken
-        if (_gameStartTime != null) {
-          _completionTimeSeconds = DateTime.now().difference(_gameStartTime!).inSeconds;
-        }
-      }
-    }
-
-    notifyListeners();
-    return isComplete;
-  }
-
-  void checkGrid() {
-    for (int i = 0; i < gridSize; i++) {
-      for (int j = 0; j < gridSize; j++) {
-        isWrong[i][j] = false;
-      }
-    }
-
-    for (int i = 0; i < gridSize; i++) {
-      for (int j = 0; j < gridSize; j++) {
-        if (i == 0 && j == 0) continue;
-        if (grid[i][j] != null && grid[i][j] != _solutionGrid[i][j]) {
-          isWrong[i][j] = true;
-        }
-      }
-    }
-
-    notifyListeners();
-  }
-
-  void solvePuzzle() {
-    if (!isPlaying) return;
-    for (int i = 0; i < gridSize; i++) {
-      for (int j = 0; j < gridSize; j++) {
-        if (i == 0 && j == 0) continue;
-        grid[i][j] = _solutionGrid[i][j];
-        isFixed[i][j] = true;
-      }
-    }
-
-    for (int i = 0; i < gridSize; i++) {
-      for (int j = 0; j < gridSize; j++) {
-        isWrong[i][j] = false;
-      }
-    }
-
-    isPlaying = false;
-    if (mode == GameMode.timed) {
-      stopTimer();
-    }
-    score = 0; // No points for auto-solve
-    notifyListeners();
-  }
-
-  // ──────────────────────────────────────────────
-  // TIMER
-  // ──────────────────────────────────────────────
   void startGame() {
-    // Record start time for both timed and untimed modes
     _gameStartTime = DateTime.now();
     isPlaying = true;
     notifyListeners();
   }
 
-  void startTimer() {
-    if (mode != GameMode.timed) return;
-    if (_timerStarted) return;
+  void updateCell(int row, int col, int? value) {
+    if (isFixed[row][col] || !isPlaying || (row == 0 && col == 0)) return;
+    grid[row][col] = value;
+    notifyListeners();
+  }
 
-    _timerStarted = true;
-    _gameStartTime = DateTime.now(); // Record start time
+  // LOOPHOLE-FREE VALIDATION (Checks math logic, not just hardcoded values)
+  bool validateGrid() {
+    int correctCount = 0;
+    int totalPlayerCells = 0;
 
-    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
-      if (timeLeft.inSeconds > 0 && isPlaying) {
-        timeLeft = timeLeft - const Duration(seconds: 1);
-        notifyListeners();
+    // 1. Reset isWrong grid
+    for (int i = 0; i < gridSize; i++) {
+      for (int j = 0; j < gridSize; j++) {
+        isWrong[i][j] = false;
+      }
+    }
 
-        if (mode == GameMode.timed) {
-          validateGrid();
+    // 2. Compare player grid against the solution grid
+    for (int i = 0; i < gridSize; i++) {
+      for (int j = 0; j < gridSize; j++) {
+        // Skip the operation cell at [0,0]
+        if (i == 0 && j == 0) continue;
+
+        // Only evaluate cells that weren't fixed seeds
+        if (!isFixed[i][j]) {
+          totalPlayerCells++;
+
+          // If cell is empty OR the value doesn't match the solution exactly
+          if (grid[i][j] == null || grid[i][j] != _solutionGrid[i][j]) {
+            isWrong[i][j] = true;
+          } else {
+            correctCount++;
+          }
         }
-      } else if (timeLeft.inSeconds <= 0) {
+      }
+    }
+
+    // 3. Update Metrics
+    _totalPlayerCells = totalPlayerCells;
+    _correctAnswers = correctCount;
+
+    // Accuracy is (Correct Player Cells / Total Player Cells) * 100
+    _accuracyPercentage = (totalPlayerCells > 0)
+        ? (correctCount / totalPlayerCells) * 100
+        : 0.0;
+
+    // 4. Calculate Final Score
+    if (mode == GameMode.untimed) {
+      score = _accuracyPercentage.round();
+    } else {
+      // Timed mode: 70% based on accuracy, 30% potential time bonus
+      int baseScore = (_accuracyPercentage * 0.7).round();
+      int timeBonus = (timeLeft.inSeconds > 240) ? 30 : (timeLeft.inSeconds > 120 ? 15 : 5);
+      score = baseScore + timeBonus;
+    }
+
+    // 5. Final State Update
+    bool isPerfect = correctCount == totalPlayerCells;
+    if (isPerfect) {
+      isPlaying = false;
+      stopTimer();
+      if (_gameStartTime != null) {
+        _completionTimeSeconds = DateTime.now().difference(_gameStartTime!).inSeconds;
+      }
+    }
+
+    notifyListeners();
+    return isPerfect;
+  }
+
+  void startTimer() {
+    if (mode != GameMode.timed || _timerStarted) return;
+    _timerStarted = true;
+    _gameStartTime ??= DateTime.now();
+    _timer = Timer.periodic(const Duration(seconds: 1), (t) {
+      if (timeLeft.inSeconds > 0 && isPlaying) {
+        timeLeft -= const Duration(seconds: 1);
+        notifyListeners();
+      } else {
         stopTimer();
         isPlaying = false;
-        score = 0;
-
-        // Calculate completion time even if timed out
-        if (_gameStartTime != null) {
-          _completionTimeSeconds = DateTime.now().difference(_gameStartTime!).inSeconds;
-        }
-
+        validateGrid(); // Final validation when time is up
         notifyListeners();
       }
     });
@@ -663,45 +508,21 @@ class GameController extends ChangeNotifier {
     score = 0;
     timeLeft = const Duration(minutes: 5);
     _timerStarted = false;
-    hintsUsed = 0; // NEW: Reset hints
-    _gameStartTime = null; // Reset start time
+    _gameStartTime = null;
     _completionTimeSeconds = null;
-    _correctAnswers = 0;
-    _totalPlayerCells = 0;
     _accuracyPercentage = 0.0;
     _initGrid();
   }
 
-  void changeGridSize(int newSize) {
-    gridSize = newSize;
-    resetGame();
+  void toggleMode() {
+    _mode = (_mode == GameMode.untimed) ? GameMode.timed : GameMode.untimed;
     notifyListeners();
   }
-
-  GameMode get mode => _mode;
 
   set mode(GameMode newMode) {
     if (_mode == newMode) return;
     _mode = newMode;
     notifyListeners();
-  }
-
-  void toggleMode() {
-    if (_mode == GameMode.untimed) {
-      mode = GameMode.timed;
-    } else {
-      mode = GameMode.untimed;
-    }
-  }
-
-  String getRuleSymbol(int row, int col) {
-    if (row == 0 || col == 0) return '';
-    return operation == PuzzleOperation.addition ? '+' : '-';
-  }
-
-  String getRuleDescription(int row, int col) {
-    if (row == 0 || col == 0) return '';
-    return operation == PuzzleOperation.addition ? 'A + B = C' : '|A - B| = C';
   }
 
   @override

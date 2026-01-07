@@ -59,7 +59,7 @@ class _MultiplayerGameScreenState extends State<MultiplayerGameScreen> {
 
   // CRITICAL: Handle back button press for abandoned saves
   Future<bool> _onWillPop(MultiplayerGameController controller) async {
-    // If game hasn't started yet, allow free navigation
+    // If game_screen hasn't started yet, allow free navigation
     if (!controller.isPlaying) {
       return true;
     }
@@ -105,7 +105,7 @@ class _MultiplayerGameScreenState extends State<MultiplayerGameScreen> {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text(result['message'] ?? 'Failed to save game'),
+              content: Text(result['message'] ?? 'Failed to save game_screen'),
               backgroundColor: Colors.red,
               duration: const Duration(seconds: 4),
             ),
@@ -117,7 +117,7 @@ class _MultiplayerGameScreenState extends State<MultiplayerGameScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error saving game: $e'),
+            content: Text('Error saving game_screen: $e'),
             backgroundColor: Colors.red,
             duration: const Duration(seconds: 4),
           ),
@@ -174,7 +174,7 @@ class _MultiplayerGameScreenState extends State<MultiplayerGameScreen> {
       ),
       child: Consumer<MultiplayerGameController>(
         builder: (context, controller, _) {
-          // CRITICAL FIX 1: Navigate to results when game ends + auto-save
+          // CRITICAL FIX 1: Navigate to results when game_screen ends + auto-save
           if (controller.room?.gameState.status == 'ended' && !controller.isPlaying) {
             WidgetsBinding.instance.addPostFrameCallback((_) async {
               // Auto-save before navigating if player had submitted

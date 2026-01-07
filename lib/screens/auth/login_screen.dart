@@ -11,6 +11,7 @@ class LoginScreen extends StatefulWidget {
   static const Color textBlue = Color(0xFF0734A5);
   static const Color textGreen = Color(0xFF43AC45);
   static const Color textPink = Color(0xFFC42AF8);
+  static const Color accentPink = Color(0xFFF82A87);
 
   @override
   State<LoginScreen> createState() => _LoginScreenState();
@@ -20,12 +21,22 @@ class _LoginScreenState extends State<LoginScreen> {
   final AuthService _authService = AuthService();
   final _usernameController = TextEditingController();
   final _passwordController = TextEditingController();
+
   bool _isLoading = false;
   bool _isGoogleLoading = false;
+  bool _obscurePassword = true;
+
+  @override
+  void dispose() {
+    _usernameController.dispose();
+    _passwordController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      // Improved: Resize ensures content remains scrollable when keyboard is open
       resizeToAvoidBottomInset: true,
       body: Container(
         height: double.infinity,
@@ -45,164 +56,151 @@ class _LoginScreenState extends State<LoginScreen> {
           child: Stack(
             children: [
               SingleChildScrollView(
-                padding: const EdgeInsets.only(bottom: 120),
+                physics: const BouncingScrollPhysics(),
+                padding: const EdgeInsets.symmetric(horizontal: 28),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     const SizedBox(height: 80),
-                    Text(
+                    const Text(
                       'LOGIN',
                       textAlign: TextAlign.center,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontFamily: 'Digitalt',
                         fontWeight: FontWeight.w800,
-                        fontSize: 28,
-                        color: Color(0xFFF82A87),
-                        letterSpacing: 1.4,
+                        fontSize: 32,
+                        color: LoginScreen.accentPink,
+                        letterSpacing: 2.0,
                       ),
                     ),
-                    const SizedBox(height: 25),
+                    const SizedBox(height: 40),
 
                     // Username / Email
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 28),
-                      child: _inputField(
-                        icon: Icons.email_outlined,
-                        hint: "USERNAME OR EMAIL",
-                        controller: _usernameController,
-                      ),
+                    _inputField(
+                      icon: Icons.person_outline_rounded,
+                      hint: "USERNAME OR EMAIL",
+                      controller: _usernameController,
+                      keyboardType: TextInputType.emailAddress,
+                      textInputAction: TextInputAction.next,
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 18),
 
-                    // Password
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 28),
-                      child: _inputField(
-                        icon: Icons.lock_outline,
-                        hint: "PASSWORD",
-                        obscure: true,
-                        controller: _passwordController,
-                      ),
+                    // Password with toggle visibility
+                    _inputField(
+                      icon: Icons.lock_open_rounded,
+                      hint: "PASSWORD",
+                      controller: _passwordController,
+                      obscure: _obscurePassword,
+                      isPassword: true,
+                      textInputAction: TextInputAction.done,
+                      toggleObscure: () {
+                        setState(() => _obscurePassword = !_obscurePassword);
+                      },
                     ),
-                    const SizedBox(height: 10),
+                    const SizedBox(height: 12),
 
                     // Forgot password
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 28),
-                      child: Align(
-                        alignment: Alignment.centerRight,
-                        child: InkWell(
-                          onTap: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => const ForgotPasswordScreen(),
-                              ),
-                            );
-                          },
-                          child: const Text(
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: InkWell(
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => const ForgotPasswordScreen(),
+                            ),
+                          );
+                        },
+                        child: const Padding(
+                          padding: EdgeInsets.symmetric(vertical: 4),
+                          child: Text(
                             "FORGOT PASSWORD?",
                             style: TextStyle(
                               fontFamily: 'Digitalt',
                               fontWeight: FontWeight.w700,
                               fontSize: 14,
-                              color: Color(0xFFF82A87),
+                              color: LoginScreen.accentPink,
                             ),
                           ),
                         ),
                       ),
                     ),
-                    const SizedBox(height: 24),
+                    const SizedBox(height: 30),
 
                     // Divider
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 28),
-                      child: Row(
-                        children: [
-                          const Expanded(
-                            child: Divider(thickness: 1, color: LoginScreen.textPink),
-                          ),
-                          Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 8),
-                            child: Text(
-                              "OR",
-                              style: const TextStyle(
-                                fontFamily: 'Digitalt',
-                                fontWeight: FontWeight.w700,
-                                fontSize: 14,
-                                color: LoginScreen.textPink,
-                              ),
+                    Row(
+                      children: [
+                        Expanded(child: Divider(thickness: 1.2, color: LoginScreen.textPink.withOpacity(0.4))),
+                        const Padding(
+                          padding: EdgeInsets.symmetric(horizontal: 12),
+                          child: Text(
+                            "OR",
+                            style: TextStyle(
+                              fontFamily: 'Digitalt',
+                              fontWeight: FontWeight.w700,
+                              fontSize: 14,
+                              color: LoginScreen.textPink,
                             ),
                           ),
-                          const Expanded(
-                            child: Divider(thickness: 1, color: LoginScreen.textPink),
-                          ),
-                        ],
-                      ),
+                        ),
+                        Expanded(child: Divider(thickness: 1.2, color: LoginScreen.textPink.withOpacity(0.4))),
+                      ],
                     ),
-                    const SizedBox(height: 24),
+                    const SizedBox(height: 30),
 
                     // Google Login Button
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 28),
-                      child: _socialButton(
-                        text: _isGoogleLoading
-                            ? "SIGNING IN..."
-                            : "CONTINUE WITH GMAIL",
-                        icon: Image.asset(
-                          "lib/assets/images/google.png",
-                          height: 22,
-                          width: 22,
-                        ),
-                        onTap: _isGoogleLoading ? null : _handleGoogleLogin,
-                      ),
+                    _socialButton(
+                      text: _isGoogleLoading ? "SIGNING IN..." : "CONTINUE WITH GMAIL",
+                      icon: Image.asset("lib/assets/images/google.png", height: 22),
+                      onTap: _isGoogleLoading ? null : _handleGoogleLogin,
                     ),
-                    const SizedBox(height: 14),
+                    const SizedBox(height: 16),
 
-                    // Apple (still placeholder)
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 28),
-                      child: _socialButton(
-                        text: "CONTINUE WITH APPLE",
-                        icon: Image.asset(
-                          "lib/assets/images/apple.png",
-                          height: 22,
-                          width: 22,
-                        ),
-                        onTap: () {
-                          _showSocialDialog(context, "Apple");
-                        },
-                      ),
+                    // Apple Button
+                    _socialButton(
+                      text: "CONTINUE WITH APPLE",
+                      icon: Image.asset("lib/assets/images/apple.png", height: 22),
+                      onTap: () => _showSocialDialog(context, "Apple"),
                     ),
-                    const SizedBox(height: 40),
+                    const SizedBox(height: 140), // Spacer for bottom fixed content
                   ],
                 ),
               ),
 
-              // Bottom fixed
+              // Bottom fixed section
               Positioned(
-                left: 0,
-                right: 0,
+                left: 28,
+                right: 28,
                 bottom: 24,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    // Sign in button
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 28),
+                    // Sign in button with shadow
+                    Container(
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(10),
+                        boxShadow: [
+                          BoxShadow(
+                            color: LoginScreen.textPink.withOpacity(0.3),
+                            blurRadius: 8,
+                            offset: const Offset(0, 4),
+                          )
+                        ],
+                      ),
                       child: ElevatedButton(
                         style: ElevatedButton.styleFrom(
                           backgroundColor: LoginScreen.textPink,
-                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          padding: const EdgeInsets.symmetric(vertical: 16),
                           shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8),
+                            borderRadius: BorderRadius.circular(10),
                           ),
+                          elevation: 0,
                         ),
                         onPressed: _isLoading ? null : _handleLogin,
                         child: _isLoading
                             ? const SizedBox(
-                          height: 20,
-                          width: 20,
+                          height: 22,
+                          width: 22,
                           child: CircularProgressIndicator(
                             color: Colors.white,
                             strokeWidth: 2,
@@ -220,7 +218,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         ),
                       ),
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 20),
 
                     // Signup link
                     Row(
@@ -250,6 +248,7 @@ class _LoginScreenState extends State<LoginScreen> {
                               fontWeight: FontWeight.w800,
                               fontSize: 14,
                               color: LoginScreen.textPink,
+                              decoration: TextDecoration.underline,
                             ),
                           ),
                         ),
@@ -265,7 +264,7 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  // 🟢 Handle standard login
+  // Handle standard login (Logic preserved)
   Future<void> _handleLogin() async {
     final input = _usernameController.text.trim();
     if (input.isEmpty || _passwordController.text.isEmpty) {
@@ -300,7 +299,7 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
-  // 🟢 Handle Google login
+  // Handle Google login (Logic preserved)
   Future<void> _handleGoogleLogin() async {
     setState(() => _isGoogleLoading = true);
     final result = await _authService.googleSignIn();
@@ -319,114 +318,121 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
-  // Input field
+  // Professional Input field helper
   Widget _inputField({
     required IconData icon,
     required String hint,
-    TextEditingController? controller,
+    required TextEditingController controller,
     bool obscure = false,
+    bool isPassword = false,
+    VoidCallback? toggleObscure,
+    TextInputType keyboardType = TextInputType.text,
+    TextInputAction textInputAction = TextInputAction.next,
   }) {
     return Container(
-      height: 52,
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: LoginScreen.textPink, width: 1.4),
-        color: Colors.white.withOpacity(0.4),
+        borderRadius: BorderRadius.circular(12),
+        color: Colors.white.withOpacity(0.5),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 4,
+            offset: const Offset(0, 2),
+          )
+        ],
       ),
       child: TextField(
         controller: controller,
         obscureText: obscure,
-        style: const TextStyle(
-          fontWeight: FontWeight.w700,
-          fontSize: 16,
-          color: Colors.black,
-        ),
+        keyboardType: keyboardType,
+        textInputAction: textInputAction,
+        style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16, color: Colors.black),
         decoration: InputDecoration(
-          prefixIcon: Icon(icon, color: LoginScreen.textPink),
+          prefixIcon: Icon(icon, color: LoginScreen.textPink, size: 22),
+          suffixIcon: isPassword
+              ? IconButton(
+            icon: Icon(obscure ? Icons.visibility_off : Icons.visibility, color: LoginScreen.textPink.withOpacity(0.6)),
+            onPressed: toggleObscure,
+          )
+              : null,
           hintText: hint,
-          hintStyle: const TextStyle(
+          hintStyle: TextStyle(
             fontFamily: 'Digitalt',
             fontWeight: FontWeight.w700,
             fontSize: 14,
-            color: LoginScreen.textPink,
+            color: LoginScreen.textPink.withOpacity(0.5),
           ),
-          border: InputBorder.none,
-          contentPadding: const EdgeInsets.symmetric(vertical: 14),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide(color: LoginScreen.textPink.withOpacity(0.5), width: 1.5),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: const BorderSide(color: LoginScreen.textPink, width: 2),
+          ),
+          contentPadding: const EdgeInsets.symmetric(vertical: 16),
         ),
       ),
     );
   }
 
-  // Social button
+  // Social button helper with Ripple Effect
   Widget _socialButton({
     required String text,
     required Widget icon,
     required VoidCallback? onTap,
   }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        height: 50,
-        decoration: BoxDecoration(
-          border: Border.all(color: LoginScreen.textPink, width: 1.4),
-          borderRadius: BorderRadius.circular(8),
-          color: Colors.white.withOpacity(0.5),
-        ),
-        child: Row(
-          children: [
-            const SizedBox(width: 14),
-            icon,
-            const SizedBox(width: 12),
-            Text(
-              text,
-              style: const TextStyle(
-                fontFamily: 'Digitalt',
-                fontWeight: FontWeight.w700,
-                fontSize: 16,
-                color: LoginScreen.textPink,
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: Container(
+          height: 54,
+          decoration: BoxDecoration(
+            border: Border.all(color: LoginScreen.textPink.withOpacity(0.6), width: 1.5),
+            borderRadius: BorderRadius.circular(12),
+            color: Colors.white.withOpacity(0.3),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              icon,
+              const SizedBox(width: 14),
+              Text(
+                text,
+                style: const TextStyle(
+                  fontFamily: 'Digitalt',
+                  fontWeight: FontWeight.w700,
+                  fontSize: 16,
+                  color: LoginScreen.textPink,
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
   }
 
-  // Old dialog (still used for Apple placeholder)
   void _showSocialDialog(BuildContext context, String provider) {
     showDialog(
       context: context,
       builder: (ctx) {
         return AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           title: Text(
             "$provider Login",
-            style: const TextStyle(
-              fontFamily: 'Digitalt',
-              fontWeight: FontWeight.w800,
-              fontSize: 20,
-              color: LoginScreen.textPink,
-            ),
+            style: const TextStyle(fontFamily: 'Digitalt', fontWeight: FontWeight.w800, fontSize: 22, color: LoginScreen.textPink),
           ),
           content: Text(
             "This is where $provider authentication will happen.",
-            style: const TextStyle(
-              fontFamily: 'Digitalt',
-              fontSize: 14,
-              color: Colors.black87,
-            ),
+            style: const TextStyle(fontFamily: 'Digitalt', fontSize: 16, color: Colors.black87),
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(ctx).pop(),
-              child: const Text(
-                "CLOSE",
-                style: TextStyle(
-                  fontFamily: 'Digitalt',
-                  fontWeight: FontWeight.w700,
-                  color: LoginScreen.textPink,
-                ),
-              ),
+              child: const Text("CLOSE", style: TextStyle(fontFamily: 'Digitalt', fontWeight: FontWeight.w700, color: LoginScreen.textPink)),
             ),
           ],
         );

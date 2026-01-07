@@ -335,6 +335,7 @@ void showSettingsDialog(BuildContext context) {
   );
 }
 
+
 class HelpDialog extends StatefulWidget {
   const HelpDialog({super.key});
 
@@ -343,10 +344,11 @@ class HelpDialog extends StatefulWidget {
 }
 
 class _HelpDialogState extends State<HelpDialog> {
-  // Colors from your palette
+  // Brand Colors
   static const Color textBlue = Color(0xFF0734A5);
   static const Color textGreen = Color(0xFF43AC45);
   static const Color textPink = Color(0xFFC42AF8);
+  static const Color labelPink = Color(0xFFE961B9);
 
   int currentPage = 0;
 
@@ -380,9 +382,9 @@ class _HelpDialogState extends State<HelpDialog> {
             Container(
               width: 80,
               height: 6,
-              margin: const EdgeInsets.only(bottom: 14),
+              margin: const EdgeInsets.only(bottom: 24),
               decoration: BoxDecoration(
-                color: Colors.black87,
+                color: Colors.black,
                 borderRadius: BorderRadius.circular(6),
               ),
             ),
@@ -392,112 +394,33 @@ class _HelpDialogState extends State<HelpDialog> {
               _pageTitle(currentPage),
               style: const TextStyle(
                 fontFamily: 'Nunito',
-                fontWeight: FontWeight.w700,
-                fontSize: 18,
-                letterSpacing: 0.04,
+                fontWeight: FontWeight.w800,
+                fontSize: 20,
                 color: Colors.black,
               ),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 20),
 
             // Page content
             _pageContent(currentPage),
 
-            const SizedBox(height: 22),
+            const SizedBox(height: 30),
 
             // Buttons row
-            if (currentPage == 0)
-              // First page → full width Next
-              ElevatedButton(
-                onPressed: nextPage,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: textPink,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  padding:
-                      const EdgeInsets.symmetric(vertical: 12, horizontal: 60),
-                ),
-                child: const Text(
-                  'Next',
-                  style: TextStyle(
-                    fontFamily: 'Nunito',
-                    fontWeight: FontWeight.w700,
-                    fontSize: 16,
-                    color: Colors.white,
-                  ),
-                ),
-              )
-            else
-              Row(
-                children: [
-                  // Previous (blue)
-                  Expanded(
-                    child: ElevatedButton(
-                      onPressed: previousPage,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: textBlue,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                      ),
-                      child: const Text(
-                        'Previous',
-                        style: TextStyle(
-                          fontFamily: 'Nunito',
-                          fontWeight: FontWeight.w700,
-                          fontSize: 16,
-                          color: Colors.white,
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 14),
-                  // Next / Done (pink)
-                  Expanded(
-                    child: ElevatedButton(
-                      onPressed: () {
-                        if (currentPage == 4) {
-                          Navigator.of(context).pop(); // Done
-                        } else {
-                          nextPage();
-                        }
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: textPink,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                      ),
-                      child: Text(
-                        currentPage == 4 ? 'Done' : 'Next',
-                        style: const TextStyle(
-                          fontFamily: 'Nunito',
-                          fontWeight: FontWeight.w700,
-                          fontSize: 16,
-                          color: Colors.white,
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
+            _buildNavigationButtons(),
 
-            const SizedBox(height: 14),
+            const SizedBox(height: 18),
 
             // Page indicator dots
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: List.generate(5, (index) {
-                final bool active = index == currentPage;
                 return Container(
-                  margin: const EdgeInsets.symmetric(horizontal: 6),
+                  margin: const EdgeInsets.symmetric(horizontal: 4),
                   width: 14,
                   height: 14,
                   decoration: BoxDecoration(
-                    color: active ? textPink : Colors.grey.shade300,
+                    color: index == currentPage ? textPink : Colors.grey.shade300,
                     shape: BoxShape.circle,
                   ),
                 );
@@ -509,92 +432,87 @@ class _HelpDialogState extends State<HelpDialog> {
     );
   }
 
-  // ---- Page content builder ----
+  Widget _buildNavigationButtons() {
+    if (currentPage == 0) {
+      return SizedBox(
+        width: double.infinity,
+        child: ElevatedButton(
+          onPressed: nextPage,
+          style: _btnStyle(textPink),
+          child: const Text('Next', style: _btnTextStyle),
+        ),
+      );
+    }
+    return Row(
+      children: [
+        Expanded(
+          child: ElevatedButton(
+            onPressed: previousPage,
+            style: _btnStyle(textBlue),
+            child: const Text('Previous', style: _btnTextStyle),
+          ),
+        ),
+        const SizedBox(width: 14),
+        Expanded(
+          child: ElevatedButton(
+            onPressed: () => currentPage == 4 ? Navigator.pop(context) : nextPage(),
+            style: _btnStyle(textPink),
+            child: Text(currentPage == 4 ? 'Done' : 'Next', style: _btnTextStyle),
+          ),
+        ),
+      ],
+    );
+  }
+
   Widget _pageContent(int page) {
     switch (page) {
       case 0: // A, B and C
         return Column(
           children: [
             _gridContainer([
-              [
-                _cell('+', textPink),
-                _cell('B', textGreen),
-                _cell('', textBlue)
-              ],
-              [
-                _cell('+', textGreen),
-                _cell('C', Colors.white, border: true),
-                _cell('', Colors.white, border: true)
-              ],
-              [
-                _cell('+', textGreen),
-                _cell('A', Colors.white, border: true),
-                _cell('', Colors.white, border: true)
-              ],
+              [_cell('+', textPink), _cell('B', textGreen), _cell('', textBlue)],
+              [_cell('A', textGreen), _cell('', Colors.white, border: true), _cell('', Colors.white, border: true)],
+              [_cell('', textGreen), _cell('C', Colors.white, border: true), _cell('', Colors.white, border: true)],
             ]),
-            const SizedBox(height: 18),
+            const SizedBox(height: 20),
             const Text(
               "In the grid, locate point C by drawing a vertical line down from number B and a horizontal line to the right from number A. The intersection of these lines creates point C, forming an inverted 'L' shape connecting A, B, and C.",
               textAlign: TextAlign.center,
-              style: _instructionStyle,
+              style: _bodyStyle,
             ),
           ],
         );
 
-      case 1: // A, B = C
+      case 1: // A+B = C
         return Column(
           children: [
             _gridContainer([
-              [
-                _cell('+', textPink),
-                _cell('', textGreen),
-                _cell('4', textBlue)
-              ],
-              [
-                _cell('6', textGreen),
-                _cell('', Colors.white, border: true),
-                _cell('10', Colors.white, border: true)
-              ],
-              [
-                _cell('', textGreen),
-                _cell('', Colors.white, border: true),
-                _cell('', Colors.white, border: true)
-              ],
+              [_cell('+', textPink), _cell('', textGreen), _cell('4', textBlue)],
+              [_cell('6', textGreen), _cell('', Colors.white, border: true), _cell('10', Colors.white, border: true)],
+              [_cell('', textGreen), _cell('', Colors.white, border: true), _cell('', Colors.white, border: true)],
             ]),
-            const SizedBox(height: 18),
+            const SizedBox(height: 20),
             const Text(
-              "If you have A = 6 and B = 4, simply add A and B to find the value of C. In this case, C = 6 + 4, which equals 10.",
+              "If you have A = 6 and B = 4,\nsimply add A and B to find the value of C.\nIn this case,\n\nC = 6 + 4, which equals 10",
               textAlign: TextAlign.center,
-              style: _instructionStyle,
+              style: _bodyStyle,
             ),
           ],
         );
 
-      case 2: // A, B = B
+      case 2: // B = AC
         return Column(
           children: [
             _gridContainer([
-              [
-                _cell('+', textPink),
-                _cell('?', textGreen),
-                _cell('', textBlue)
-              ],
-              [
-                _cell('6', textGreen),
-                _cell('', Colors.white, border: true),
-                _cell('', Colors.white, border: true)
-              ],
-              [
-                _cell('5', textGreen),
-                _cell('7', Colors.white, border: true),
-                _cell('', Colors.white, border: true)
-              ],
+              [_cell('+', textPink), _cell('?', textGreen), _cell('', textBlue)],
+              [_cell('6', textGreen), _cell('', Colors.white, border: true), _cell('', Colors.white, border: true)],
+              [_cell('5', textGreen), _cell('7', Colors.white, border: true), _cell('', Colors.white, border: true)],
             ]),
-            const SizedBox(height: 18),
+            const SizedBox(height: 20),
             const Text(
-              "If you have A = 5 and C = 7, simply add A and C to find the value of B. In the case, B = 5 + 7, which equals 12.",
+              "If You have A = 5 and C = 7,\nsimply add A and C to find the value of B.\nIn the case,\n\nB = 5 + 7, which equals 12.",
               textAlign: TextAlign.center,
-              style: _instructionStyle,
+              style: _bodyStyle,
             ),
           ],
         );
@@ -602,23 +520,11 @@ class _HelpDialogState extends State<HelpDialog> {
       case 3: // Jol Puzzle
         return Column(
           children: [
-            _gridContainerWithLabels(),
-            const SizedBox(height: 18),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: const [
-                Text(
-                    "1.  To find A2, add B2 and C: A2 = B2 + C. For example, if B2 = 3 and C = 4, then A2 = 3+4 = 7.",
-                    style: _instructionStyle),
-                SizedBox(height: 8),
-                Text(
-                    "2.  With A2 and C, find B1 by adding them: B1 = A2 + C. For example, if A2 = 7 and C = 8, then B1 = 7 + 8 = 15.",
-                    style: _instructionStyle),
-                SizedBox(height: 8),
-                Text("3.  This pattern continues as you progress in the game.",
-                    style: _instructionStyle),
-              ],
-            ),
+            _jolGridWithLabels(),
+            const SizedBox(height: 20),
+            _instructionBadge("1", "“To find A2, add B2 and C: A2 = B2 + C. For example, If B2 = 3 and C = 4, then A2 = 3+4 = 7.”", textPink),
+            _instructionBadge("2", "“With A2 and C, find B1 by adding them: B1 = A2 + C. For example, if A2 = 7 and C = 8, then B1 = 7 + 8 = 15.”", textPink),
+            _instructionBadge("3", "“This pattern continues as you progress inn the game.”", const Color(0xFF4DA8FF)),
           ],
         );
 
@@ -626,46 +532,36 @@ class _HelpDialogState extends State<HelpDialog> {
         return Column(
           children: [
             Container(
-              padding: const EdgeInsets.all(12),
+              padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
               decoration: BoxDecoration(
-                color: Colors.white,
-                border: Border.all(color: Colors.grey.withOpacity(0.3)),
-                borderRadius: BorderRadius.circular(10),
+                color: const Color(0xFFF8FAFF),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.blue.shade50),
               ),
               child: Column(
                 children: const [
-                  _scoreRow("Remaining Time:", "120 Sec"),
-                  _scoreRow("Points:", "150"),
-                  _scoreRow("Total Score:", "150"),
+                  _ScoreRow("Remaining Time:", "120 Sec", isValueRed: true),
+                  SizedBox(height: 8),
+                  _ScoreRow("Points:", "150", isValueRed: true),
+                  SizedBox(height: 8),
+                  _ScoreRow("Total Score:", "150", isValueRed: true),
                 ],
               ),
             ),
-            const SizedBox(height: 14),
-            ElevatedButton(
-              onPressed: () {},
-              style: ElevatedButton.styleFrom(
-                backgroundColor: textBlue,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                padding:
-                    const EdgeInsets.symmetric(vertical: 12, horizontal: 20),
-              ),
-              child: const Text(
-                "Check & submit score",
-                style: TextStyle(
-                  fontFamily: 'Nunito',
-                  fontWeight: FontWeight.w700,
-                  fontSize: 16,
-                  color: Colors.white,
-                ),
+            const SizedBox(height: 20),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: () {},
+                style: _btnStyle(textBlue),
+                child: const Text("Check & submit score", style: _btnTextStyle),
               ),
             ),
-            const SizedBox(height: 18),
+            const SizedBox(height: 20),
             const Text(
               "After completing the board, click 'Check & Submit Score' to review. Correct answers yield 100 points each, with an extra point awarded for every remaining second.",
               textAlign: TextAlign.center,
-              style: _instructionStyle,
+              style: _bodyStyle,
             ),
           ],
         );
@@ -676,75 +572,34 @@ class _HelpDialogState extends State<HelpDialog> {
   }
 
   String _pageTitle(int page) {
-    switch (page) {
-      case 0:
-        return "A, B and C";
-      case 1:
-        return "A, B = C";
-      case 2:
-        return "A, B = B";
-      case 3:
-        return "Jol Puzzle";
-      case 4:
-        return "Point System";
-      default:
-        return "";
-    }
+    if (page == 1) return "A+B = C";
+    if (page == 2) return "B = AC";
+    return ["A, B and C", "", "", "Jol Puzzle", "Point System"][page];
   }
 
-  // ---- Grid builders ----
+  // ---- Shared Grid Components ----
   Widget _gridContainer(List<List<Widget>> rows) {
     return Container(
-      padding: const EdgeInsets.all(10),
+      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.grey.withOpacity(0.2), width: 1.2),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey.shade100, width: 2),
       ),
-      child: SizedBox(
-        width: 220,
-        height: 220,
-        child: GridView.builder(
-          itemCount: 9,
-          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 3, mainAxisSpacing: 8, crossAxisSpacing: 8),
-          physics: const NeverScrollableScrollPhysics(),
-          itemBuilder: (context, index) {
-            final row = index ~/ 3;
-            final col = index % 3;
-            return rows[row][col];
-          },
-        ),
-      ),
-    );
-  }
-
-  Widget _gridContainerWithLabels() {
-    return Container(
-      padding: const EdgeInsets.all(10),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.grey.withOpacity(0.2), width: 1.2),
-      ),
-      child: SizedBox(
-        width: 220,
-        height: 220,
-        child: GridView.count(
-          crossAxisCount: 3,
-          mainAxisSpacing: 8,
-          crossAxisSpacing: 8,
-          physics: const NeverScrollableScrollPhysics(),
-          children: [
-            _gridBoxWithLabel('+', textPink, ""),
-            _gridBoxWithLabel('15', Colors.white, "7+8="),
-            _gridBoxWithLabel('3', textGreen, ""),
-            _gridBoxWithLabel('17', Colors.white, "15÷2="),
-            _gridBoxWithLabel('2', textGreen, ""),
-            _gridBoxWithLabel('', Colors.white, ""),
-            _gridBoxWithLabel('7', Colors.white, "3+4="),
-            _gridBoxWithLabel('8', textBlue, ""),
-            _gridBoxWithLabel('4', textPink, ""),
-          ],
-        ),
+      child: Column(
+        children: rows.map((row) {
+          return Padding(
+            padding: const EdgeInsets.symmetric(vertical: 4),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: row.map((cell) {
+                return Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 4),
+                  child: SizedBox(width: 60, height: 60, child: cell),
+                );
+              }).toList(),
+            ),
+          );
+        }).toList(),
       ),
     );
   }
@@ -754,83 +609,124 @@ class _HelpDialogState extends State<HelpDialog> {
       alignment: Alignment.center,
       decoration: BoxDecoration(
         color: color,
-        borderRadius: BorderRadius.circular(6),
-        border:
-            border ? Border.all(color: Colors.black.withOpacity(0.2)) : null,
+        borderRadius: BorderRadius.circular(8),
+        border: border ? Border.all(color: Colors.grey.shade300) : null,
+        boxShadow: [
+          if (color != Colors.white)
+            BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 4, offset: const Offset(0, 2)),
+        ],
       ),
       child: Text(
         text,
-        style: const TextStyle(
-          fontFamily: 'Nunito',
-          fontWeight: FontWeight.w700,
-          fontSize: 22,
-          letterSpacing: 0.04,
-          color: Colors.black,
-        ),
+        style: const TextStyle(fontFamily: 'Nunito', fontWeight: FontWeight.w800, fontSize: 24, color: Colors.black),
       ),
     );
   }
 
-  Widget _gridBoxWithLabel(String text, Color color, String label) {
-    return Stack(
+  // ---- Page 3 Specialized Grid ----
+  Widget _jolGridWithLabels() {
+    const double size = 60;
+    const double gap = 8;
+    const labelStyle = TextStyle(fontFamily: 'Nunito', fontWeight: FontWeight.bold, fontSize: 18, color: labelPink);
+
+    return Column(
       children: [
-        _cell(text, color, border: color == Colors.white),
-        if (label.isNotEmpty)
-          Positioned(
-            left: 2,
-            top: 2,
-            child: Text(
-              label,
-              style: const TextStyle(
-                fontSize: 14,
-                fontFamily: 'Nunito',
-                fontWeight: FontWeight.w700,
-                color: Colors.purple,
-              ),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: const [
+            SizedBox(width: size + 20),
+            SizedBox(width: size, child: Center(child: Text("B1", style: labelStyle))),
+            SizedBox(width: gap),
+            SizedBox(width: size, child: Center(child: Text("B2", style: labelStyle))),
+          ],
+        ),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Column(
+              children: const [
+                SizedBox(height: size + gap),
+                SizedBox(height: size, child: Center(child: Text("A1", style: labelStyle))),
+                SizedBox(height: gap),
+                SizedBox(height: size, child: Center(child: Text("A2", style: labelStyle))),
+              ],
             ),
+            const SizedBox(width: 8),
+            _gridContainer([
+              [_cell('+', textPink), _jolCell('15', '7+8='), _cell('3', textGreen)],
+              [_jolCell('17', '15+2='), _cell('2', textGreen), _cell('', Colors.white, border: true)],
+              [_jolCell('7', '3+4='), _cell('8', textBlue), _cell('4', textPink)],
+            ]),
+          ],
+        ),
+      ],
+    );
+  }
+
+  static Widget _jolCell(String text, String formula) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.grey.shade300),
+      ),
+      child: Stack(
+        children: [
+          Positioned(top: 4, left: 0, right: 0, child: Text(formula, textAlign: TextAlign.center, style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w800))),
+          Center(child: Text(text, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w900))),
+        ],
+      ),
+    );
+  }
+
+  Widget _instructionBadge(String num, String text, Color color) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 26, height: 26,
+            decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(4)),
+            alignment: Alignment.center,
+            child: Text(num, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
           ),
+          const SizedBox(width: 12),
+          Expanded(child: Text(text, style: const TextStyle(fontFamily: 'Nunito', fontSize: 14, fontWeight: FontWeight.w700))),
+        ],
+      ),
+    );
+  }
+
+  // Styles
+  static const TextStyle _bodyStyle = TextStyle(fontFamily: 'Nunito', fontSize: 15, fontWeight: FontWeight.w700, height: 1.3, color: Colors.black);
+  static const TextStyle _btnTextStyle = TextStyle(fontFamily: 'Nunito', fontWeight: FontWeight.w800, fontSize: 18, color: Colors.white);
+
+  ButtonStyle _btnStyle(Color color) {
+    return ElevatedButton.styleFrom(
+      backgroundColor: color,
+      padding: const EdgeInsets.symmetric(vertical: 14),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      elevation: 0,
+    );
+  }
+}
+
+class _ScoreRow extends StatelessWidget {
+  final String label, value;
+  final bool isValueRed;
+  const _ScoreRow(this.label, this.value, {this.isValueRed = false});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(label, style: const TextStyle(fontFamily: 'Nunito', fontWeight: FontWeight.w800, fontSize: 17, color: Colors.black)),
+        Text(value, style: TextStyle(fontFamily: 'Nunito', fontWeight: FontWeight.w800, fontSize: 17, color: isValueRed ? const Color(0xFFFF7088) : Colors.black)),
       ],
     );
   }
 }
 
-// ---- Helpers ----
-class _scoreRow extends StatelessWidget {
-  final String label;
-  final String value;
-  const _scoreRow(this.label, this.value);
 
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4.0),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(label,
-              style: const TextStyle(
-                fontFamily: 'Nunito',
-                fontWeight: FontWeight.w700,
-                fontSize: 14,
-                color: Colors.black,
-              )),
-          Text(value,
-              style: const TextStyle(
-                fontFamily: 'Nunito',
-                fontWeight: FontWeight.w700,
-                fontSize: 14,
-                color: Colors.red,
-              )),
-        ],
-      ),
-    );
-  }
-}
-
-const TextStyle _instructionStyle = TextStyle(
-  fontFamily: 'Nunito',
-  fontWeight: FontWeight.w700,
-  fontSize: 14,
-  height: 1.2,
-  color: Colors.black,
-);

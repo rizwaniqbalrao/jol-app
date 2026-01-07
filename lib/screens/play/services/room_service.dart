@@ -137,7 +137,7 @@ class RoomService {
   }
 
   Future<void> endGame(String roomCode) async {
-    print('🏁 Ending game for room $roomCode');
+    print('🏁 Ending game_screen for room $roomCode');
 
     final roomRef = _database.ref('rooms/$roomCode');
 

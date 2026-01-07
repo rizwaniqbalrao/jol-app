@@ -83,7 +83,7 @@ class AdjustCoinsRequest {
   }
 }
 
-/// Response for redeeming game points to coins
+/// Response for redeeming game_screen points to coins
 class RedeemResponse {
   final int coinsAwarded;
   final int availableGamePoints;

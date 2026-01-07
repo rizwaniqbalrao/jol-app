@@ -17,7 +17,7 @@ class AuthResult {
 }
 
 class AuthService {
-  final String baseUrl = 'https://nonabstemiously-stocky-cynthia.ngrok-free.dev/api';
+  final String baseUrl = 'http://13.53.102.145/api';
   final SecureStorageService _storage = SecureStorageService();
 
   /// Process referral after successful authentication
@@ -88,7 +88,8 @@ class AuthService {
           'code': '',
         }),
       );
-
+      print("***********************************************************************");
+        print(response.body);
       // ✅ Handle backend response
       if (response.statusCode == 200 || response.statusCode == 201) {
         final data = jsonDecode(response.body);

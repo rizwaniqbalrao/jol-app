@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:jol_app/screens/play/create_room_screen.dart';
-import 'package:jol_app/screens/play/game_screen.dart';
+import 'package:jol_app/screens/play/game_screen/game_screen.dart';
 
 import '../../constants/add_manager.dart';
 import 'join_room_screen.dart';
@@ -30,7 +30,6 @@ class _PlayScreenState extends State<PlayScreen> {
 
   @override
   void dispose() {
-    // Dispose ad manager if needed
     super.dispose();
   }
 
@@ -44,335 +43,211 @@ class _PlayScreenState extends State<PlayScreen> {
     );
 
     return Scaffold(
-      body: Container(
-        height: double.infinity,
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [
-              Color(0xFFFFC0CB),
-              Color(0xFFADD8E6),
-              Color(0xFFE6E6FA),
-            ],
-          ),
-        ),
-        child: SafeArea(
-          top: false,
-          child: Column(
-            children: [
-              Expanded(
-                child: SingleChildScrollView(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // Compact Title Section
-                        Text(
-                          "SELECT GRID SIZE",
-                          style: TextStyle(
-                            fontFamily: 'Digitalt',
-                            fontSize: 20,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
-                            letterSpacing: 1.2,
-                            shadows: [
-                              Shadow(
-                                color: Colors.black.withOpacity(0.1),
-                                offset: const Offset(0, 2),
-                                blurRadius: 4,
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-
-                        // Compact Grid Selection Cards
-                        _buildCompactGridCard(
-                          context,
-                          gridSize: "4x4",
-                          title: "BEGINNER",
-                          color: textGreen,
-                          isUnlocked: true,
-                          icon: Icons.grid_4x4,
-                        ),
-                        const SizedBox(height: 10),
-
-                        _buildCompactGridCard(
-                          context,
-                          gridSize: "5x5",
-                          title: "INTERMEDIATE",
-                          color: textOrange,
-                          isUnlocked: false,
-                          icon: Icons.grid_on,
-                        ),
-                        const SizedBox(height: 10),
-
-                        _buildCompactGridCard(
-                          context,
-                          gridSize: "6x6",
-                          title: "ADVANCED",
-                          color: textPink,
-                          isUnlocked: false,
-                          icon: Icons.grid_3x3,
-                        ),
-
-                        const SizedBox(height: 20),
-
-                        // Compact Divider
-                        Row(
+      body: Stack(
+        children: [
+          Container(
+            height: double.infinity,
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  Color(0xFFFFC0CB),
+                  Color(0xFFADD8E6),
+                  Color(0xFFE6E6FA),
+                ],
+              ),
+            ),
+            child: SafeArea(
+              top: false,
+              child: Column(
+                children: [
+                  Expanded(
+                    child: SingleChildScrollView(
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Expanded(
-                              child: Divider(
-                                color: Colors.white.withOpacity(0.4),
-                                thickness: 1,
+                            // Compact Title Section
+                            Text(
+                              "SELECT GRID SIZE",
+                              style: TextStyle(
+                                fontFamily: 'Digitalt',
+                                fontSize: 20,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                                letterSpacing: 1.2,
+                                shadows: [
+                                  Shadow(
+                                    color: Colors.black.withOpacity(0.1),
+                                    offset: const Offset(0, 2),
+                                    blurRadius: 4,
+                                  ),
+                                ],
                               ),
                             ),
-                            Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 12),
-                              child: Text(
-                                "MULTIPLAYER",
-                                style: TextStyle(
-                                  fontFamily: 'Digitalt',
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.white.withOpacity(0.9),
-                                  letterSpacing: 1,
+                            const SizedBox(height: 12),
+
+                            // Compact Grid Selection Cards
+                            _buildCompactGridCard(
+                              context,
+                              gridSize: "4x4",
+                              title: "BEGINNER",
+                              color: textGreen,
+                              isUnlocked: true,
+                              icon: Icons.grid_4x4,
+                            ),
+                            const SizedBox(height: 10),
+
+                            _buildCompactGridCard(
+                              context,
+                              gridSize: "5x5",
+                              title: "INTERMEDIATE",
+                              color: textOrange,
+                              isUnlocked: false,
+                              icon: Icons.grid_on,
+                            ),
+                            const SizedBox(height: 10),
+
+                            _buildCompactGridCard(
+                              context,
+                              gridSize: "6x6",
+                              title: "ADVANCED",
+                              color: textPink,
+                              isUnlocked: false,
+                              icon: Icons.grid_3x3,
+                            ),
+
+                            const SizedBox(height: 20),
+
+                            // Compact Divider
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: Divider(
+                                    color: Colors.white.withOpacity(0.4),
+                                    thickness: 1,
+                                  ),
                                 ),
-                              ),
+                                Padding(
+                                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                                  child: Text(
+                                    "MULTIPLAYER",
+                                    style: TextStyle(
+                                      fontFamily: 'Digitalt',
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.white.withOpacity(0.9),
+                                      letterSpacing: 1,
+                                    ),
+                                  ),
+                                ),
+                                Expanded(
+                                  child: Divider(
+                                    color: Colors.white.withOpacity(0.4),
+                                    thickness: 1,
+                                  ),
+                                ),
+                              ],
                             ),
-                            Expanded(
-                              child: Divider(
-                                color: Colors.white.withOpacity(0.4),
-                                thickness: 1,
-                              ),
+
+                            const SizedBox(height: 12),
+
+                            // Compact Multiplayer Buttons
+                            _buildCompactMultiplayerButton(
+                              context,
+                              title: "ENTER MATCH CODE",
+                              icon: Icons.login_rounded,
+                              color: textBlue,
+                              onTap: () => _handleJoinRoom(context),
                             ),
+                            const SizedBox(height: 10),
+
+                            _buildCompactMultiplayerButton(
+                              context,
+                              title: "CREATE PRIVATE TABLE",
+                              icon: Icons.add_circle_outline,
+                              color: textPink,
+                              onTap: () => _handleCreateRoom(context),
+                            ),
+
+                            const SizedBox(height: 16),
                           ],
                         ),
-
-                        const SizedBox(height: 12),
-
-                        // Compact Multiplayer Buttons
-                        _buildCompactMultiplayerButton(
-                          context,
-                          title: "ENTER MATCH CODE",
-                          icon: Icons.login_rounded,
-                          color: textBlue,
-                          onTap: () => _handleJoinRoom(context),
-                        ),
-                        const SizedBox(height: 10),
-
-                        _buildCompactMultiplayerButton(
-                          context,
-                          title: "CREATE PRIVATE TABLE",
-                          icon: Icons.add_circle_outline,
-                          color: textPink,
-                          onTap: () => _handleCreateRoom(context),
-                        ),
-
-                        const SizedBox(height: 16),
-                      ],
+                      ),
                     ),
                   ),
-                ),
+                ],
               ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  // ═══════════════════════════════════════════════════════════════
-  // IMPROVED AD HANDLING METHODS
-  // ═══════════════════════════════════════════════════════════════
-
-  /// Show ad and navigate to Join Room screen
-  Future<void> _handleJoinRoom(BuildContext context) async {
-    if (_isShowingAd) return; // Prevent multiple ad triggers
-
-    setState(() => _isShowingAd = true);
-
-    try {
-      // Check if ad is ready before showing loading
-      final bool isAdReady = _adManager.isInterstitialReady();
-
-      // Only show loading if ad is actually ready
-      if (isAdReady && mounted) {
-        _showLoadingDialog(context, "Loading...");
-      }
-
-      // Try to show ad (non-blocking)
-      final bool adShown = await _adManager.showInterstitial();
-
-      // Close loading dialog if it was shown
-      if (isAdReady && mounted) {
-        Navigator.of(context).pop();
-      }
-
-      // Preload next ad immediately
-      _adManager.loadInterstitial();
-
-    } catch (e) {
-      // Handle any errors gracefully
-      debugPrint('Ad error: $e');
-      if (mounted) {
-        // Close loading dialog if open
-        try {
-          Navigator.of(context).pop();
-        } catch (_) {}
-      }
-    } finally {
-      setState(() => _isShowingAd = false);
-
-      // Navigate immediately after ad completes or fails
-      if (mounted) {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => const JoinRoomScreen(),
-          ),
-        );
-      }
-    }
-  }
-
-  /// Show ad and navigate to Create Room screen
-  Future<void> _handleCreateRoom(BuildContext context) async {
-    if (_isShowingAd) return; // Prevent multiple ad triggers
-
-    setState(() => _isShowingAd = true);
-
-    try {
-      // Check if ad is ready before showing loading
-      final bool isAdReady = _adManager.isInterstitialReady();
-
-      // Only show loading if ad is actually ready
-      if (isAdReady && mounted) {
-        _showLoadingDialog(context, "Loading...");
-      }
-
-      // Try to show ad (non-blocking)
-      final bool adShown = await _adManager.showInterstitial();
-
-      // Close loading dialog if it was shown
-      if (isAdReady && mounted) {
-        Navigator.of(context).pop();
-      }
-
-      // Preload next ad immediately
-      _adManager.loadInterstitial();
-
-    } catch (e) {
-      // Handle any errors gracefully
-      debugPrint('Ad error: $e');
-      if (mounted) {
-        // Close loading dialog if open
-        try {
-          Navigator.of(context).pop();
-        } catch (_) {}
-      }
-    } finally {
-      setState(() => _isShowingAd = false);
-
-      // Navigate immediately after ad completes or fails
-      if (mounted) {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => const CreateRoomScreen(),
-          ),
-        );
-      }
-    }
-  }
-
-  /// Show ad and navigate to Game screen (for 4x4 grid)
-  Future<void> _handleStartGame(BuildContext context) async {
-    if (_isShowingAd) return; // Prevent multiple ad triggers
-
-    setState(() => _isShowingAd = true);
-
-    try {
-      // Check if ad is ready before showing loading
-      final bool isAdReady = _adManager.isInterstitialReady();
-
-      // Only show loading if ad is actually ready
-      if (isAdReady && mounted) {
-        _showLoadingDialog(context, "Loading game...");
-      }
-
-      // Try to show ad (non-blocking)
-      final bool adShown = await _adManager.showInterstitial();
-
-      // Close loading dialog if it was shown
-      if (isAdReady && mounted) {
-        Navigator.of(context).pop();
-      }
-
-      // Preload next ad immediately
-      _adManager.loadInterstitial();
-
-    } catch (e) {
-      // Handle any errors gracefully
-      debugPrint('Ad error: $e');
-      if (mounted) {
-        // Close loading dialog if open
-        try {
-          Navigator.of(context).pop();
-        } catch (_) {}
-      }
-    } finally {
-      setState(() => _isShowingAd = false);
-
-      // Navigate immediately after ad completes or fails
-      if (mounted) {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => const GameScreen(),
-          ),
-        );
-      }
-    }
-  }
-
-  /// Show a loading dialog
-  void _showLoadingDialog(BuildContext context, String message) {
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => WillPopScope(
-        onWillPop: () async => false, // Prevent back button dismissal
-        child: Dialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-          child: Padding(
-            padding: const EdgeInsets.all(24),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const CircularProgressIndicator(
-                  valueColor: AlwaysStoppedAnimation<Color>(textPink),
-                ),
-                const SizedBox(height: 16),
-                Text(
-                  message,
-                  style: const TextStyle(
-                    fontFamily: 'Digitalt',
-                    fontSize: 14,
-                    fontWeight: FontWeight.bold,
-                    letterSpacing: 0.8,
-                  ),
-                ),
-              ],
             ),
           ),
-        ),
+
+          // Loading Overlay to prevent double-clicks and show ad progress
+          if (_isShowingAd)
+            Container(
+              color: Colors.black.withOpacity(0.4),
+              child: const Center(
+                child: CircularProgressIndicator(
+                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                ),
+              ),
+            ),
+        ],
       ),
     );
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  // REFACTORED AD & NAVIGATION LOGIC
+  // ═══════════════════════════════════════════════════════════════
+
+  Future<void> _handleJoinRoom(BuildContext context) async {
+    await _showAdThenNavigate(context, const JoinRoomScreen());
+  }
+
+  Future<void> _handleCreateRoom(BuildContext context) async {
+    await _showAdThenNavigate(context, const CreateRoomScreen());
+  }
+
+  Future<void> _handleStartGame(BuildContext context) async {
+    await _showAdThenNavigate(context, const GameScreen());
+  }
+
+  /// Unified method to handle Ad and guaranteed navigation
+  Future<void> _showAdThenNavigate(BuildContext context, Widget nextScreen) async {
+    if (_isShowingAd) return;
+
+    setState(() => _isShowingAd = true);
+
+    try {
+      // Show the ad with a timeout fallback
+      await _adManager.showInterstitial().timeout(
+        const Duration(seconds: 4),
+        onTimeout: () {
+          debugPrint("Ad timed out - moving to next screen");
+          return false;
+        },
+      );
+    } catch (e) {
+      debugPrint('Ad show error: $e');
+    } finally {
+      // Reset ad state
+      if (mounted) {
+        setState(() => _isShowingAd = false);
+      }
+
+      // Preload next ad
+      _adManager.loadInterstitial();
+
+      // ALWAYS navigate here, ensuring the ad session is complete
+      if (mounted) {
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => nextScreen),
+        );
+      }
+    }
   }
 
   // ═══════════════════════════════════════════════════════════════
@@ -410,7 +285,6 @@ class _PlayScreenState extends State<PlayScreen> {
         ),
         child: Row(
           children: [
-            // Compact Icon
             Container(
               width: 50,
               height: 50,
@@ -422,15 +296,9 @@ class _PlayScreenState extends State<PlayScreen> {
                   width: 2,
                 ),
               ),
-              child: Icon(
-                icon,
-                size: 28,
-                color: color,
-              ),
+              child: Icon(icon, size: 28, color: color),
             ),
             const SizedBox(width: 12),
-
-            // Compact Text
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -450,7 +318,7 @@ class _PlayScreenState extends State<PlayScreen> {
                       const SizedBox(width: 6),
                       Text(
                         title,
-                        style: TextStyle(
+                        style: const TextStyle(
                           fontFamily: 'Digitalt',
                           fontSize: 11,
                           fontWeight: FontWeight.bold,
@@ -464,11 +332,7 @@ class _PlayScreenState extends State<PlayScreen> {
                     const SizedBox(height: 4),
                     Row(
                       children: const [
-                        Icon(
-                          Icons.lock,
-                          size: 12,
-                          color: Colors.orange,
-                        ),
+                        Icon(Icons.lock, size: 12, color: Colors.orange),
                         SizedBox(width: 4),
                         Text(
                           "TAP TO UNLOCK",
@@ -486,14 +350,9 @@ class _PlayScreenState extends State<PlayScreen> {
                 ],
               ),
             ),
-
-            // Status Icon
             if (isUnlocked)
               Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 8,
-                  vertical: 3,
-                ),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(
                   color: textGreen,
                   borderRadius: BorderRadius.circular(6),
@@ -510,11 +369,7 @@ class _PlayScreenState extends State<PlayScreen> {
                 ),
               )
             else
-              Icon(
-                Icons.lock_outline,
-                color: Colors.orange,
-                size: 20,
-              ),
+              const Icon(Icons.lock_outline, color: Colors.orange, size: 20),
           ],
         ),
       ),
@@ -551,11 +406,7 @@ class _PlayScreenState extends State<PlayScreen> {
                 color: Colors.white.withOpacity(0.2),
                 borderRadius: BorderRadius.circular(10),
               ),
-              child: Icon(
-                icon,
-                color: Colors.white,
-                size: 24,
-              ),
+              child: Icon(icon, color: Colors.white, size: 24),
             ),
             const SizedBox(width: 12),
             Expanded(
@@ -570,11 +421,7 @@ class _PlayScreenState extends State<PlayScreen> {
                 ),
               ),
             ),
-            const Icon(
-              Icons.arrow_forward_ios,
-              color: Colors.white,
-              size: 16,
-            ),
+            const Icon(Icons.arrow_forward_ios, color: Colors.white, size: 16),
           ],
         ),
       ),
@@ -584,10 +431,8 @@ class _PlayScreenState extends State<PlayScreen> {
   void _showConfirmDialog(BuildContext context, String gridSize, Color color) {
     showDialog(
       context: context,
-      builder: (context) => Dialog(
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-        ),
+      builder: (dialogContext) => Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         child: Padding(
           padding: const EdgeInsets.all(20),
           child: Column(
@@ -599,19 +444,11 @@ class _PlayScreenState extends State<PlayScreen> {
                 decoration: BoxDecoration(
                   color: color.withOpacity(0.2),
                   shape: BoxShape.circle,
-                  border: Border.all(
-                    color: color,
-                    width: 2,
-                  ),
+                  border: Border.all(color: color, width: 2),
                 ),
-                child: Icon(
-                  Icons.grid_4x4,
-                  color: color,
-                  size: 28,
-                ),
+                child: Icon(Icons.grid_4x4, color: color, size: 28),
               ),
               const SizedBox(height: 16),
-
               Text(
                 "START $gridSize GAME?",
                 style: TextStyle(
@@ -624,7 +461,6 @@ class _PlayScreenState extends State<PlayScreen> {
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 8),
-
               Text(
                 "Are you sure you want to play $gridSize grid?",
                 style: TextStyle(
@@ -636,56 +472,36 @@ class _PlayScreenState extends State<PlayScreen> {
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 16),
-
               Row(
                 children: [
                   Expanded(
                     child: OutlinedButton(
-                      onPressed: () => Navigator.pop(context),
+                      onPressed: () => Navigator.pop(dialogContext),
                       style: OutlinedButton.styleFrom(
                         padding: const EdgeInsets.symmetric(vertical: 10),
                         side: const BorderSide(color: Colors.black26, width: 1.5),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10),
-                        ),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                       ),
-                      child: const Text(
-                        "CANCEL",
-                        style: TextStyle(
-                          fontFamily: 'Digitalt',
-                          fontSize: 11,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.black54,
-                          letterSpacing: 0.8,
-                        ),
-                      ),
+                      child: const Text("CANCEL", style: TextStyle(fontFamily: 'Digitalt', fontSize: 11, fontWeight: FontWeight.bold, color: Colors.black54, letterSpacing: 0.8)),
                     ),
                   ),
                   const SizedBox(width: 10),
                   Expanded(
                     child: ElevatedButton(
                       onPressed: () {
-                        Navigator.pop(context); // Close dialog first
-                        _handleStartGame(context); // Then show ad and start game
+                        // 1. Close the dialog first using dialogContext
+                        Navigator.pop(dialogContext);
+
+                        // 2. Trigger the ad and navigation using the main screen's context
+                        _handleStartGame(context);
                       },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: color,
                         padding: const EdgeInsets.symmetric(vertical: 10),
                         elevation: 0,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10),
-                        ),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                       ),
-                      child: const Text(
-                        "START",
-                        style: TextStyle(
-                          fontFamily: 'Digitalt',
-                          fontSize: 11,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                          letterSpacing: 0.8,
-                        ),
-                      ),
+                      child: const Text("START", style: TextStyle(fontFamily: 'Digitalt', fontSize: 11, fontWeight: FontWeight.bold, color: Colors.white, letterSpacing: 0.8)),
                     ),
                   ),
                 ],
@@ -701,9 +517,7 @@ class _PlayScreenState extends State<PlayScreen> {
     showDialog(
       context: context,
       builder: (context) => Dialog(
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         child: Padding(
           padding: const EdgeInsets.all(20),
           child: Column(
@@ -712,47 +526,25 @@ class _PlayScreenState extends State<PlayScreen> {
               Container(
                 width: 50,
                 height: 50,
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [textOrange, textPink],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
+                decoration: const BoxDecoration(
+                  gradient: LinearGradient(colors: [textOrange, textPink], begin: Alignment.topLeft, end: Alignment.bottomRight),
                   shape: BoxShape.circle,
                 ),
-                child: const Icon(
-                  Icons.lock_outline,
-                  color: Colors.white,
-                  size: 28,
-                ),
+                child: const Icon(Icons.lock_outline, color: Colors.white, size: 28),
               ),
               const SizedBox(height: 16),
-
               Text(
                 "UNLOCK $gridSize",
-                style: const TextStyle(
-                  fontFamily: 'Digitalt',
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: textPink,
-                  letterSpacing: 1,
-                ),
+                style: const TextStyle(fontFamily: 'Digitalt', fontSize: 18, fontWeight: FontWeight.bold, color: textPink, letterSpacing: 1),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 8),
-
               Text(
                 "Unlock to enjoy more challenging puzzles!",
-                style: TextStyle(
-                  fontFamily: 'Rubik',
-                  fontSize: 12,
-                  color: Colors.black.withOpacity(0.7),
-                  height: 1.3,
-                ),
+                style: TextStyle(fontFamily: 'Rubik', fontSize: 12, color: Colors.black.withOpacity(0.7), height: 1.3),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 16),
-
               Row(
                 children: [
                   Expanded(
@@ -761,20 +553,9 @@ class _PlayScreenState extends State<PlayScreen> {
                       style: OutlinedButton.styleFrom(
                         padding: const EdgeInsets.symmetric(vertical: 10),
                         side: const BorderSide(color: Colors.black26, width: 1.5),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10),
-                        ),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                       ),
-                      child: const Text(
-                        "CANCEL",
-                        style: TextStyle(
-                          fontFamily: 'Digitalt',
-                          fontSize: 11,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.black54,
-                          letterSpacing: 0.8,
-                        ),
-                      ),
+                      child: const Text("CANCEL", style: TextStyle(fontFamily: 'Digitalt', fontSize: 11, fontWeight: FontWeight.bold, color: Colors.black54, letterSpacing: 0.8)),
                     ),
                   ),
                   const SizedBox(width: 10),
@@ -783,58 +564,21 @@ class _PlayScreenState extends State<PlayScreen> {
                       onPressed: () {
                         Navigator.pop(context);
                         ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('Feature coming soon!'),
-                            backgroundColor: textGreen,
-                          ),
+                          const SnackBar(content: Text('Feature coming soon!'), backgroundColor: textGreen),
                         );
                       },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: textPink,
                         padding: const EdgeInsets.symmetric(vertical: 10),
                         elevation: 0,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10),
-                        ),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                       ),
-                      child: const Text(
-                        "UNLOCK",
-                        style: TextStyle(
-                          fontFamily: 'Digitalt',
-                          fontSize: 11,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                          letterSpacing: 0.8,
-                        ),
-                      ),
+                      child: const Text("UNLOCK", style: TextStyle(fontFamily: 'Digitalt', fontSize: 11, fontWeight: FontWeight.bold, color: Colors.white, letterSpacing: 0.8)),
                     ),
                   ),
                 ],
               ),
             ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildJolLogo() {
-    const letters = ["J", "O", "L"];
-    const colors = [Color(0xFFf8bc64), textPink, Color(0xFFfc6839)];
-
-    return Row(
-      children: List.generate(
-        letters.length,
-            (index) => Text(
-          letters[index],
-          style: const TextStyle(
-            fontFamily: 'Digitalt',
-            fontWeight: FontWeight.w500,
-            fontSize: 35,
-            height: 0.82,
-          ).copyWith(
-            color: colors[index],
-            letterSpacing: 1.5,
           ),
         ),
       ),

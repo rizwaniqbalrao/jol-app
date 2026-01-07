@@ -1201,7 +1201,7 @@ class _AccountScreenState extends State<AccountScreen> {
                                 ? NetworkImage(
                               _profile!.avatar!.startsWith('http')
                                   ? _profile!.avatar!
-                                  : 'https://nonabstemiously-stocky-cynthia.ngrok-free.dev${_profile!
+                                  : 'http://13.53.102.145${_profile!
                                   .avatar}',
                             )
                                 : const AssetImage(

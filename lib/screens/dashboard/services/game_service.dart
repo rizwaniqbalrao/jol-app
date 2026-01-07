@@ -184,44 +184,12 @@ class GameService {
   // HELPER METHODS
   // ═══════════════════════════════════════════════════════════════
 
-  /// Validate game data before sending to API
   String? _validateGameData(Game game) {
-    // Validate timed mode requirements
-    if (game.gameMode == 'timed' && game.completionTime == null) {
-      return 'Completion time is required for timed games.';
-    }
-
-    // Validate multiplayer requirements
-    if (game.gameType == 'multiplayer') {
-      if (game.roomCode == null || game.roomCode!.isEmpty) {
-        return 'Room code is required for multiplayer games.';
-      }
-      if (game.roomCode!.length != 6) {
-        return 'Room code must be exactly 6 characters.';
-      }
-      if (game.position == null) {
-        return 'Position is required for multiplayer games.';
-      }
-      if (game.totalPlayers == null) {
-        return 'Total players is required for multiplayer games.';
-      }
-    }
-
-    // Validate score range
     if (game.finalScore < 0 || game.finalScore > 100) {
-      return 'Final score must be between 0 and 100.';
+      return 'Invalid score: ${game.finalScore}. Must be between 0-100.';
     }
-
-    // Validate accuracy range
-    if (game.accuracyPercentage < 0 || game.accuracyPercentage > 100) {
-      return 'Accuracy percentage must be between 0 and 100.';
-    }
-
-    // Validate hints
-    if (game.hintsUsed < 0) {
-      return 'Hints used cannot be negative.';
-    }
-
-    return null; // No validation errors
+    // Remove the strict completionTime check for 'timed' here
+    // to allow manual stops/abandonment to save correctly.
+    return null;
   }
 }
