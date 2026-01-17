@@ -52,6 +52,21 @@ class GameController extends ChangeNotifier {
     _initGrid();
   }
 
+  // SETTINGS MANAGEMENT
+
+  bool _hardMode = false;
+  bool get hardMode => _hardMode;
+
+  void setHardMode(bool value) {
+    if (_hardMode == value) return;
+    _hardMode = value;
+    resetGame();
+  }
+
+  int get _maxSeedValue => _hardMode ? 332 : gridSize * gridSize;
+
+  double get _maxResultValue => _hardMode ? 999.0 : double.infinity;
+
   void setOperation(PuzzleOperation newOperation) {
     if (operation == newOperation) return;
     operation = newOperation;
@@ -67,12 +82,16 @@ class GameController extends ChangeNotifier {
   // Generate random number (integer or decimal based on _useDecimals flag)
   double _generateRandomNumber(Random random) {
     if (_useDecimals) {
-      // Generate decimal between 1.1 and 9.9 with one decimal place
-      return (random.nextInt(90) + 11) / 10.0; // Results in 1.1 to 10.0
+      final max = _hardMode ? 332 : 9;
+      return ((random.nextInt(max * 10 - 10) + 11) / 10.0);
     } else {
-      // Generate integer between 1 and gridSize²
-      return (random.nextInt(gridSize * gridSize) + 1).toDouble();
+      return (random.nextInt(_maxSeedValue) + 1).toDouble();
     }
+  }
+
+  double? _safeResult(double value) {
+    if (_hardMode && value > _maxResultValue) return null;
+    return value;
   }
 
 // Helper function to compare doubles with tolerance
@@ -182,9 +201,15 @@ class GameController extends ChangeNotifier {
 
   double _randomNumberNotInRowCol(int row, int col, Random random) {
     double number;
+    int attempts = 0;
+
     do {
       number = _generateRandomNumber(random);
-    } while (_isNumberUsedInRowOrColumn(number, row, col));
+      attempts++;
+      if (attempts > 100) break;
+    } while (_isNumberUsedInRowOrColumn(number, row, col) ||
+        (_hardMode && number >= 333));
+
     return number;
   }
 
@@ -226,7 +251,8 @@ class GameController extends ChangeNotifier {
         } else {
           if (_solutionGrid[i][j] == null) {
             if (_solutionGrid[i][0] != null && _solutionGrid[0][j] != null) {
-              _solutionGrid[i][j] = _solutionGrid[i][0]! + _solutionGrid[0][j]!;
+              final result = _solutionGrid[i][0]! + _solutionGrid[0][j]!;
+              _solutionGrid[i][j] = _safeResult(result);
             }
           }
         }
@@ -261,13 +287,21 @@ class GameController extends ChangeNotifier {
         } else {
           if (_solutionGrid[i][j] == null) {
             if (_solutionGrid[i][0] != null && _solutionGrid[0][j] != null) {
-              _solutionGrid[i][j] = _solutionGrid[i][0]! + _solutionGrid[0][j]!;
+              final result = _solutionGrid[i][0]! + _solutionGrid[0][j]!;
+              _solutionGrid[i][j] = _safeResult(result);
             }
           }
         }
       }
     }
   }
+
+  // bool integerMode = false;
+
+  // void setIntegerMode(bool value) {
+  //   integerMode = value;
+  //   notifyListeners();
+  // }
 
   void _solvingBoard1Subtraction() {
     for (int i = 0; i < gridSize; i++) {
@@ -747,73 +781,73 @@ class GameController extends ChangeNotifier {
 // end game method instead of validate grid
 
   bool endGame() {
-  int correctCount = 0;
-  int totalPlayerCells = 0;
+    int correctCount = 0;
+    int totalPlayerCells = 0;
 
-  for (int i = 0; i < gridSize; i++) {
-    for (int j = 0; j < gridSize; j++) {
-      isWrong[i][j] = false;
+    for (int i = 0; i < gridSize; i++) {
+      for (int j = 0; j < gridSize; j++) {
+        isWrong[i][j] = false;
+      }
     }
-  }
 
-  // Helper to round to 1 decimal place
-  double _round(double v) => (v * 10).round() / 10.0;
+    // Helper to round to 1 decimal place
+    double round(double v) => (v * 10).round() / 10.0;
 
-  for (int i = 0; i < gridSize; i++) {
-    for (int j = 0; j < gridSize; j++) {
-      if (i == 0 && j == 0) continue;
+    for (int i = 0; i < gridSize; i++) {
+      for (int j = 0; j < gridSize; j++) {
+        if (i == 0 && j == 0) continue;
 
-      if (!isFixed[i][j]) {
-        totalPlayerCells++;
+        if (!isFixed[i][j]) {
+          totalPlayerCells++;
 
-        final playerValue = grid[i][j];
-        final solutionValue = _solutionGrid[i][j];
+          final playerValue = grid[i][j];
+          final solutionValue = _solutionGrid[i][j];
 
-        if (playerValue == null || solutionValue == null) {
-          isWrong[i][j] = true;
-          continue;
-        }
+          if (playerValue == null || solutionValue == null) {
+            isWrong[i][j] = true;
+            continue;
+          }
 
-        // Round both values and compare exactly
-        if (_round(playerValue) == _round(solutionValue)) {
-          correctCount++;
-        } else {
-          isWrong[i][j] = true;
+          // Round both values and compare exactly
+          if (round(playerValue) == round(solutionValue)) {
+            correctCount++;
+          } else {
+            isWrong[i][j] = true;
+          }
         }
       }
     }
+
+    // Rest of the method remains the same...
+    _totalPlayerCells = totalPlayerCells;
+    _correctAnswers = correctCount;
+    _accuracyPercentage =
+        totalPlayerCells > 0 ? (correctCount / totalPlayerCells) * 100 : 0.0;
+
+    if (mode == GameMode.untimed) {
+      score = _accuracyPercentage.round();
+    } else {
+      final baseScore = (_accuracyPercentage * 0.7).round();
+      final timeBonus = timeLeft.inSeconds > 240
+          ? 30
+          : timeLeft.inSeconds > 120
+              ? 15
+              : 5;
+      score = baseScore + timeBonus;
+    }
+
+    isPlaying = false;
+    stopTimer();
+
+    if (_gameStartTime != null) {
+      _completionTimeSeconds =
+          DateTime.now().difference(_gameStartTime!).inSeconds;
+    }
+
+    notifyListeners();
+
+    return correctCount == totalPlayerCells;
   }
-
-  // Rest of the method remains the same...
-  _totalPlayerCells = totalPlayerCells;
-  _correctAnswers = correctCount;
-  _accuracyPercentage = totalPlayerCells > 0
-      ? (correctCount / totalPlayerCells) * 100
-      : 0.0;
-
-  if (mode == GameMode.untimed) {
-    score = _accuracyPercentage.round();
-  } else {
-    final baseScore = (_accuracyPercentage * 0.7).round();
-    final timeBonus = timeLeft.inSeconds > 240
-        ? 30
-        : timeLeft.inSeconds > 120
-            ? 15
-            : 5;
-    score = baseScore + timeBonus;
-  }
-
-  isPlaying = false;
-  stopTimer();
-
-  if (_gameStartTime != null) {
-    _completionTimeSeconds = DateTime.now().difference(_gameStartTime!).inSeconds;
-  }
-
-  notifyListeners();
-
-  return correctCount == totalPlayerCells;
-}
 
   //helping method for parse
   /// Safely parses a string to double and rounds it to a fixed number of decimal places

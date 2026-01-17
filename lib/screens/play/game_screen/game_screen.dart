@@ -61,23 +61,23 @@ class _GameScreenState extends State<GameScreen> {
 
   //parsing helper method
   /// Safely parses input string to double with rounding to prevent floating-point issues
-double? safeParse(String? text, {int decimalPlaces = 1}) {
-  if (text == null || text.trim().isEmpty) return null;
+  double? safeParse(String? text, {int decimalPlaces = 1}) {
+    if (text == null || text.trim().isEmpty) return null;
 
-  String cleaned = text.trim();
+    String cleaned = text.trim();
 
-  // Handle incomplete decimal like "12." → treat as "12.0"
-  if (cleaned.endsWith('.')) {
-    cleaned += '0';
+    // Handle incomplete decimal like "12." → treat as "12.0"
+    if (cleaned.endsWith('.')) {
+      cleaned += '0';
+    }
+
+    final parsed = double.tryParse(cleaned);
+    if (parsed == null) return null;
+
+    // Round to desired precision (1 decimal is usually enough for your game)
+    final factor = pow(10, decimalPlaces).toDouble();
+    return (parsed * factor).round() / factor;
   }
-
-  final parsed = double.tryParse(cleaned);
-  if (parsed == null) return null;
-
-  // Round to desired precision (1 decimal is usually enough for your game)
-  final factor = pow(10, decimalPlaces).toDouble();
-  return (parsed * factor).round() / factor;
-}
 
   String _getKey(int row, int col) => '$row-$col';
 
@@ -151,77 +151,81 @@ double? safeParse(String? text, {int decimalPlaces = 1}) {
   }
 
   void _onKeyboardTap(String value, GameController controller) {
-  // Block input if game not active or already finished/reviewing
-  if (!_isGameStarted || _needsReset) return;
+    // Block input if game not active or already finished/reviewing
+    if (!_isGameStarted || _needsReset) return;
 
-  final selected = _selectedCell;
-  if (selected == null) return;
+    final selected = _selectedCell;
+    if (selected == null) return;
 
-  final parts = selected.split('-');
-  final row = int.parse(parts[0]);
-  final col = int.parse(parts[1]);
+    final parts = selected.split('-');
+    final row = int.parse(parts[0]);
+    final col = int.parse(parts[1]);
 
-  // Fixed cells are not editable
-  if (controller.isFixed[row][col]) return;
+    // Fixed cells are not editable
+    if (controller.isFixed[row][col]) return;
 
-  final textController = _inputControllers[selected];
-  final focusNode = _focusNodes[selected];
+    final textController = _inputControllers[selected];
+    final focusNode = _focusNodes[selected];
 
-  // Safety: skip if no controller or not focused
-  if (textController == null || !(focusNode?.hasFocus ?? false)) return;
+    // Safety: skip if no controller or not focused
+    if (textController == null || !(focusNode?.hasFocus ?? false)) return;
 
-  // Clear wrong mark (we don't do live validation)
-  controller.isWrong[row][col] = false;
+    // Clear wrong mark (we don't do live validation)
+    controller.isWrong[row][col] = false;
 
-  // ─────────────── CLEAR (Backspace) ───────────────
-  if (value == 'clear') {
-    if (textController.text.isEmpty) return;
+    // ─────────────── CLEAR (Backspace) ───────────────
+    if (value == 'clear') {
+      if (textController.text.isEmpty) return;
 
-    final newText = textController.text.substring(0, textController.text.length - 1);
-    textController.text = newText;
+      final newText =
+          textController.text.substring(0, textController.text.length - 1);
+      textController.text = newText;
 
-    // Update model with safely parsed value (null if empty)
-    final parsed = safeParse(newText);
-    controller.grid[row][col] = parsed;  // direct grid update (or use updateRawInput if you keep it)
-    controller.notifyListeners();
+      // Update model with safely parsed value (null if empty)
+      final parsed = safeParse(newText);
+      controller.grid[row][col] =
+          parsed; // direct grid update (or use updateRawInput if you keep it)
+      controller.notifyListeners();
 
-    _checkIfAllCellsFilled(controller);
-    return;
-  }
-
-  // ─────────────── NUMBER / DECIMAL INPUT ───────────────
-  String currentText = textController.text;
-  String newText = currentText + value;
-
-  // Prevent multiple dots
-  if (value == '.') {
-    if (!controller.useDecimals || currentText.contains('.') || currentText.isEmpty) {
+      _checkIfAllCellsFilled(controller);
       return;
     }
+
+    // ─────────────── NUMBER / DECIMAL INPUT ───────────────
+    String currentText = textController.text;
+    String newText = currentText + value;
+
+    // Prevent multiple dots
+    if (value == '.') {
+      if (!controller.useDecimals ||
+          currentText.contains('.') ||
+          currentText.isEmpty) {
+        return;
+      }
+    }
+
+    // Length & format guard
+    if (newText.length > 8) return; // generous limit
+    if (newText.replaceAll('.', '').length > 6) return; // e.g. 9999.99
+
+    // Apply new text to UI immediately
+    textController.text = newText;
+
+    // Safely parse and round the value
+    final parsedValue = safeParse(newText);
+
+    if (parsedValue != null) {
+      // Update model
+      controller.grid[row][col] = parsedValue;
+      // If you still want to keep raw input:
+      // controller.updateRawInput(row, col, newText);
+
+      controller.notifyListeners();
+    }
+
+    // Check if puzzle is complete (after valid input)
+    _checkIfAllCellsFilled(controller);
   }
-
-  // Length & format guard
-  if (newText.length > 8) return; // generous limit
-  if (newText.replaceAll('.', '').length > 6) return; // e.g. 9999.99
-
-  // Apply new text to UI immediately
-  textController.text = newText;
-
-  // Safely parse and round the value
-  final parsedValue = safeParse(newText);
-
-  if (parsedValue != null) {
-    // Update model
-    controller.grid[row][col] = parsedValue;
-    // If you still want to keep raw input:
-    // controller.updateRawInput(row, col, newText);
-
-    controller.notifyListeners();
-  }
-
-  // Check if puzzle is complete (after valid input)
-  _checkIfAllCellsFilled(controller);
-}
 
   // bool _checkIfAllCellsFilled(GameController controller) {
   //   for (int i = 0; i < controller.gridSize; i++) {
@@ -564,50 +568,6 @@ double? safeParse(String? text, {int decimalPlaces = 1}) {
     );
   }
 
-  Widget _buildStatsBar(double w, double h, GameController controller) {
-    return Padding(
-      padding: EdgeInsets.symmetric(horizontal: w * 0.05),
-      child: Row(
-        children: [
-          Expanded(
-            child: Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                  color: textPink, borderRadius: BorderRadius.circular(10)),
-              child: Center(
-                child: Text(
-                  controller.mode == GameMode.timed
-                      ? "Time: ${controller.timeLeft.inMinutes}:${(controller.timeLeft.inSeconds % 60).toString().padLeft(2, '0')}"
-                      : "Mode: Untimed",
-                  style: const TextStyle(
-                      color: Colors.white, fontWeight: FontWeight.bold),
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(width: 10),
-          GestureDetector(
-            onTap: (_isGameStarted || _needsReset)
-                ? null
-                : () => controller.toggleMode(),
-            child: Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                  color:
-                      (_isGameStarted || _needsReset) ? Colors.grey : textGreen,
-                  borderRadius: BorderRadius.circular(10)),
-              child: Icon(
-                  controller.mode == GameMode.timed
-                      ? Icons.timer
-                      : Icons.timer_off,
-                  color: Colors.white),
-            ),
-          )
-        ],
-      ),
-    );
-  }
-
   Widget _buildControls(double w, double h, GameController controller) {
     return Padding(
       padding: EdgeInsets.fromLTRB(w * 0.05, 10, w * 0.05, 0),
@@ -656,6 +616,87 @@ double? safeParse(String? text, {int decimalPlaces = 1}) {
         child: Text(label,
             style: const TextStyle(
                 color: Colors.white, fontWeight: FontWeight.bold)),
+      ),
+    );
+  }
+
+  Widget _buildStatsBar(double w, double h, GameController controller) {
+    return Padding(
+      padding: EdgeInsets.symmetric(horizontal: w * 0.05),
+      child: Row(
+        children: [
+          Expanded(
+            child: Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                  color: textPink, borderRadius: BorderRadius.circular(10)),
+              child: Center(
+                child: Text(
+                  controller.mode == GameMode.timed
+                      ? "Time: ${controller.timeLeft.inMinutes}:${(controller.timeLeft.inSeconds % 60).toString().padLeft(2, '0')}"
+                      : "Mode: Untimed",
+                  style: const TextStyle(
+                      color: Colors.white, fontWeight: FontWeight.bold),
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(width: 10),
+          GestureDetector(
+            onTap: (_isGameStarted || _needsReset)
+                ? null
+                : () => controller.toggleMode(),
+            child: Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                  color:
+                      (_isGameStarted || _needsReset) ? Colors.grey : textGreen,
+                  borderRadius: BorderRadius.circular(10)),
+              child: Icon(
+                  controller.mode == GameMode.timed
+                      ? Icons.timer
+                      : Icons.timer_off,
+                  color: Colors.white),
+            ),
+          ),
+          const SizedBox(width: 10),
+          toggleButton(controller), // Hard mode toggle
+        ],
+      ),
+    );
+  }
+
+  //toggle button for hard mode
+  Widget toggleButton(GameController controller) {
+    final bool enabled = !_isGameStarted && !_needsReset;
+
+    return GestureDetector(
+      onTap: enabled
+          ? () {
+              controller.setHardMode(!controller.hardMode);
+              controller.resetGame();
+            }
+          : null,
+      child: Opacity(
+        opacity: enabled ? 1.0 : 0.4,
+        child: Container(
+          padding: const EdgeInsets.symmetric(
+            horizontal: 14,
+            vertical: 12,
+          ),
+          decoration: BoxDecoration(
+            color: controller.hardMode ? textPink : Colors.grey,
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: const Text(
+            'Hard',
+            style: TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.bold,
+              letterSpacing: 1.1,
+            ),
+          ),
+        ),
       ),
     );
   }
