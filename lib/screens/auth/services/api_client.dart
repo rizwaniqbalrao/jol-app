@@ -12,6 +12,26 @@ class ApiClient {
   // Track if we're already handling logout to prevent multiple calls
   static bool _isHandlingLogout = false;
 
+  /// Check if response indicates an invalid/expired token
+  /// Handles both 401 Unauthorized AND 403 Forbidden with 'Invalid token' message
+  static bool _isInvalidTokenResponse(http.Response response) {
+    if (response.statusCode == 401) return true;
+
+    // Server sometimes returns 403 with "Invalid token." message
+    if (response.statusCode == 403) {
+      try {
+        final body = jsonDecode(response.body);
+        final detail = body['detail']?.toString().toLowerCase() ?? '';
+        if (detail.contains('invalid token')) {
+          return true;
+        }
+      } catch (_) {
+        // JSON parse failed, not an invalid token response
+      }
+    }
+    return false;
+  }
+
   /// Centralized GET request with auto-logout on 401
   static Future<http.Response> get(
     String endpoint, {
@@ -49,9 +69,9 @@ class ApiClient {
       debugPrint('GET $endpoint - Status: ${response.statusCode}');
       debugPrint('GET $endpoint - Body: ${response.body}');
 
-      // Check for 401 Unauthorized
-      if (response.statusCode == 401) {
-        await _handleUnauthorized();
+      // Check for invalid/expired token (401 or 403 with 'Invalid token')
+      if (_isInvalidTokenResponse(response)) {
+        await handleUnauthorized();
       }
 
       return response;
@@ -100,9 +120,9 @@ class ApiClient {
       debugPrint('POST $endpoint - Status: ${response.statusCode}');
       debugPrint('POST $endpoint - Body: ${response.body}');
 
-      // Check for 401 Unauthorized
-      if (response.statusCode == 401) {
-        await _handleUnauthorized();
+      // Check for invalid/expired token (401 or 403 with 'Invalid token')
+      if (_isInvalidTokenResponse(response)) {
+        await handleUnauthorized();
       }
 
       return response;
@@ -151,9 +171,9 @@ class ApiClient {
       debugPrint('PUT $endpoint - Status: ${response.statusCode}');
       debugPrint('PUT $endpoint - Body: ${response.body}');
 
-      // Check for 401 Unauthorized
-      if (response.statusCode == 401) {
-        await _handleUnauthorized();
+      // Check for invalid/expired token (401 or 403 with 'Invalid token')
+      if (_isInvalidTokenResponse(response)) {
+        await handleUnauthorized();
       }
 
       return response;
@@ -200,9 +220,9 @@ class ApiClient {
       debugPrint('DELETE $endpoint - Status: ${response.statusCode}');
       debugPrint('DELETE $endpoint - Body: ${response.body}');
 
-      // Check for 401 Unauthorized
-      if (response.statusCode == 401) {
-        await _handleUnauthorized();
+      // Check for invalid/expired token (401 or 403 with 'Invalid token')
+      if (_isInvalidTokenResponse(response)) {
+        await handleUnauthorized();
       }
 
       return response;
@@ -212,8 +232,61 @@ class ApiClient {
     }
   }
 
+  /// Centralized PATCH request with auto-logout on 401
+  static Future<http.Response> patch(
+    String endpoint, {
+    Map<String, dynamic>? body,
+    Map<String, String>? additionalHeaders,
+    bool requiresAuth = true,
+  }) async {
+    try {
+      final headers = <String, String>{
+        'accept': 'application/json',
+        'Content-Type': 'application/json',
+        'ngrok-skip-browser-warning': 'true',
+      };
+
+      if (requiresAuth) {
+        final token = await _storage.getToken();
+        if (token != null) {
+          headers['Authorization'] = 'Token $token';
+        }
+      }
+
+      if (additionalHeaders != null) {
+        headers.addAll(additionalHeaders);
+      }
+
+      debugPrint(
+          'PATCH $endpoint - Token: ${headers['Authorization']?.substring(0, 10) ?? 'None'}...');
+
+      final response = await http
+          .patch(
+            Uri.parse('$baseUrl$endpoint'),
+            headers: headers,
+            body: body != null ? jsonEncode(body) : null,
+          )
+          .timeout(const Duration(seconds: 15));
+
+      debugPrint('PATCH $endpoint - Status: ${response.statusCode}');
+      debugPrint('PATCH $endpoint - Body: ${response.body}');
+
+      // Check for invalid/expired token (401 or 403 with 'Invalid token')
+      if (_isInvalidTokenResponse(response)) {
+        await handleUnauthorized();
+      }
+
+      return response;
+    } catch (e) {
+      debugPrint('PATCH $endpoint - Error: $e');
+      rethrow;
+    }
+  }
+
   /// Handle 401 Unauthorized - Auto logout and navigate to login
-  static Future<void> _handleUnauthorized() async {
+  /// This is public so it can be called from services that use direct HTTP
+  /// (e.g., multipart file uploads that can't use the standard methods)
+  static Future<void> handleUnauthorized() async {
     // Prevent multiple simultaneous logout calls
     if (_isHandlingLogout) return;
     _isHandlingLogout = true;

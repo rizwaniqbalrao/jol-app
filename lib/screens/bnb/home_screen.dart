@@ -2,10 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:jol_app/screens/dashboard/dashboard_screen.dart';
 import 'package:jol_app/screens/dashboard/notification_screen.dart';
-import 'package:jol_app/screens/group/group_list_screen.dart';
 import 'package:jol_app/screens/score%20board/score_board_screen.dart';
 import 'package:jol_app/screens/settings/account_screen.dart';
-import 'package:jol_app/screens/settings/edit_profile_screen.dart';
 import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
 
 import '../Affiliates/affiliates_screen.dart';
@@ -71,7 +69,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         return ScoreBoardScreen();
       case 4:
         // 'Settings' bottom nav will open Edit Profile
-        return const EditProfileScreen();
+        return const AccountScreen(showAppBar: false);
       default:
         return DashboardScreen();
     }

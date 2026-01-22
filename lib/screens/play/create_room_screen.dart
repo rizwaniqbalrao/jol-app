@@ -446,31 +446,6 @@ class _CreateRoomScreenState extends State<CreateRoomScreen> {
 
                   const SizedBox(height: 30),
 
-                  // NEW: Max Hints Selection
-                  const Text(
-                    "Maximum Hints",
-                    style: TextStyle(
-                      fontFamily: "Rubik",
-                      fontSize: 16,
-                      fontWeight: FontWeight.w700,
-                      color: Colors.black87,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Row(
-                    children: [
-                      _buildHintButton('1', 1),
-                      const SizedBox(width: 10),
-                      _buildHintButton('2', 2),
-                      const SizedBox(width: 10),
-                      _buildHintButton('3', 3),
-                      const SizedBox(width: 10),
-                      _buildHintButton('4', 4),
-                    ],
-                  ),
-
-                  const SizedBox(height: 30),
-
                   // NEW: Use Decimals Toggle
                   SwitchListTile(
                     contentPadding: EdgeInsets.zero,
@@ -583,7 +558,34 @@ class _CreateRoomScreenState extends State<CreateRoomScreen> {
             ),
           ),
         ),
-        onPressed: () => setState(() => _selectedGridSize = value),
+        onPressed: () {
+          if (value > 4) {
+            showDialog(
+              context: context,
+              builder: (ctx) => AlertDialog(
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16)),
+                title: const Text("Coming Soon",
+                    style: TextStyle(
+                        fontFamily: 'Digitalt',
+                        fontWeight: FontWeight.bold,
+                        color: textPink)),
+                content: const Text(
+                    "This grid size will be available in future updates!",
+                    style: TextStyle(fontFamily: 'Rubik')),
+                actions: [
+                  TextButton(
+                      onPressed: () => Navigator.pop(ctx),
+                      child: const Text("OK",
+                          style: TextStyle(
+                              color: textBlue, fontWeight: FontWeight.bold)))
+                ],
+              ),
+            );
+          } else {
+            setState(() => _selectedGridSize = value);
+          }
+        },
         child: Text(
           label,
           style: TextStyle(
@@ -646,36 +648,6 @@ class _CreateRoomScreenState extends State<CreateRoomScreen> {
           fontSize: 14,
           fontWeight: FontWeight.w700,
           color: isSelected ? Colors.white : Colors.black87,
-        ),
-      ),
-    );
-  }
-
-  // NEW: Hint selection button
-  Widget _buildHintButton(String label, int value) {
-    final isSelected = value == _selectedMaxHints;
-    return Expanded(
-      child: ElevatedButton(
-        style: ElevatedButton.styleFrom(
-          backgroundColor: isSelected ? Colors.purple : Colors.white,
-          padding: const EdgeInsets.symmetric(vertical: 12),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(8),
-            side: BorderSide(
-              color: isSelected ? Colors.purple : Colors.grey.shade300,
-              width: 2,
-            ),
-          ),
-        ),
-        onPressed: () => setState(() => _selectedMaxHints = value),
-        child: Text(
-          label,
-          style: TextStyle(
-            fontFamily: "Rubik",
-            fontSize: 14,
-            fontWeight: FontWeight.w700,
-            color: isSelected ? Colors.white : Colors.black87,
-          ),
         ),
       ),
     );

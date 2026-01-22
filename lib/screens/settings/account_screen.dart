@@ -10,7 +10,8 @@ import '../auth/services/wallet_service.dart';
 import 'choose_color_screen.dart';
 
 class AccountScreen extends StatefulWidget {
-  const AccountScreen({super.key});
+  final bool showAppBar;
+  const AccountScreen({super.key, this.showAppBar = true});
   @override
   State<AccountScreen> createState() => _AccountScreenState();
 }
@@ -1201,7 +1202,7 @@ class _AccountScreenState extends State<AccountScreen> {
         child: SingleChildScrollView(
           child: Column(
             children: [
-              _buildAppBar(context),
+              if (widget.showAppBar) _buildAppBar(context),
               const SizedBox(height: 12),
 
               // Big pink profile card
