@@ -152,7 +152,7 @@ class _MultiplayerGameScreenState extends State<MultiplayerGameScreen> {
         if (newText.isEmpty) {
           controller.updateCell(row, col, null);
         } else {
-          final newVal = int.tryParse(newText);
+          final newVal = double.tryParse(newText);
           if (newVal != null && newVal >= 0) {
             controller.updateCell(row, col, newVal);
           }
@@ -160,10 +160,14 @@ class _MultiplayerGameScreenState extends State<MultiplayerGameScreen> {
       }
     } else {
       final currentText = tc.text;
+      // Prevent multiple decimals
+      if (value == '.' && currentText.contains('.')) return;
+
       final newText = currentText + value;
-      if (newText.length <= 3) {
+      // Allow up to 6 characters (supports up to 5 digits plus optional decimal)
+      if (newText.length <= 6) {
         tc.text = newText;
-        final newVal = int.tryParse(newText);
+        final newVal = double.tryParse(newText);
         if (newVal != null && newVal >= 0) {
           controller.updateCell(row, col, newVal);
         }
@@ -485,7 +489,8 @@ class _MultiplayerGameScreenState extends State<MultiplayerGameScreen> {
                                     ],
                                   ),
                                   child: SizedBox(
-                                    height: 280, // Fixed height for grid
+                                    height: MediaQuery.of(context).size.height *
+                                        0.38,
                                     child: LayoutBuilder(
                                       builder: (context, gridConstraints) {
                                         final gridWidth =
@@ -684,7 +689,8 @@ class _MultiplayerGameScreenState extends State<MultiplayerGameScreen> {
                                       Expanded(
                                         child: Row(
                                           children: [
-                                            const Expanded(child: SizedBox()),
+                                            _buildKeyButton(
+                                                '.', controller, 18),
                                             const SizedBox(width: 8),
                                             _buildKeyButton(
                                                 '0', controller, 16),

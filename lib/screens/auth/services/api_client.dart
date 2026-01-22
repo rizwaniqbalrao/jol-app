@@ -12,12 +12,32 @@ class ApiClient {
   // Track if we're already handling logout to prevent multiple calls
   static bool _isHandlingLogout = false;
 
+  /// Check if response indicates an invalid/expired token
+  /// Handles both 401 Unauthorized AND 403 Forbidden with 'Invalid token' message
+  static bool _isInvalidTokenResponse(http.Response response) {
+    if (response.statusCode == 401) return true;
+
+    // Server sometimes returns 403 with "Invalid token." message
+    if (response.statusCode == 403) {
+      try {
+        final body = jsonDecode(response.body);
+        final detail = body['detail']?.toString().toLowerCase() ?? '';
+        if (detail.contains('invalid token')) {
+          return true;
+        }
+      } catch (_) {
+        // JSON parse failed, not an invalid token response
+      }
+    }
+    return false;
+  }
+
   /// Centralized GET request with auto-logout on 401
   static Future<http.Response> get(
-      String endpoint, {
-        Map<String, String>? additionalHeaders,
-        bool requiresAuth = true,
-      }) async {
+    String endpoint, {
+    Map<String, String>? additionalHeaders,
+    bool requiresAuth = true,
+  }) async {
     try {
       final headers = <String, String>{
         'accept': 'application/json',
@@ -36,35 +56,38 @@ class ApiClient {
         headers.addAll(additionalHeaders);
       }
 
-      print('GET ${endpoint} - Token: ${headers['Authorization']?.substring(0, 10) ?? 'None'}...');
+      debugPrint(
+          'GET $endpoint - Token: ${headers['Authorization']?.substring(0, 10) ?? 'None'}...');
 
-      final response = await http.get(
-        Uri.parse('$baseUrl$endpoint'),
-        headers: headers,
-      ).timeout(const Duration(seconds: 15));
+      final response = await http
+          .get(
+            Uri.parse('$baseUrl$endpoint'),
+            headers: headers,
+          )
+          .timeout(const Duration(seconds: 15));
 
-      print('GET ${endpoint} - Status: ${response.statusCode}');
-      print('GET ${endpoint} - Body: ${response.body}');
+      debugPrint('GET $endpoint - Status: ${response.statusCode}');
+      debugPrint('GET $endpoint - Body: ${response.body}');
 
-      // Check for 401 Unauthorized
-      if (response.statusCode == 401) {
-        await _handleUnauthorized();
+      // Check for invalid/expired token (401 or 403 with 'Invalid token')
+      if (_isInvalidTokenResponse(response)) {
+        await handleUnauthorized();
       }
 
       return response;
     } catch (e) {
-      print('GET ${endpoint} - Error: $e');
+      debugPrint('GET $endpoint - Error: $e');
       rethrow;
     }
   }
 
   /// Centralized POST request with auto-logout on 401
   static Future<http.Response> post(
-      String endpoint, {
-        Map<String, dynamic>? body,
-        Map<String, String>? additionalHeaders,
-        bool requiresAuth = true,
-      }) async {
+    String endpoint, {
+    Map<String, dynamic>? body,
+    Map<String, String>? additionalHeaders,
+    bool requiresAuth = true,
+  }) async {
     try {
       final headers = <String, String>{
         'accept': 'application/json',
@@ -83,36 +106,39 @@ class ApiClient {
         headers.addAll(additionalHeaders);
       }
 
-      print('POST ${endpoint} - Token: ${headers['Authorization']?.substring(0, 10) ?? 'None'}...');
+      debugPrint(
+          'POST $endpoint - Token: ${headers['Authorization']?.substring(0, 10) ?? 'None'}...');
 
-      final response = await http.post(
-        Uri.parse('$baseUrl$endpoint'),
-        headers: headers,
-        body: body != null ? jsonEncode(body) : null,
-      ).timeout(const Duration(seconds: 15));
+      final response = await http
+          .post(
+            Uri.parse('$baseUrl$endpoint'),
+            headers: headers,
+            body: body != null ? jsonEncode(body) : null,
+          )
+          .timeout(const Duration(seconds: 15));
 
-      print('POST ${endpoint} - Status: ${response.statusCode}');
-      print('POST ${endpoint} - Body: ${response.body}');
+      debugPrint('POST $endpoint - Status: ${response.statusCode}');
+      debugPrint('POST $endpoint - Body: ${response.body}');
 
-      // Check for 401 Unauthorized
-      if (response.statusCode == 401) {
-        await _handleUnauthorized();
+      // Check for invalid/expired token (401 or 403 with 'Invalid token')
+      if (_isInvalidTokenResponse(response)) {
+        await handleUnauthorized();
       }
 
       return response;
     } catch (e) {
-      print('POST ${endpoint} - Error: $e');
+      debugPrint('POST $endpoint - Error: $e');
       rethrow;
     }
   }
 
   /// Centralized PUT request with auto-logout on 401
   static Future<http.Response> put(
-      String endpoint, {
-        Map<String, dynamic>? body,
-        Map<String, String>? additionalHeaders,
-        bool requiresAuth = true,
-      }) async {
+    String endpoint, {
+    Map<String, dynamic>? body,
+    Map<String, String>? additionalHeaders,
+    bool requiresAuth = true,
+  }) async {
     try {
       final headers = <String, String>{
         'accept': 'application/json',
@@ -131,35 +157,38 @@ class ApiClient {
         headers.addAll(additionalHeaders);
       }
 
-      print('PUT ${endpoint} - Token: ${headers['Authorization']?.substring(0, 10) ?? 'None'}...');
+      debugPrint(
+          'PUT $endpoint - Token: ${headers['Authorization']?.substring(0, 10) ?? 'None'}...');
 
-      final response = await http.put(
-        Uri.parse('$baseUrl$endpoint'),
-        headers: headers,
-        body: body != null ? jsonEncode(body) : null,
-      ).timeout(const Duration(seconds: 15));
+      final response = await http
+          .put(
+            Uri.parse('$baseUrl$endpoint'),
+            headers: headers,
+            body: body != null ? jsonEncode(body) : null,
+          )
+          .timeout(const Duration(seconds: 15));
 
-      print('PUT ${endpoint} - Status: ${response.statusCode}');
-      print('PUT ${endpoint} - Body: ${response.body}');
+      debugPrint('PUT $endpoint - Status: ${response.statusCode}');
+      debugPrint('PUT $endpoint - Body: ${response.body}');
 
-      // Check for 401 Unauthorized
-      if (response.statusCode == 401) {
-        await _handleUnauthorized();
+      // Check for invalid/expired token (401 or 403 with 'Invalid token')
+      if (_isInvalidTokenResponse(response)) {
+        await handleUnauthorized();
       }
 
       return response;
     } catch (e) {
-      print('PUT ${endpoint} - Error: $e');
+      debugPrint('PUT $endpoint - Error: $e');
       rethrow;
     }
   }
 
   /// Centralized DELETE request with auto-logout on 401
   static Future<http.Response> delete(
-      String endpoint, {
-        Map<String, String>? additionalHeaders,
-        bool requiresAuth = true,
-      }) async {
+    String endpoint, {
+    Map<String, String>? additionalHeaders,
+    bool requiresAuth = true,
+  }) async {
     try {
       final headers = <String, String>{
         'accept': 'application/json',
@@ -178,36 +207,92 @@ class ApiClient {
         headers.addAll(additionalHeaders);
       }
 
-      print('DELETE ${endpoint} - Token: ${headers['Authorization']?.substring(0, 10) ?? 'None'}...');
+      debugPrint(
+          'DELETE $endpoint - Token: ${headers['Authorization']?.substring(0, 10) ?? 'None'}...');
 
-      final response = await http.delete(
-        Uri.parse('$baseUrl$endpoint'),
-        headers: headers,
-      ).timeout(const Duration(seconds: 15));
+      final response = await http
+          .delete(
+            Uri.parse('$baseUrl$endpoint'),
+            headers: headers,
+          )
+          .timeout(const Duration(seconds: 15));
 
-      print('DELETE ${endpoint} - Status: ${response.statusCode}');
-      print('DELETE ${endpoint} - Body: ${response.body}');
+      debugPrint('DELETE $endpoint - Status: ${response.statusCode}');
+      debugPrint('DELETE $endpoint - Body: ${response.body}');
 
-      // Check for 401 Unauthorized
-      if (response.statusCode == 401) {
-        await _handleUnauthorized();
+      // Check for invalid/expired token (401 or 403 with 'Invalid token')
+      if (_isInvalidTokenResponse(response)) {
+        await handleUnauthorized();
       }
 
       return response;
     } catch (e) {
-      print('DELETE ${endpoint} - Error: $e');
+      debugPrint('DELETE $endpoint - Error: $e');
+      rethrow;
+    }
+  }
+
+  /// Centralized PATCH request with auto-logout on 401
+  static Future<http.Response> patch(
+    String endpoint, {
+    Map<String, dynamic>? body,
+    Map<String, String>? additionalHeaders,
+    bool requiresAuth = true,
+  }) async {
+    try {
+      final headers = <String, String>{
+        'accept': 'application/json',
+        'Content-Type': 'application/json',
+        'ngrok-skip-browser-warning': 'true',
+      };
+
+      if (requiresAuth) {
+        final token = await _storage.getToken();
+        if (token != null) {
+          headers['Authorization'] = 'Token $token';
+        }
+      }
+
+      if (additionalHeaders != null) {
+        headers.addAll(additionalHeaders);
+      }
+
+      debugPrint(
+          'PATCH $endpoint - Token: ${headers['Authorization']?.substring(0, 10) ?? 'None'}...');
+
+      final response = await http
+          .patch(
+            Uri.parse('$baseUrl$endpoint'),
+            headers: headers,
+            body: body != null ? jsonEncode(body) : null,
+          )
+          .timeout(const Duration(seconds: 15));
+
+      debugPrint('PATCH $endpoint - Status: ${response.statusCode}');
+      debugPrint('PATCH $endpoint - Body: ${response.body}');
+
+      // Check for invalid/expired token (401 or 403 with 'Invalid token')
+      if (_isInvalidTokenResponse(response)) {
+        await handleUnauthorized();
+      }
+
+      return response;
+    } catch (e) {
+      debugPrint('PATCH $endpoint - Error: $e');
       rethrow;
     }
   }
 
   /// Handle 401 Unauthorized - Auto logout and navigate to login
-  static Future<void> _handleUnauthorized() async {
+  /// This is public so it can be called from services that use direct HTTP
+  /// (e.g., multipart file uploads that can't use the standard methods)
+  static Future<void> handleUnauthorized() async {
     // Prevent multiple simultaneous logout calls
     if (_isHandlingLogout) return;
     _isHandlingLogout = true;
 
     try {
-      print('🔒 Token expired (401) - Logging out automatically...');
+      debugPrint('🔒 Token expired (401) - Logging out automatically...');
 
       // Clear all stored data
       await _storage.clearAll();
@@ -232,12 +317,12 @@ class ApiClient {
         MaterialPageRoute(
           builder: (context) => const LoginScreen(),
         ),
-            (route) => false, // Remove all previous routes
+        (route) => false, // Remove all previous routes
       );
 
-      print('✅ Logged out successfully - Redirected to login');
+      debugPrint('✅ Logged out successfully - Redirected to login');
     } catch (e) {
-      print('❌ Error during auto-logout: $e');
+      debugPrint('❌ Error during auto-logout: $e');
     } finally {
       _isHandlingLogout = false;
     }

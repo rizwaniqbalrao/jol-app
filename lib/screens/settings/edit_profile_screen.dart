@@ -267,7 +267,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
     final DateTime? picked = await showDatePicker(
       context: context,
-      initialDate: _selectedBirthDate ?? DateTime.now().subtract(const Duration(days: 365 * 18)),
+      initialDate: _selectedBirthDate ??
+          DateTime.now().subtract(const Duration(days: 365 * 18)),
       firstDate: DateTime(1900),
       lastDate: DateTime.now(),
       builder: (context, child) {
@@ -404,10 +405,10 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           backgroundImage: imageProvider,
           child: imageProvider == null
               ? const Icon(
-            Icons.person,
-            color: Colors.grey,
-            size: 48,
-          )
+                  Icons.person,
+                  color: Colors.grey,
+                  size: 48,
+                )
               : null,
         ),
         Positioned(
@@ -462,7 +463,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: accentPurple.withOpacity(0.3), width: 1.5),
+            border:
+                Border.all(color: accentPurple.withOpacity(0.3), width: 1.5),
           ),
           child: Row(
             children: [
@@ -471,30 +473,30 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
               Expanded(
                 child: _isLoading
                     ? Shimmer.fromColors(
-                  baseColor: Colors.grey.shade300,
-                  highlightColor: Colors.grey.shade100,
-                  child: _buildShimmerBox(
-                    height: maxLines > 1 ? 60.0 : 20.0,
-                  ),
-                )
+                        baseColor: Colors.grey.shade300,
+                        highlightColor: Colors.grey.shade100,
+                        child: _buildShimmerBox(
+                          height: maxLines > 1 ? 60.0 : 20.0,
+                        ),
+                      )
                     : TextFormField(
-                  controller: controller,
-                  readOnly: readOnly,
-                  maxLines: maxLines,
-                  keyboardType: keyboardType,
-                  style: const TextStyle(
-                    fontFamily: "Rubik",
-                    fontSize: 15,
-                    fontWeight: FontWeight.w500,
-                    color: Colors.black87,
-                  ),
-                  decoration: const InputDecoration(
-                    border: InputBorder.none,
-                    isDense: true,
-                    contentPadding: EdgeInsets.symmetric(vertical: 12),
-                  ),
-                  validator: validator,
-                ),
+                        controller: controller,
+                        readOnly: readOnly,
+                        maxLines: maxLines,
+                        keyboardType: keyboardType,
+                        style: const TextStyle(
+                          fontFamily: "Rubik",
+                          fontSize: 15,
+                          fontWeight: FontWeight.w500,
+                          color: Colors.black87,
+                        ),
+                        decoration: const InputDecoration(
+                          border: InputBorder.none,
+                          isDense: true,
+                          contentPadding: EdgeInsets.symmetric(vertical: 12),
+                        ),
+                        validator: validator,
+                      ),
               ),
             ],
           ),
@@ -532,32 +534,35 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
             decoration: BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: accentPurple.withOpacity(0.3), width: 1.5),
+              border:
+                  Border.all(color: accentPurple.withOpacity(0.3), width: 1.5),
             ),
             child: Row(
               children: [
-                Icon(Icons.cake_outlined, color: accentPurple.withOpacity(0.7), size: 20),
+                Icon(Icons.cake_outlined,
+                    color: accentPurple.withOpacity(0.7), size: 20),
                 const SizedBox(width: 12),
                 Expanded(
                   child: _isLoading
                       ? Shimmer.fromColors(
-                    baseColor: Colors.grey.shade300,
-                    highlightColor: Colors.grey.shade100,
-                    child: _buildShimmerBox(height: 20, width: 150),
-                  )
+                          baseColor: Colors.grey.shade300,
+                          highlightColor: Colors.grey.shade100,
+                          child: _buildShimmerBox(height: 20, width: 150),
+                        )
                       : Text(
-                    dateStr,
-                    style: TextStyle(
-                      fontFamily: "Rubik",
-                      fontSize: 15,
-                      fontWeight: FontWeight.w500,
-                      color: _selectedBirthDate != null
-                          ? Colors.black87
-                          : Colors.black45,
-                    ),
-                  ),
+                          dateStr,
+                          style: TextStyle(
+                            fontFamily: "Rubik",
+                            fontSize: 15,
+                            fontWeight: FontWeight.w500,
+                            color: _selectedBirthDate != null
+                                ? Colors.black87
+                                : Colors.black45,
+                          ),
+                        ),
                 ),
-                Icon(Icons.calendar_today, color: accentPurple.withOpacity(0.5), size: 16),
+                Icon(Icons.calendar_today,
+                    color: accentPurple.withOpacity(0.5), size: 16),
               ],
             ),
           ),
@@ -593,22 +598,22 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           ),
           child: _isSaving
               ? const SizedBox(
-            height: 20,
-            width: 20,
-            child: CircularProgressIndicator(
-              strokeWidth: 2,
-              valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-            ),
-          )
+                  height: 20,
+                  width: 20,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                  ),
+                )
               : const Text(
-            "Save Changes",
-            style: TextStyle(
-              fontFamily: 'Rubik',
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: Colors.white,
-            ),
-          ),
+                  "Save Changes",
+                  style: TextStyle(
+                    fontFamily: 'Rubik',
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
+                ),
         ),
       ),
     );
@@ -647,112 +652,110 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
             Expanded(
               child: _error != null
                   ? Center(
-                child: Padding(
-                  padding: const EdgeInsets.all(24.0),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const Icon(
-                        Icons.error_outline,
-                        color: textPink,
-                        size: 64,
-                      ),
-                      const SizedBox(height: 16),
-                      Text(
-                        _error!,
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(
-                          fontFamily: 'Rubik',
-                          fontSize: 16,
-                          color: Colors.white,
+                      child: Padding(
+                        padding: const EdgeInsets.all(24.0),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const Icon(
+                              Icons.error_outline,
+                              color: textPink,
+                              size: 64,
+                            ),
+                            const SizedBox(height: 16),
+                            Text(
+                              _error!,
+                              textAlign: TextAlign.center,
+                              style: const TextStyle(
+                                fontFamily: 'Rubik',
+                                fontSize: 16,
+                                color: Colors.white,
+                              ),
+                            ),
+                            const SizedBox(height: 24),
+                            ElevatedButton(
+                              onPressed: _loadData,
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: textPink,
+                              ),
+                              child: const Text('Retry'),
+                            ),
+                          ],
                         ),
                       ),
-                      const SizedBox(height: 24),
-                      ElevatedButton(
-                        onPressed: _loadData,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: textPink,
-                        ),
-                        child: const Text('Retry'),
-                      ),
-                    ],
-                  ),
-                ),
-              )
+                    )
                   : SingleChildScrollView(
-                child: Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Container(
-                    width: double.infinity,
-                    decoration: BoxDecoration(
-                      color: textPink.withOpacity(0.85),
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    padding: const EdgeInsets.all(20),
-                    child: Form(
-                      key: _formKey,
-                      child: Column(
-                        children: [
-                          _buildProfileAvatar(),
-                          const SizedBox(height: 24),
-
-                          _buildTextField(
-                            label: 'First Name',
-                            icon: Icons.person_outline,
-                            controller: _firstNameController,
-                            keyboardType: TextInputType.name,
+                      child: Padding(
+                        padding: const EdgeInsets.all(16.0),
+                        child: Container(
+                          width: double.infinity,
+                          decoration: BoxDecoration(
+                            color: textPink.withOpacity(0.85),
+                            borderRadius: BorderRadius.circular(16),
                           ),
-                          _buildTextField(
-                            label: 'Last Name',
-                            icon: Icons.person_outline,
-                            controller: _lastNameController,
-                            keyboardType: TextInputType.name,
+                          padding: const EdgeInsets.all(20),
+                          child: Form(
+                            key: _formKey,
+                            child: Column(
+                              children: [
+                                _buildProfileAvatar(),
+                                const SizedBox(height: 24),
+                                _buildTextField(
+                                  label: 'First Name',
+                                  icon: Icons.person_outline,
+                                  controller: _firstNameController,
+                                  keyboardType: TextInputType.name,
+                                ),
+                                _buildTextField(
+                                  label: 'Last Name',
+                                  icon: Icons.person_outline,
+                                  controller: _lastNameController,
+                                  keyboardType: TextInputType.name,
+                                ),
+                                _buildTextField(
+                                  label: 'Username',
+                                  icon: Icons.alternate_email,
+                                  controller: _usernameController,
+                                  keyboardType: TextInputType.text,
+                                  validator: (value) {
+                                    if (value == null || value.trim().isEmpty) {
+                                      return 'Username is required';
+                                    }
+                                    if (value.trim().length < 3) {
+                                      return 'Username must be at least 3 characters';
+                                    }
+                                    return null;
+                                  },
+                                ),
+                                _buildTextField(
+                                  label: 'Email (Read Only)',
+                                  icon: Icons.email_outlined,
+                                  controller: _emailController,
+                                  readOnly: true,
+                                  keyboardType: TextInputType.emailAddress,
+                                ),
+                                _buildTextField(
+                                  label: 'Bio',
+                                  icon: Icons.description_outlined,
+                                  controller: _bioController,
+                                  maxLines: 3,
+                                  keyboardType: TextInputType.multiline,
+                                ),
+                                _buildTextField(
+                                  label: 'Location',
+                                  icon: Icons.location_on_outlined,
+                                  controller: _locationController,
+                                  keyboardType: TextInputType.text,
+                                ),
+                                _buildDateField(),
+                                const SizedBox(height: 8),
+                                _buildUpdateButton(),
+                              ],
+                            ),
                           ),
-                          _buildTextField(
-                            label: 'Username',
-                            icon: Icons.alternate_email,
-                            controller: _usernameController,
-                            keyboardType: TextInputType.text,
-                            validator: (value) {
-                              if (value == null || value.trim().isEmpty) {
-                                return 'Username is required';
-                              }
-                              if (value.trim().length < 3) {
-                                return 'Username must be at least 3 characters';
-                              }
-                              return null;
-                            },
-                          ),
-                          _buildTextField(
-                            label: 'Email (Read Only)',
-                            icon: Icons.email_outlined,
-                            controller: _emailController,
-                            readOnly: true,
-                            keyboardType: TextInputType.emailAddress,
-                          ),
-                          _buildTextField(
-                            label: 'Bio',
-                            icon: Icons.description_outlined,
-                            controller: _bioController,
-                            maxLines: 3,
-                            keyboardType: TextInputType.multiline,
-                          ),
-                          _buildTextField(
-                            label: 'Location',
-                            icon: Icons.location_on_outlined,
-                            controller: _locationController,
-                            keyboardType: TextInputType.text,
-                          ),
-                          _buildDateField(),
-
-                          const SizedBox(height: 8),
-                          _buildUpdateButton(),
-                        ],
+                        ),
                       ),
                     ),
-                  ),
-                ),
-              ),
             ),
           ],
         ),

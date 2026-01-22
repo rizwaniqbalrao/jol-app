@@ -6,6 +6,7 @@ import '../models/user.dart';
 import '../models/register_request.dart';
 import '../models/login_request.dart';
 import '../models/user_wallet.dart';
+import 'api_client.dart';
 import 'secure_storage_service.dart';
 
 class AuthResult {
@@ -50,14 +51,14 @@ class AuthService {
       // ✅ Initialize Google Sign-In (once)
       await GoogleSignIn.instance.initialize(
         clientId:
-        '513851405319-87gfavvccvimg3ici170j9o6cvlpb95n.apps.googleusercontent.com',
+            '513851405319-87gfavvccvimg3ici170j9o6cvlpb95n.apps.googleusercontent.com',
         serverClientId:
-        '513851405319-87gfavvccvimg3ici170j9o6cvlpb95n.apps.googleusercontent.com',
+            '513851405319-87gfavvccvimg3ici170j9o6cvlpb95n.apps.googleusercontent.com',
       );
 
       // ✅ Start authentication
       final GoogleSignInAccount account =
-      await GoogleSignIn.instance.authenticate(
+          await GoogleSignIn.instance.authenticate(
         scopeHint: const <String>['openid', 'email', 'profile'],
       );
 
@@ -66,13 +67,16 @@ class AuthService {
 
       // ✅ Get Access Token (optional)
       final GoogleSignInClientAuthorization? authz =
-      await account.authorizationClient.authorizationForScopes(
+          await account.authorizationClient.authorizationForScopes(
         const <String>['email', 'profile', 'openid'],
       );
       final String? accessToken = authz?.accessToken;
 
       if (idToken == null) {
-        return AuthResult(success: false, error: 'Unable to connect with Google. Please check your account and try again.');
+        return AuthResult(
+            success: false,
+            error:
+                'Unable to connect with Google. Please check your account and try again.');
       }
 
       // ✅ Send token to Django backend for verification & login
@@ -88,8 +92,9 @@ class AuthService {
           'code': '',
         }),
       );
-      print("***********************************************************************");
-        print(response.body);
+      print(
+          "***********************************************************************");
+      print(response.body);
       // ✅ Handle backend response
       if (response.statusCode == 200 || response.statusCode == 201) {
         final data = jsonDecode(response.body);
@@ -106,17 +111,18 @@ class AuthService {
         final user = userData.isNotEmpty
             ? User.fromJson(userData)
             : User(
-          id: 0,
-          email: account.email,
-          username: account.displayName ?? account.email,
-          firstName: account.displayName,
-          lastName: null,
-        );
+                id: 0,
+                email: account.email,
+                username: account.displayName ?? account.email,
+                firstName: account.displayName,
+                lastName: null,
+              );
 
         return AuthResult(success: true, user: user);
       } else {
         // Parse server errors for user-friendly display
-        String errorMsg = 'Login with Google failed. Please try again or use another method.';
+        String errorMsg =
+            'Login with Google failed. Please try again or use another method.';
         try {
           final errorData = jsonDecode(response.body);
           if (errorData is Map<String, dynamic>) {
@@ -140,11 +146,15 @@ class AuthService {
       }
     } catch (e) {
       print("❌ Google sign-in error: $e");
-      return AuthResult(success: false, error: 'Google sign-in unavailable right now. Check your connection and try again.');
+      return AuthResult(
+          success: false,
+          error:
+              'Google sign-in unavailable right now. Check your connection and try again.');
     }
   }
 
-  Future<AuthResult> login(String username, String email, String password) async {
+  Future<AuthResult> login(
+      String username, String email, String password) async {
     try {
       print('🔹 Starting login for: username="$username", email="$email"');
 
@@ -153,7 +163,8 @@ class AuthService {
       print('🔹 CSRF token fetched: ${csrfToken ?? "NULL"}');
 
       // Prepare login request
-      final request = LoginRequest(username: username, email: email, password: password);
+      final request =
+          LoginRequest(username: username, email: email, password: password);
       final requestBody = jsonEncode(request.toJson());
       print('🔹 Request body JSON: $requestBody');
 
@@ -164,7 +175,8 @@ class AuthService {
       };
       if (csrfToken != null) headers['X-CSRFTOKEN'] = csrfToken;
 
-      print('🔹 Sending POST request to $baseUrl/auth/login/ with headers: $headers');
+      print(
+          '🔹 Sending POST request to $baseUrl/auth/login/ with headers: $headers');
 
       // Send request
       final response = await http.post(
@@ -185,7 +197,8 @@ class AuthService {
 
         if (token == null) {
           print('❌ No token in response, login failed');
-          return AuthResult(success: false, error: 'No token received from server.');
+          return AuthResult(
+              success: false, error: 'No token received from server.');
         }
 
         // Save token
@@ -204,10 +217,10 @@ class AuthService {
         final user = data['user'] != null
             ? User.fromJson(data['user'])
             : User(
-          id: 0,
-          email: email,
-          username: username,
-        );
+                id: 0,
+                email: email,
+                username: username,
+              );
 
         print('✅ User object created: ${user.username}');
         return AuthResult(success: true, user: user);
@@ -242,12 +255,11 @@ class AuthService {
       print('❌ Stacktrace: $st');
       return AuthResult(
         success: false,
-        error: 'Unable to connect. Check your internet or server status.\nError: $e',
+        error:
+            'Unable to connect. Check your internet or server status.\nError: $e',
       );
     }
   }
-
-
 
   // ------------------ REGISTER ------------------ //
   Future<AuthResult> register(
@@ -295,10 +307,10 @@ class AuthService {
           final user = data['user'] != null
               ? User.fromJson(data['user'])
               : User(
-            id: 0,
-            email: email,
-            username: username,
-          );
+                  id: 0,
+                  email: email,
+                  username: username,
+                );
           print('Registration success: Token saved, user: ${user.username}');
           return AuthResult(success: true, user: user);
         } else {
@@ -306,7 +318,8 @@ class AuthService {
         }
       } else {
         // Parse server errors for user-friendly display
-        String errorMsg = 'Unable to create account. Please check your details (e.g., strong password, unique username/email) and try again.';
+        String errorMsg =
+            'Unable to create account. Please check your details (e.g., strong password, unique username/email) and try again.';
         try {
           final errorData = jsonDecode(response.body);
           if (errorData is Map<String, dynamic>) {
@@ -329,10 +342,15 @@ class AuthService {
         print('Parsed error: $errorMsg');
         return AuthResult(success: false, error: errorMsg);
       }
-      return AuthResult(success: false, error: 'Unable to create account. Please check your details (e.g., strong password, unique username/email) and try again.');
+      return AuthResult(
+          success: false,
+          error:
+              'Unable to create account. Please check your details (e.g., strong password, unique username/email) and try again.');
     } catch (e) {
       print('Exception in register: $e');
-      return AuthResult(success: false, error: 'Connection issue. Please check your internet and try again.');
+      return AuthResult(
+          success: false,
+          error: 'Connection issue. Please check your internet and try again.');
     }
   }
 
@@ -367,7 +385,8 @@ class AuthService {
         return AuthResult(success: true);
       } else {
         // Parse server errors for user-friendly display
-        String errorMsg = 'Unable to send password reset email. Please check your email address and try again.';
+        String errorMsg =
+            'Unable to send password reset email. Please check your email address and try again.';
         try {
           final errorData = jsonDecode(response.body);
           if (errorData is Map<String, dynamic>) {
@@ -391,7 +410,9 @@ class AuthService {
       }
     } catch (e) {
       print('Exception in requestPasswordReset: $e');
-      return AuthResult(success: false, error: 'Connection issue. Please check your internet and try again.');
+      return AuthResult(
+          success: false,
+          error: 'Connection issue. Please check your internet and try again.');
     }
   }
 
@@ -429,7 +450,8 @@ class AuthService {
       } else {
         // Still return success if local storage cleared
         // but log the server error
-        String errorMsg = 'Logged out locally but server logout may have failed.';
+        String errorMsg =
+            'Logged out locally but server logout may have failed.';
         try {
           final errorData = jsonDecode(response.body);
           if (errorData is Map<String, dynamic>) {
@@ -486,13 +508,10 @@ class AuthService {
     try {
       final token = await getCurrentToken();
       if (token == null) return null;
-      final response = await http.get(
-        Uri.parse('$baseUrl/auth/user/'),
-        headers: {
-          'accept': 'application/json',
-          'Authorization': 'Token $token',
-        },
-      );
+
+      // ✅ Use ApiClient - it handles 401 automatically with navigation to login
+      final response = await ApiClient.get('/auth/user/');
+
       if (response.statusCode == 200) {
         return User.fromJson(jsonDecode(response.body));
       } else {

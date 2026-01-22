@@ -4,6 +4,7 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import '../models/room_models.dart';
 import '../services/room_service.dart';
+import 'game_controller.dart'; // Import GameController for shared logic
 
 class MultiplayerGameController extends ChangeNotifier {
   final RoomService _roomService = RoomService();
@@ -17,7 +18,7 @@ class MultiplayerGameController extends ChangeNotifier {
 
   // Local gameplay - dynamic size
   int gridSize = 4;
-  List<List<int?>> grid = [];
+  List<List<double?>> grid = []; // CHANGED: int? -> double?
   List<List<bool>> isWrong = [];
   List<List<bool>> isHinted = []; // Track which cells were revealed by hints
   int localScore = 0;
@@ -59,7 +60,7 @@ class MultiplayerGameController extends ChangeNotifier {
   // --------------------------------------------------
   void _listenToRoom() {
     _roomSubscription = _roomService.listenToRoom(roomCode).listen(
-          (room) {
+      (room) {
         _room = room;
 
         // Initialize grid when puzzle arrives
@@ -123,15 +124,15 @@ class MultiplayerGameController extends ChangeNotifier {
 
       grid = List.generate(
         gridSize,
-            (i) => List.generate(gridSize, (j) => null),
+        (i) => List.generate(gridSize, (j) => null),
       );
       isWrong = List.generate(
         gridSize,
-            (_) => List.filled(gridSize, false),
+        (_) => List.filled(gridSize, false),
       );
       isHinted = List.generate(
         gridSize,
-            (_) => List.filled(gridSize, false),
+        (_) => List.filled(gridSize, false),
       );
 
       for (int i = 0; i < gridSize; i++) {
@@ -156,7 +157,6 @@ class MultiplayerGameController extends ChangeNotifier {
                   j < puzzle.solution[i].length &&
                   i < puzzle.isFixed.length &&
                   j < puzzle.isFixed[i].length) {
-
                 if (puzzle.isFixed[i][j]) {
                   grid[i][j] = puzzle.solution[i][j];
                   debugPrint("Filled [$i][$j] from solution: ${grid[i][j]}");
@@ -178,9 +178,11 @@ class MultiplayerGameController extends ChangeNotifier {
 
               // If grid value is null/invalid, try solution
               if (grid[i][j] == null || grid[i][j] == -1) {
-                if (i < puzzle.solution.length && j < puzzle.solution[i].length) {
+                if (i < puzzle.solution.length &&
+                    j < puzzle.solution[i].length) {
                   grid[i][j] = puzzle.solution[i][j];
-                  debugPrint("Fixed cell [$i][$j] was null, used solution: ${grid[i][j]}");
+                  debugPrint(
+                      "Fixed cell [$i][$j] was null, used solution: ${grid[i][j]}");
                 } else {
                   debugPrint("Fixed cell [$i][$j] has no valid value!");
                 }
@@ -188,7 +190,6 @@ class MultiplayerGameController extends ChangeNotifier {
             } else {
               grid[i][j] = null;
             }
-
           } catch (e) {
             debugPrint("❌ Error at [$i][$j]: $e");
             grid[i][j] = null;
@@ -196,9 +197,9 @@ class MultiplayerGameController extends ChangeNotifier {
         }
       }
 
-      debugPrint("✅ Local grid initialized successfully ($gridSize x $gridSize)");
+      debugPrint(
+          "✅ Local grid initialized successfully ($gridSize x $gridSize)");
       return true;
-
     } catch (e, stackTrace) {
       debugPrint("❌ Error initializing grid: $e");
       debugPrint("Stack trace: $stackTrace");
@@ -250,8 +251,10 @@ class MultiplayerGameController extends ChangeNotifier {
 
     // Calculate completion time even if timed out
     if (_gameStartTime != null) {
-      _completionTimeSeconds = DateTime.now().difference(_gameStartTime!).inSeconds;
-      debugPrint("⏰ Time's up! Completion time: $_completionTimeSeconds seconds");
+      _completionTimeSeconds =
+          DateTime.now().difference(_gameStartTime!).inSeconds;
+      debugPrint(
+          "⏰ Time's up! Completion time: $_completionTimeSeconds seconds");
     }
 
     if (isHost) _roomService.endGame(roomCode);
@@ -263,7 +266,8 @@ class MultiplayerGameController extends ChangeNotifier {
     _timerCountdown?.cancel();
 
     if (_gameStartTime != null && _completionTimeSeconds == null) {
-      _completionTimeSeconds = DateTime.now().difference(_gameStartTime!).inSeconds;
+      _completionTimeSeconds =
+          DateTime.now().difference(_gameStartTime!).inSeconds;
       debugPrint("🏁 Game ended. Total time: $_completionTimeSeconds seconds");
     }
 
@@ -290,7 +294,8 @@ class MultiplayerGameController extends ChangeNotifier {
   // --------------------------------------------------
   // Gameplay Logic
   // --------------------------------------------------
-  void updateCell(int row, int col, int? value) {
+  void updateCell(int row, int col, double? value) {
+    // CHANGED: int? -> double?
     if (!isPlaying || isSubmitted) return;
 
     if (row < 0 || row >= gridSize || col < 0 || col >= gridSize) {
@@ -321,6 +326,7 @@ class MultiplayerGameController extends ChangeNotifier {
     int correctCount = 0;
     int filledCount = 0;
     int totalPlayerCells = 0;
+    double tolerance = 0.01; // ADDED: Tolerance for double comparison
 
     // Count player cells (excluding fixed and reference cell)
     for (int i = 0; i < gridSize; i++) {
@@ -359,15 +365,23 @@ class MultiplayerGameController extends ChangeNotifier {
         if (cellIsFixed) continue;
 
         final current = grid[i][j];
-        int? correct;
+        double? correct; // CHANGED: int? -> double?
 
         if (i < puzzle.solution.length && j < puzzle.solution[i].length) {
           correct = puzzle.solution[i][j];
         }
 
         if (current != null) filledCount++;
-        if (current == correct && correct != null) correctCount++;
-        if (current != null && correct != null && current != correct) {
+
+        // CHANGED: Use tolerance for double comparison
+        bool isCorrect = false;
+        if (current != null && correct != null) {
+          isCorrect = (current - correct).abs() < tolerance;
+        }
+
+        if (isCorrect) correctCount++;
+
+        if (current != null && correct != null && !isCorrect) {
           isWrong[i][j] = true;
         }
       }
@@ -399,7 +413,8 @@ class MultiplayerGameController extends ChangeNotifier {
 
       // Calculate completion time
       if (_gameStartTime != null) {
-        _completionTimeSeconds = DateTime.now().difference(_gameStartTime!).inSeconds;
+        _completionTimeSeconds =
+            DateTime.now().difference(_gameStartTime!).inSeconds;
         debugPrint("   Completion Time: $_completionTimeSeconds seconds");
       }
 
@@ -461,9 +476,8 @@ class MultiplayerGameController extends ChangeNotifier {
     completedPlayers.sort((a, b) => a.completedAt!.compareTo(b.completedAt!));
 
     // Find current player's position
-    int currentPlayerIndex = completedPlayers.indexWhere(
-            (player) => player.id == playerId
-    );
+    int currentPlayerIndex =
+        completedPlayers.indexWhere((player) => player.id == playerId);
 
     if (currentPlayerIndex == -1) {
       return 0;
@@ -494,7 +508,8 @@ class MultiplayerGameController extends ChangeNotifier {
     debugPrint("   Players: ${_room!.players.length}");
 
     for (var player in _room!.players.values) {
-      debugPrint("   ${player.name}: completed=${player.isCompleted}, completedAt=${player.completedAt}");
+      debugPrint(
+          "   ${player.name}: completed=${player.isCompleted}, completedAt=${player.completedAt}");
     }
 
     if (allDone) {
@@ -569,7 +584,7 @@ class MultiplayerGameController extends ChangeNotifier {
       return false;
     }
 
-    int? correctValue;
+    double? correctValue; // CHANGED: int? -> double?
     if (row < _room!.puzzle!.solution.length &&
         col < _room!.puzzle!.solution[row].length) {
       correctValue = _room!.puzzle!.solution[row][col];
@@ -649,353 +664,44 @@ class MultiplayerGameController extends ChangeNotifier {
   }
 }
 
-
 // multiplayer_puzzle_generator.dart
 // Use this to generate puzzles for multiplayer games
-enum PuzzleOperation { addition, subtraction }
-
 class MultiplayerPuzzleGenerator {
-  /// Generates a puzzle using the same logic as single-player GameController
-  /// Now with two-digit numbers (1-25) for seed numbers
+  /// Generates a puzzle using the shared logic from GameController
   static PuzzleData generatePuzzle({
     required int gridSize,
     required PuzzleOperation operation,
+    bool useDecimals = false, // ADDED: Support for decimals
+    bool hardMode = false,
   }) {
-    debugPrint("Generating ${gridSize}x$gridSize puzzle (${operation.name}) with numbers 1-25");
+    debugPrint(
+        "Generating Multiplayer puzzle using GameController shared logic");
 
-    final random = Random();
+    // Use default settings for multiplayer:
+    // hardMode = false (unless room has setting, but currently not passed)
 
-    // Initialize structures
-    List<List<int?>> solutionGrid = List.generate(
-        gridSize,
-            (_) => List.filled(gridSize, null)
-    );
-    List<List<bool>> isFixed = List.generate(
-        gridSize,
-            (_) => List.filled(gridSize, false)
-    );
+    final result = GameController.generateBoardData(
+        gridSize: gridSize,
+        useDecimals: useDecimals,
+        hardMode: hardMode,
+        operation: operation);
 
-    // Reference cell [0][0] - always -1 and fixed
-    solutionGrid[0][0] = -1;
-    isFixed[0][0] = true;
-
-    int seedNumbers = 0;
-
-    // Generate puzzle
-    bool success = _createBoard(
-      solutionGrid,
-      isFixed,
-      gridSize,
-      operation,
-      random,
-      seedNumbers,
-    );
-
-    if (!success) {
-      debugPrint("Puzzle generation failed, retrying...");
-      return generatePuzzle(gridSize: gridSize, operation: operation);
-    }
+    final List<List<double?>> fullGrid = result['grid'];
+    final List<List<double?>> solutionGrid = result['solutionGrid'];
+    final List<List<bool>> isFixed = result['isFixed'];
 
     // Create player-visible grid (only fixed cells)
-    List<List<int?>> playerGrid = List.generate(
-      gridSize,
-          (i) => List.generate(
-        gridSize,
-            (j) => isFixed[i][j] ? solutionGrid[i][j] : null,
-      ),
-    );
+    // GameController.generateBoardData returns 'grid' which IS the player visible grid (contains seeds)
+    // but 'solutionGrid' is the full solution.
+    // Let's ensure we return what PuzzleData expects.
 
-    debugPrint("Puzzle generated successfully with two-digit numbers");
-    _debugPrintPuzzle(playerGrid, solutionGrid, isFixed, gridSize);
+    // Note: GameController's 'grid' property already represents the player's starting state
+    // (seeds filled, others null).
 
     return PuzzleData(
-      grid: playerGrid,
+      grid: fullGrid,
       solution: solutionGrid,
       isFixed: isFixed,
     );
-  }
-
-  static bool _createBoard(
-      List<List<int?>> solutionGrid,
-      List<List<bool>> isFixed,
-      int gridSize,
-      PuzzleOperation operation,
-      Random random,
-      int seedNumbers,
-      ) {
-    try {
-      List<int> availableRows = List.generate(gridSize, (i) => i);
-      List<int> availableCols = List.generate(gridSize, (i) => i);
-
-      // PHASE 1: Place first 4 seed numbers (now with numbers 1-25)
-      for (int i = 0; i < 4; i++) {
-        int randomRow, randomCol;
-
-        do {
-          if (seedNumbers == 0) {
-            // First seed: row 0, random column (not column 0)
-            randomRow = 0;
-            randomCol = availableCols[random.nextInt(availableCols.length - 1) + 1];
-          } else {
-            // Next seeds: random positions
-            randomRow = availableRows[random.nextInt(availableRows.length)];
-            randomCol = availableCols[random.nextInt(availableCols.length)];
-          }
-        } while (randomRow == 0 && randomCol == 0); // Avoid top-left
-
-        solutionGrid[randomRow][randomCol] =
-            _randomNumberNotInRowCol(solutionGrid, randomRow, randomCol, gridSize, random);
-        isFixed[randomRow][randomCol] = true;
-
-        seedNumbers++;
-        availableRows.remove(randomRow);
-        availableCols.remove(randomCol);
-      }
-
-      // PHASE 2: Solve to fill deducible values
-      if (operation == PuzzleOperation.addition) {
-        _solvingBoard1Addition(solutionGrid, gridSize);
-      } else {
-        _solvingBoard1Subtraction(solutionGrid, gridSize);
-      }
-
-      // PHASE 3: Add 2 more seeds (total 6) - now with numbers 1-25
-      _addAdditionalSeeds(solutionGrid, isFixed, gridSize, operation, random, seedNumbers);
-
-      // PHASE 4: Final solve
-      for (int n = 0; n < 20; n++) {
-        if (operation == PuzzleOperation.addition) {
-          _solvingBoardAddition(solutionGrid, gridSize);
-        } else {
-          _solvingBoardSubtraction(solutionGrid, gridSize);
-        }
-      }
-
-      // Check if fully solved
-      return !_checkBoardSolvable(solutionGrid, gridSize);
-
-    } catch (e) {
-      debugPrint("Error in board creation: $e");
-      return false;
-    }
-  }
-
-  /// UPDATED: Now generates numbers 1-25 (same as GameController)
-  static int _randomNumberNotInRowCol(
-      List<List<int?>> grid,
-      int row,
-      int col,
-      int gridSize,
-      Random random
-      ) {
-    int number;
-    int attempts = 0;
-    int maxAttempts = 50; // Prevent infinite loops
-
-    do {
-      // CHANGED: Generate numbers from 1 to 25 (single and double digits)
-      number = random.nextInt(25) + 1;
-      attempts++;
-
-      if (attempts >= maxAttempts) {
-        // Fallback: use a number that might not be unique but avoids infinite loop
-        debugPrint("Warning: Could not find unique number after $maxAttempts attempts");
-        break;
-      }
-    } while (_isNumberUsedInRowOrColumn(grid, number, row, col, gridSize));
-
-    return number;
-  }
-
-  static bool _isNumberUsedInRowOrColumn(
-      List<List<int?>> grid,
-      int number,
-      int row,
-      int col,
-      int gridSize
-      ) {
-    for (int i = 0; i < gridSize; i++) {
-      if (grid[row][i] == number || grid[i][col] == number) {
-        return true;
-      }
-    }
-    return false;
-  }
-
-  static void _solvingBoard1Addition(List<List<int?>> grid, int size) {
-    for (int i = 0; i < size; i++) {
-      for (int j = 0; j < size; j++) {
-        if (i == 0 && j == 0) continue;
-
-        if (i == 0 && j >= 1) {
-          // Top row: B = sum of pairs in column
-          if (grid[i][j] == null) {
-            for (int n = 1; n < size; n++) {
-              if (grid[n][i] != null && grid[n][j] != null) {
-                grid[i][j] = grid[n][i]! + grid[n][j]!;
-                break;
-              }
-            }
-          }
-        } else if (i >= 1 && j == 0) {
-          // Left column: A = sum of pairs in row
-          if (grid[i][j] == null) {
-            for (int n = 1; n < size; n++) {
-              if (grid[j][n] != null && grid[i][n] != null) {
-                grid[i][j] = grid[j][n]! + grid[i][n]!;
-                break;
-              }
-            }
-          }
-        } else {
-          // Intersection: C = A + B
-          if (grid[i][j] == null && grid[i][0] != null && grid[0][j] != null) {
-            grid[i][j] = grid[i][0]! + grid[0][j]!;
-          }
-        }
-      }
-    }
-  }
-
-  static void _solvingBoardAddition(List<List<int?>> grid, int size) {
-    _solvingBoard1Addition(grid, size);
-  }
-
-  static void _solvingBoard1Subtraction(List<List<int?>> grid, int size) {
-    for (int i = 0; i < size; i++) {
-      for (int j = 0; j < size; j++) {
-        if (i == 0 && j == 0) continue;
-
-        if (i == 0 && j >= 1) {
-          // Top row: B = |difference| of pairs
-          if (grid[i][j] == null) {
-            for (int n = 1; n < size; n++) {
-              if (grid[n][i] != null && grid[n][j] != null) {
-                grid[i][j] = (grid[n][i]! - grid[n][j]!).abs();
-                break;
-              }
-            }
-          }
-        } else if (i >= 1 && j == 0) {
-          // Left column: A = |difference|
-          if (grid[i][j] == null) {
-            for (int n = 1; n < size; n++) {
-              if (grid[j][n] != null && grid[i][n] != null) {
-                grid[i][j] = (grid[j][n]! - grid[i][n]!).abs();
-                break;
-              }
-            }
-          }
-        } else {
-          // Intersection: C = |A - B|
-          if (grid[i][j] == null && grid[i][0] != null && grid[0][j] != null) {
-            grid[i][j] = (grid[i][0]! - grid[0][j]!).abs();
-          }
-        }
-      }
-    }
-  }
-
-  static void _solvingBoardSubtraction(List<List<int?>> grid, int size) {
-    _solvingBoard1Subtraction(grid, size);
-  }
-
-  /// UPDATED: Additional seeds now also use numbers 1-25
-  static void _addAdditionalSeeds(
-      List<List<int?>> grid,
-      List<List<bool>> isFixed,
-      int gridSize,
-      PuzzleOperation operation,
-      Random random,
-      int seedNumbers,
-      ) {
-    List<int> availableRows = List.generate(gridSize, (i) => i);
-    List<int> availableCols = List.generate(gridSize, (i) => i);
-
-    int targetSeeds = 6;
-    int attempts = 0;
-    int maxAttempts = 100;
-
-    while (seedNumbers < targetSeeds && attempts < maxAttempts) {
-      attempts++;
-
-      if (availableRows.isEmpty || availableCols.isEmpty) break;
-
-      int randomRow = availableRows[random.nextInt(availableRows.length)];
-      int randomCol = availableCols[random.nextInt(availableCols.length)];
-
-      if (randomRow == 0 && randomCol == 0) continue;
-      if (grid[randomRow][randomCol] != null) continue;
-
-      // CHANGED: Use numbers 1-25 for additional seeds too
-      grid[randomRow][randomCol] = random.nextInt(25) + 1;
-      isFixed[randomRow][randomCol] = true;
-      seedNumbers++;
-
-      // Solve multiple times to propagate the new seed
-      for (int n = 0; n < 20; n++) {
-        if (operation == PuzzleOperation.addition) {
-          _solvingBoardAddition(grid, gridSize);
-        } else {
-          _solvingBoardSubtraction(grid, gridSize);
-        }
-      }
-
-      availableRows.remove(randomRow);
-      availableCols.remove(randomCol);
-    }
-
-    if (seedNumbers < targetSeeds) {
-      debugPrint("Warning: Only placed $seedNumbers seeds (target: $targetSeeds)");
-    }
-  }
-
-  static bool _checkBoardSolvable(List<List<int?>> grid, int size) {
-    int zeroCount = 0;
-    for (int i = 0; i < size; i++) {
-      for (int j = 0; j < size; j++) {
-        if (i == 0 && j == 0) continue;
-        if (grid[i][j] == null) zeroCount++;
-      }
-    }
-    return zeroCount > 0;
-  }
-
-  static void _debugPrintPuzzle(
-      List<List<int?>> playerGrid,
-      List<List<int?>> solution,
-      List<List<bool>> isFixed,
-      int size,
-      ) {
-    debugPrint("\nPuzzle Structure (Numbers 1-25):");
-    debugPrint("Player Grid (fixed cells only):");
-    for (int i = 0; i < size; i++) {
-      String row = playerGrid[i].map((v) => v?.toString().padLeft(3) ?? '  -').join(' ');
-      debugPrint("  $row");
-    }
-
-    debugPrint("\nFull Solution:");
-    for (int i = 0; i < size; i++) {
-      String row = solution[i].map((v) => v?.toString().padLeft(3) ?? '  -').join(' ');
-      debugPrint("  $row");
-    }
-
-    int fixedCount = 0;
-    for (var row in isFixed) {
-      fixedCount += row.where((f) => f).length;
-    }
-
-    // Count two-digit numbers in fixed cells
-    int twoDigitCount = 0;
-    for (int i = 0; i < size; i++) {
-      for (int j = 0; j < size; j++) {
-        if (isFixed[i][j] && solution[i][j] != null && solution[i][j]! > 9) {
-          twoDigitCount++;
-        }
-      }
-    }
-
-    debugPrint("\nFixed cells: $fixedCount (with $twoDigitCount two-digit numbers)");
-    debugPrint("Player cells: ${size * size - fixedCount}");
   }
 }

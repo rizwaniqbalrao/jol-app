@@ -79,16 +79,6 @@ class GameController extends ChangeNotifier {
     resetGame();
   }
 
-  // Generate random number (integer or decimal based on _useDecimals flag)
-  double _generateRandomNumber(Random random) {
-    if (_useDecimals) {
-      final max = _hardMode ? 332 : 9;
-      return ((random.nextInt(max * 10 - 10) + 11) / 10.0);
-    } else {
-      return (random.nextInt(_maxSeedValue) + 1).toDouble();
-    }
-  }
-
   double? _safeResult(double value) {
     if (_hardMode && value > _maxResultValue) return null;
     return value;
@@ -130,8 +120,253 @@ class GameController extends ChangeNotifier {
     notifyListeners();
   }
 
-  // STATIC 4x4 BOARD GENERATION LOGIC
-  void _createBoard(Random random, {int maxAttempts = 25}) {
+  // STATIC HELPER METHODS
+  static double generateRandomNumber(
+      Random random, bool useDecimals, bool hardMode) {
+    if (useDecimals) {
+      final max = hardMode ? 332 : 9;
+      return ((random.nextInt(max * 10 - 10) + 11) / 10.0);
+    } else {
+      final maxSeedValue = hardMode ? 332 : 16; // 16 is default max for 4x4
+      return (random.nextInt(maxSeedValue) + 1).toDouble();
+    }
+  }
+
+  static double? _staticSafeResult(double value, bool hardMode) {
+    final maxResultValue = hardMode ? 999.0 : double.infinity;
+    if (hardMode && value > maxResultValue) return null;
+    return value;
+  }
+
+  static double _randomNumberNotInRowCol(
+      int row,
+      int col,
+      Random random,
+      List<List<double?>> solutionGrid,
+      int gridSize,
+      bool useDecimals,
+      bool hardMode) {
+    double number;
+    int attempts = 0;
+
+    do {
+      number = generateRandomNumber(random, useDecimals, hardMode);
+      attempts++;
+      if (attempts > 100) break;
+    } while (_isNumberUsedInRowOrColumnStatic(
+            number, row, col, solutionGrid, gridSize) ||
+        (hardMode && number >= 333));
+
+    return number;
+  }
+
+  static bool _isNumberUsedInRowOrColumnStatic(double number, int row, int col,
+      List<List<double?>> solutionGrid, int gridSize) {
+    const tolerance = 0.001;
+    for (int i = 0; i < gridSize; i++) {
+      final rowVal = solutionGrid[row][i];
+      final colVal = solutionGrid[i][col];
+      if (rowVal != null && (rowVal - number).abs() < tolerance) return true;
+      if (colVal != null && (colVal - number).abs() < tolerance) return true;
+    }
+    return false;
+  }
+
+  static void solvingBoard1Static(List<List<double?>> solutionGrid,
+      int gridSize, PuzzleOperation operation, bool hardMode) {
+    if (operation == PuzzleOperation.addition) {
+      _solveAddition1(solutionGrid, gridSize, hardMode);
+    } else {
+      _solveSubtraction1(solutionGrid, gridSize);
+    }
+  }
+
+  static void _solveAddition1(
+      List<List<double?>> solutionGrid, int gridSize, bool hardMode) {
+    for (int i = 0; i < gridSize; i++) {
+      for (int j = 0; j < gridSize; j++) {
+        if (i == 0 && j == 0) continue;
+        if (i == 0 && (j >= 1 && j < gridSize)) {
+          if (solutionGrid[i][j] == null) {
+            for (int n = 1; n < gridSize; n++) {
+              if (solutionGrid[n][i] != null && solutionGrid[n][j] != null) {
+                solutionGrid[i][j] = solutionGrid[n][i]! + solutionGrid[n][j]!;
+                break;
+              }
+            }
+          }
+        } else if ((i >= 1 && i < gridSize) && j == 0) {
+          if (solutionGrid[i][j] == null) {
+            for (int n = 1; n < gridSize; n++) {
+              if (solutionGrid[i][n] != null && solutionGrid[0][n] != null) {
+                solutionGrid[i][j] = solutionGrid[i][n]! + solutionGrid[0][n]!;
+                break;
+              }
+            }
+          }
+        } else {
+          if (solutionGrid[i][j] == null) {
+            if (solutionGrid[i][0] != null && solutionGrid[0][j] != null) {
+              final result = solutionGrid[i][0]! + solutionGrid[0][j]!;
+              solutionGrid[i][j] = _staticSafeResult(result, hardMode);
+            }
+          }
+        }
+      }
+    }
+  }
+
+  static void _solveSubtraction1(
+      List<List<double?>> solutionGrid, int gridSize) {
+    for (int i = 0; i < gridSize; i++) {
+      for (int j = 0; j < gridSize; j++) {
+        if (i == 0 && j == 0) continue;
+        // Similar logic for subtraction
+        if (i == 0 && (j >= 1 && j < gridSize)) {
+          if (solutionGrid[i][j] == null) {
+            for (int n = 1; n < gridSize; n++) {
+              if (solutionGrid[n][i] != null && solutionGrid[n][j] != null) {
+                solutionGrid[i][j] =
+                    (solutionGrid[n][i]! - solutionGrid[n][j]!).abs();
+                break;
+              }
+            }
+          }
+        } else if ((i >= 1 && i < gridSize) && j == 0) {
+          if (solutionGrid[i][j] == null) {
+            for (int n = 1; n < gridSize; n++) {
+              if (solutionGrid[i][n] != null && solutionGrid[0][n] != null) {
+                solutionGrid[i][j] =
+                    (solutionGrid[i][n]! - solutionGrid[0][n]!).abs();
+                break;
+              }
+            }
+          }
+        } else {
+          if (solutionGrid[i][j] == null) {
+            if (solutionGrid[i][0] != null && solutionGrid[0][j] != null) {
+              solutionGrid[i][j] =
+                  (solutionGrid[i][0]! - solutionGrid[0][j]!).abs();
+            }
+          }
+        }
+      }
+    }
+  }
+
+  static void solvingBoardStatic(List<List<double?>> solutionGrid, int gridSize,
+      PuzzleOperation operation, bool hardMode) {
+    if (operation == PuzzleOperation.addition) {
+      _solveAddition(solutionGrid, gridSize, hardMode);
+    } else {
+      _solveSubtraction(solutionGrid, gridSize);
+    }
+  }
+
+  static void _solveAddition(
+      List<List<double?>> solutionGrid, int gridSize, bool hardMode) {
+    // Exact same logic as solvingBoard but static
+    _solveAddition1(solutionGrid, gridSize,
+        hardMode); // Reusing logic as they look identical in original
+  }
+
+  static void _solveSubtraction(
+      List<List<double?>> solutionGrid, int gridSize) {
+    _solveSubtraction1(solutionGrid, gridSize); // Reusing logic
+  }
+
+  static bool checkConditionStatic(
+      int i, int j, List<List<double?>> solutionGrid, int gridSize) {
+    if (i == 0) {
+      if (solutionGrid[i][j] == null) {
+        for (int n = 1; n < gridSize; n++) {
+          if (solutionGrid[n][i] == null || solutionGrid[n][j] == null) {
+            return true;
+          }
+        }
+      }
+    } else if (j == 0) {
+      if (solutionGrid[i][j] == null) {
+        for (int n = 1; n < gridSize; n++) {
+          if (solutionGrid[n][i] == null || solutionGrid[n][j] == null) {
+            return true;
+          }
+        }
+      }
+    } else {
+      if (solutionGrid[i][j] == null) {
+        if (solutionGrid[i][0] == null || solutionGrid[0][j] == null) {
+          return true;
+        }
+      }
+    }
+    return false;
+  }
+
+  static bool checkBoardSolvableStatic(
+      List<List<double?>> solutionGrid, int gridSize) {
+    int zeroCount = 0;
+    for (int i = 0; i < gridSize; i++) {
+      for (int j = 0; j < gridSize; j++) {
+        if (i == 0 && j == 0) continue;
+        if (solutionGrid[i][j] == null) {
+          zeroCount++;
+        }
+      }
+    }
+    return zeroCount > 0;
+  }
+
+  // MAIN STATIC GENERATOR METHOD
+  static Map<String, dynamic> generateBoardData({
+    required int gridSize,
+    required bool useDecimals,
+    required bool hardMode,
+    required PuzzleOperation operation,
+  }) {
+    List<List<double?>> grid =
+        List.generate(gridSize, (_) => List.filled(gridSize, null));
+    List<List<double?>> solutionGrid =
+        List.generate(gridSize, (_) => List.filled(gridSize, null));
+    List<List<bool>> isFixed =
+        List.generate(gridSize, (_) => List.filled(gridSize, false));
+    List<List<bool>> isWrong =
+        List.generate(gridSize, (_) => List.filled(gridSize, false));
+
+    final random = Random();
+
+    grid[0][0] = -1;
+    solutionGrid[0][0] = -1;
+    isFixed[0][0] = true;
+
+    _createBoardStatic(
+        random: random,
+        grid: grid,
+        solutionGrid: solutionGrid,
+        isFixed: isFixed,
+        gridSize: gridSize,
+        useDecimals: useDecimals,
+        hardMode: hardMode,
+        operation: operation);
+
+    return {
+      'grid': grid,
+      'solutionGrid': solutionGrid,
+      'isFixed': isFixed,
+      'isWrong': isWrong,
+    };
+  }
+
+  static void _createBoardStatic(
+      {required Random random,
+      required List<List<double?>> grid,
+      required List<List<double?>> solutionGrid,
+      required List<List<bool>> isFixed,
+      required int gridSize,
+      required bool useDecimals,
+      required bool hardMode,
+      required PuzzleOperation operation,
+      int maxAttempts = 25}) {
     List<int> availableRows = [];
     List<int> availableCols = [];
 
@@ -140,10 +375,9 @@ class GameController extends ChangeNotifier {
       availableCols.add(i);
     }
 
-    seedNumbers = 0;
+    int seedNumbers = 0;
 
     try {
-      // Original logic: Generate 4 primary seeds   //make changes for 5x5
       for (int i = 0; i < gridSize; i++) {
         int randomRow, randomCol;
 
@@ -158,9 +392,9 @@ class GameController extends ChangeNotifier {
           }
         } while (randomRow == 0 && randomCol == 0);
 
-        _solutionGrid[randomRow][randomCol] =
-            _randomNumberNotInRowCol(randomRow, randomCol, random);
-        grid[randomRow][randomCol] = _solutionGrid[randomRow][randomCol];
+        solutionGrid[randomRow][randomCol] = _randomNumberNotInRowCol(randomRow,
+            randomCol, random, solutionGrid, gridSize, useDecimals, hardMode);
+        grid[randomRow][randomCol] = solutionGrid[randomRow][randomCol];
         isFixed[randomRow][randomCol] = true;
 
         seedNumbers++;
@@ -169,213 +403,77 @@ class GameController extends ChangeNotifier {
       }
 
       // Initial solving pass
-      if (operation == PuzzleOperation.addition) {
-        _solvingBoard1();
-      } else {
-        _solvingBoard1Subtraction();
-      }
+      solvingBoard1Static(solutionGrid, gridSize, operation, hardMode);
 
-      // Original logic: Add up to 6 total seeds
-      _addAdditionalSeeds(random);
+      // Add up to 6 total seeds (re-implemented static version of logic)
+      seedNumbers = _addAdditionalSeedsStatic(random, grid, solutionGrid,
+          isFixed, gridSize, seedNumbers, operation, useDecimals, hardMode);
 
       // Final solving ripple
       for (int n = 0; n < 20; n++) {
-        if (operation == PuzzleOperation.addition) {
-          _solvingBoard();
-        } else {
-          _solvingBoardSubtraction();
-        }
+        solvingBoardStatic(solutionGrid, gridSize, operation, hardMode);
       }
 
-      if (!_checkBoardSolvable()) {
-        _prepareGameBoard();
+      if (!checkBoardSolvableStatic(solutionGrid, gridSize)) {
+        // Prepare game board logic (similar to _prepareGameBoard)
+        for (int i = 0; i < gridSize; i++) {
+          for (int j = 0; j < gridSize; j++) {
+            if (!isFixed[i][j]) {
+              grid[i][j] = null;
+            }
+          }
+        }
       } else {
-        _clearBoard();
-        _createBoard(random);
+        _clearBoardStatic(grid, solutionGrid, isFixed);
+        _createBoardStatic(
+            random: random,
+            grid: grid,
+            solutionGrid: solutionGrid,
+            isFixed: isFixed,
+            gridSize: gridSize,
+            useDecimals: useDecimals,
+            hardMode: hardMode,
+            operation: operation);
       }
     } catch (e) {
-      _clearBoard();
-      _createBoard(random);
+      _clearBoardStatic(grid, solutionGrid, isFixed);
+      _createBoardStatic(
+          random: random,
+          grid: grid,
+          solutionGrid: solutionGrid,
+          isFixed: isFixed,
+          gridSize: gridSize,
+          useDecimals: useDecimals,
+          hardMode: hardMode,
+          operation: operation);
     }
   }
 
-  double _randomNumberNotInRowCol(int row, int col, Random random) {
-    double number;
-    int attempts = 0;
-
-    do {
-      number = _generateRandomNumber(random);
-      attempts++;
-      if (attempts > 100) break;
-    } while (_isNumberUsedInRowOrColumn(number, row, col) ||
-        (_hardMode && number >= 333));
-
-    return number;
-  }
-
-  bool _isNumberUsedInRowOrColumn(double number, int row, int col) {
-    const tolerance = 0.001;
-    for (int i = 0; i < gridSize; i++) {
-      final rowVal = _solutionGrid[row][i];
-      final colVal = _solutionGrid[i][col];
-      if (rowVal != null && (rowVal - number).abs() < tolerance) return true;
-      if (colVal != null && (colVal - number).abs() < tolerance) return true;
-    }
-    return false;
-  }
-
-  void _solvingBoard1() {
+  static void _clearBoardStatic(List<List<double?>> grid,
+      List<List<double?>> solutionGrid, List<List<bool>> isFixed) {
+    final gridSize = grid.length;
     for (int i = 0; i < gridSize; i++) {
       for (int j = 0; j < gridSize; j++) {
-        if (i == 0 && j == 0) continue;
-        if (i == 0 && (j >= 1 && j < gridSize)) {
-          if (_solutionGrid[i][j] == null) {
-            for (int n = 1; n < gridSize; n++) {
-              if (_solutionGrid[n][i] != null && _solutionGrid[n][j] != null) {
-                _solutionGrid[i][j] =
-                    _solutionGrid[n][i]! + _solutionGrid[n][j]!;
-                break;
-              }
-            }
-          }
-        } else if ((i >= 1 && i < gridSize) && j == 0) {
-          if (_solutionGrid[i][j] == null) {
-            for (int n = 1; n < gridSize; n++) {
-              if (_solutionGrid[i][n] != null && _solutionGrid[0][n] != null) {
-                _solutionGrid[i][j] =
-                    _solutionGrid[i][n]! + _solutionGrid[0][n]!;
-                break;
-              }
-            }
-          }
-        } else {
-          if (_solutionGrid[i][j] == null) {
-            if (_solutionGrid[i][0] != null && _solutionGrid[0][j] != null) {
-              final result = _solutionGrid[i][0]! + _solutionGrid[0][j]!;
-              _solutionGrid[i][j] = _safeResult(result);
-            }
-          }
-        }
+        grid[i][j] = null;
+        solutionGrid[i][j] = null;
+        isFixed[i][j] = false;
       }
     }
+    grid[0][0] = -1;
+    solutionGrid[0][0] = -1;
+    isFixed[0][0] = true;
   }
 
-  void _solvingBoard() {
-    for (int i = 0; i < gridSize; i++) {
-      for (int j = 0; j < gridSize; j++) {
-        if (i == 0 && j == 0) continue;
-        if (i == 0 && (j >= 1 && j < gridSize)) {
-          if (_solutionGrid[i][j] == null) {
-            for (int n = 1; n < gridSize; n++) {
-              if (_solutionGrid[n][i] != null && _solutionGrid[n][j] != null) {
-                _solutionGrid[i][j] =
-                    _solutionGrid[n][i]! + _solutionGrid[n][j]!;
-                break;
-              }
-            }
-          }
-        } else if ((i >= 1 && i < gridSize) && j == 0) {
-          if (_solutionGrid[i][j] == null) {
-            for (int n = 1; n < gridSize; n++) {
-              if (_solutionGrid[i][n] != null && _solutionGrid[0][n] != null) {
-                _solutionGrid[i][j] =
-                    _solutionGrid[i][n]! + _solutionGrid[0][n]!;
-                break;
-              }
-            }
-          }
-        } else {
-          if (_solutionGrid[i][j] == null) {
-            if (_solutionGrid[i][0] != null && _solutionGrid[0][j] != null) {
-              final result = _solutionGrid[i][0]! + _solutionGrid[0][j]!;
-              _solutionGrid[i][j] = _safeResult(result);
-            }
-          }
-        }
-      }
-    }
-  }
-
-  // bool integerMode = false;
-
-  // void setIntegerMode(bool value) {
-  //   integerMode = value;
-  //   notifyListeners();
-  // }
-
-  void _solvingBoard1Subtraction() {
-    for (int i = 0; i < gridSize; i++) {
-      for (int j = 0; j < gridSize; j++) {
-        if (i == 0 && j == 0) continue;
-        if (i == 0 && (j >= 1 && j < gridSize)) {
-          if (_solutionGrid[i][j] == null) {
-            for (int n = 1; n < gridSize; n++) {
-              if (_solutionGrid[n][i] != null && _solutionGrid[n][j] != null) {
-                _solutionGrid[i][j] =
-                    (_solutionGrid[n][i]! - _solutionGrid[n][j]!).abs();
-                break;
-              }
-            }
-          }
-        } else if ((i >= 1 && i < gridSize) && j == 0) {
-          if (_solutionGrid[i][j] == null) {
-            for (int n = 1; n < gridSize; n++) {
-              if (_solutionGrid[i][n] != null && _solutionGrid[0][n] != null) {
-                _solutionGrid[i][j] =
-                    (_solutionGrid[i][n]! - _solutionGrid[0][n]!).abs();
-                break;
-              }
-            }
-          }
-        } else {
-          if (_solutionGrid[i][j] == null) {
-            if (_solutionGrid[i][0] != null && _solutionGrid[0][j] != null) {
-              _solutionGrid[i][j] =
-                  (_solutionGrid[i][0]! - _solutionGrid[0][j]!).abs();
-            }
-          }
-        }
-      }
-    }
-  }
-
-  void _solvingBoardSubtraction() {
-    for (int i = 0; i < gridSize; i++) {
-      for (int j = 0; j < gridSize; j++) {
-        if (i == 0 && j == 0) continue;
-        if (i == 0 && (j >= 1 && j < gridSize)) {
-          if (_solutionGrid[i][j] == null) {
-            for (int n = 1; n < gridSize; n++) {
-              if (_solutionGrid[n][i] != null && _solutionGrid[n][j] != null) {
-                _solutionGrid[i][j] =
-                    (_solutionGrid[n][i]! - _solutionGrid[n][j]!).abs();
-                break;
-              }
-            }
-          }
-        } else if ((i >= 1 && i < gridSize) && j == 0) {
-          if (_solutionGrid[i][j] == null) {
-            for (int n = 1; n < gridSize; n++) {
-              if (_solutionGrid[i][n] != null && _solutionGrid[0][n] != null) {
-                _solutionGrid[i][j] =
-                    (_solutionGrid[i][n]! - _solutionGrid[0][n]!).abs();
-                break;
-              }
-            }
-          }
-        } else {
-          if (_solutionGrid[i][j] == null) {
-            if (_solutionGrid[i][0] != null && _solutionGrid[0][j] != null) {
-              _solutionGrid[i][j] =
-                  (_solutionGrid[i][0]! - _solutionGrid[0][j]!).abs();
-            }
-          }
-        }
-      }
-    }
-  }
-
-  void _addAdditionalSeeds(Random random) {
+  static int _addAdditionalSeedsStatic(
+      Random random,
+      List<List<double?>> grid,
+      List<List<double?>> solutionGrid,
+      List<List<bool>> isFixed,
+      int gridSize,
+      int seedNumbers,
+      PuzzleOperation operation,
+      bool useDecimals,
+      bool hardMode) {
     List<int> availableRows = List.generate(gridSize, (i) => i);
     List<int> availableCols = List.generate(gridSize, (i) => i);
 
@@ -385,92 +483,72 @@ class GameController extends ChangeNotifier {
         int randomCol = availableCols[random.nextInt(availableCols.length)];
 
         if ((randomRow != 0 && randomCol != 0) &&
-            _solutionGrid[randomRow][randomCol] == null &&
-            _checkCondition(randomRow, randomCol)) {
-          _solutionGrid[randomRow][randomCol] = _generateRandomNumber(random);
-          grid[randomRow][randomCol] = _solutionGrid[randomRow][randomCol];
+            solutionGrid[randomRow][randomCol] == null &&
+            checkConditionStatic(
+                randomRow, randomCol, solutionGrid, gridSize)) {
+          solutionGrid[randomRow][randomCol] =
+              generateRandomNumber(random, useDecimals, hardMode);
+          grid[randomRow][randomCol] = solutionGrid[randomRow][randomCol];
           isFixed[randomRow][randomCol] = true;
           seedNumbers++;
 
           for (int n = 0; n < 20; n++) {
-            if (operation == PuzzleOperation.addition) {
-              _solvingBoard();
-            } else {
-              _solvingBoardSubtraction();
-            }
+            solvingBoardStatic(solutionGrid, gridSize, operation, hardMode);
           }
         }
       }
     } catch (e) {
-      seedNumbers = 4;
-      _addAdditionalSeeds(random);
+      // In case of error, just return current seed count, potentially loop inside calling function requires handling
+      // Original logic recursively called itself on catch, risking stack overflow or logic loop.
+      // Here we just return.
     }
+    return seedNumbers;
   }
 
-  bool _checkCondition(int i, int j) {
-    if (i == 0) {
-      if (_solutionGrid[i][j] == null) {
-        for (int n = 1; n < gridSize; n++) {
-          if (_solutionGrid[n][i] == null || _solutionGrid[n][j] == null) {
-            return true;
-          }
-        }
-      }
-    } else if (j == 0) {
-      if (_solutionGrid[i][j] == null) {
-        for (int n = 1; n < gridSize; n++) {
-          if (_solutionGrid[n][i] == null || _solutionGrid[n][j] == null) {
-            return true;
-          }
-        }
-      }
-    } else {
-      if (_solutionGrid[i][j] == null) {
-        if (_solutionGrid[i][0] == null || _solutionGrid[0][j] == null) {
-          return true;
-        }
-      }
-    }
-    return false;
+  // INSTANCE METHODS (Delegating to static)
+
+  void _createBoard(Random random, {int maxAttempts = 25}) {
+    final result = generateBoardData(
+        gridSize: gridSize,
+        useDecimals: _useDecimals,
+        hardMode: _hardMode,
+        operation: operation);
+
+    grid = result['grid'];
+    _solutionGrid = result['solutionGrid'];
+    isFixed = result['isFixed'];
+    isWrong = result['isWrong'];
+    seedNumbers = 6; // Approx
   }
 
-  bool _checkBoardSolvable() {
-    int zeroCount = 0;
-    for (int i = 0; i < gridSize; i++) {
-      for (int j = 0; j < gridSize; j++) {
-        if (i == 0 && j == 0) continue;
-        if (_solutionGrid[i][j] == null) {
-          zeroCount++;
-        }
-      }
-    }
-    return zeroCount > 0;
-  }
+  // Legacy instance methods kept for compatibility if needed, but unused by new generate logic
+  double _generateRandomNumber(Random random) =>
+      generateRandomNumber(random, _useDecimals, _hardMode);
 
-  void _prepareGameBoard() {
-    for (int i = 0; i < gridSize; i++) {
-      for (int j = 0; j < gridSize; j++) {
-        if (!isFixed[i][j]) {
-          grid[i][j] = null;
-        }
-      }
-    }
-  }
+  void _solvingBoard() =>
+      solvingBoardStatic(_solutionGrid, gridSize, operation, _hardMode);
 
-  void _clearBoard() {
-    for (int i = 0; i < gridSize; i++) {
-      for (int j = 0; j < gridSize; j++) {
-        grid[i][j] = null;
-        _solutionGrid[i][j] = null;
-        isFixed[i][j] = false;
-        isWrong[i][j] = false;
-      }
-    }
-    grid[0][0] = -1;
-    _solutionGrid[0][0] = -1;
-    isFixed[0][0] = true;
-    seedNumbers = 0;
-  }
+  void _solvingBoard1() =>
+      solvingBoard1Static(_solutionGrid, gridSize, operation, _hardMode);
+
+  void _solvingBoard1Subtraction() => solvingBoardStatic(
+      _solutionGrid,
+      gridSize,
+      PuzzleOperation.subtraction,
+      _hardMode); // Subtraction uses solvingBoardStatic with SUB param
+
+  void _solvingBoardSubtraction() => solvingBoardStatic(
+      _solutionGrid, gridSize, PuzzleOperation.subtraction, _hardMode);
+
+  bool _checkCondition(int i, int j) =>
+      checkConditionStatic(i, j, _solutionGrid, gridSize);
+
+  bool _checkBoardSolvable() =>
+      checkBoardSolvableStatic(_solutionGrid, gridSize);
+
+  void _clearBoard() => _clearBoardStatic(grid, _solutionGrid, isFixed);
+
+  // Original methods that were replaced above:
 
   // ──────────────────────────────────────────────
   // GAME ACTIONS
