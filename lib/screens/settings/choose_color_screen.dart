@@ -71,144 +71,159 @@ class ChooseColorScreen extends StatelessWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
+                        //features comming soon
+                        Center(
+                          child: Text(
+                            "Colour Changing Feature Coming Soon!",
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              fontFamily: 'Digitalt',
+                              fontSize: 20,
+                              fontWeight: FontWeight.bold,
+                              color: accentPurple,
+                            ),
+                          ),
+                        ),
+
                         // Heading
-                        Text(
-                          "COLOURS",
-                          style: TextStyle(
-                            fontFamily: 'Digitalt',
-                            fontSize: 24,
-                            fontWeight: FontWeight.bold,
-                            color: textPink,
-                            letterSpacing: 1,
-                          ),
-                        ),
-                        const SizedBox(height: 12),
 
-                        // Current color
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            const Text(
-                              "CURRENT COLOUR: PINK",
-                              style: TextStyle(
-                                fontFamily: 'Digitalt',
-                                fontSize: 20,
-                                fontWeight: FontWeight.bold,
-                                color: Color(0xFFC42AF8),
-                              ),
-                            ),
-                            Container(
-                              width: 20,
-                              height: 20,
-                              decoration: BoxDecoration(
-                                color: textPink,
-                                borderRadius: BorderRadius.circular(4),
-                              ),
-                            )
-                          ],
-                        ),
+                        // Text(
+                        //   "COLOURS",
+                        //   style: TextStyle(
+                        //     fontFamily: 'Digitalt',
+                        //     fontSize: 24,
+                        //     fontWeight: FontWeight.bold,
+                        //     color: textPink,
+                        //     letterSpacing: 1,
+                        //   ),
+                        // ),
+                        // const SizedBox(height: 12),
 
-                        const SizedBox(height: 20),
+                        // // Current color
+                        // Row(
+                        //   mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        //   children: [
+                        //     const Text(
+                        //       "CURRENT COLOUR: PINK",
+                        //       style: TextStyle(
+                        //         fontFamily: 'Digitalt',
+                        //         fontSize: 20,
+                        //         fontWeight: FontWeight.bold,
+                        //         color: Color(0xFFC42AF8),
+                        //       ),
+                        //     ),
+                        //     Container(
+                        //       width: 20,
+                        //       height: 20,
+                        //       decoration: BoxDecoration(
+                        //         color: textPink,
+                        //         borderRadius: BorderRadius.circular(4),
+                        //       ),
+                        //     )
+                        //   ],
+                        // ),
 
-                        // More options
-                        Text(
-                          "MORE OPTIONS",
-                          style: TextStyle(
-                            fontFamily: 'Digitalt',
-                            fontSize: 20,
-                            fontWeight: FontWeight.bold,
-                            color: Color(0xFFC42AF8),
-                          ),
-                        ),
-                        // Grid of colors
-                        GridView.builder(
-                          padding: const EdgeInsets.only(top: 12),
-                          shrinkWrap: true,
-                          physics: const NeverScrollableScrollPhysics(),
-                          gridDelegate:
-                          const SliverGridDelegateWithFixedCrossAxisCount(
-                            crossAxisCount: 4,
-                            crossAxisSpacing: 10,
-                            mainAxisSpacing: 10,
-                            childAspectRatio: 1,
-                          ),
-                          itemCount: colors.length,
-                          itemBuilder: (context, index) {
-                            final item = colors[index];
-                            return Container(
-                              decoration: BoxDecoration(
-                                color: item["color"],
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: Center(
-                                child: Text(
-                                  item["name"],
-                                  textAlign: TextAlign.center,
-                                  style: TextStyle(
-                                    fontFamily: 'Digitalt',
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.white,
-                                  ),
-                                ),
-                              ),
-                            );
-                          },
-                        ),
+                        // const SizedBox(height: 20),
 
-                        const SizedBox(height: 20),
+                        // // More options
+                        // Text(
+                        //   "MORE OPTIONS",
+                        //   style: TextStyle(
+                        //     fontFamily: 'Digitalt',
+                        //     fontSize: 20,
+                        //     fontWeight: FontWeight.bold,
+                        //     color: Color(0xFFC42AF8),
+                        //   ),
+                        // ),
+                        // // Grid of colors
+                        // GridView.builder(
+                        //   padding: const EdgeInsets.only(top: 12),
+                        //   shrinkWrap: true,
+                        //   physics: const NeverScrollableScrollPhysics(),
+                        //   gridDelegate:
+                        //   const SliverGridDelegateWithFixedCrossAxisCount(
+                        //     crossAxisCount: 4,
+                        //     crossAxisSpacing: 10,
+                        //     mainAxisSpacing: 10,
+                        //     childAspectRatio: 1,
+                        //   ),
+                        //   itemCount: colors.length,
+                        //   itemBuilder: (context, index) {
+                        //     final item = colors[index];
+                        //     return Container(
+                        //       decoration: BoxDecoration(
+                        //         color: item["color"],
+                        //         borderRadius: BorderRadius.circular(8),
+                        //       ),
+                        //       child: Center(
+                        //         child: Text(
+                        //           item["name"],
+                        //           textAlign: TextAlign.center,
+                        //           style: TextStyle(
+                        //             fontFamily: 'Digitalt',
+                        //             fontSize: 16,
+                        //             fontWeight: FontWeight.bold,
+                        //             color: Colors.white,
+                        //           ),
+                        //         ),
+                        //       ),
+                        //     );
+                        //   },
+                        // ),
 
-                        // Colour changing cost
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            const Text(
-                              "COLOUR CHANGING COST",
-                              style: TextStyle(
-                                fontFamily: 'Digitalt',
-                                fontSize: 20,
-                                fontWeight: FontWeight.bold,
-                                color: textPink,
-                              ),
-                            ),
-                            const Text(
-                              "£1",
-                              style: TextStyle(
-                                fontFamily: 'Digitalt',
-                                fontSize: 20,
-                                fontWeight: FontWeight.bold,
-                                color: textPink,
-                                letterSpacing: 1
-                              ),
-                            ),
-                          ],
-                        ),
+                        // const SizedBox(height: 20),
 
-                        const SizedBox(height: 20),
+                        // // Colour changing cost
+                        // Row(
+                        //   mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        //   children: [
+                        //     const Text(
+                        //       "COLOUR CHANGING COST",
+                        //       style: TextStyle(
+                        //         fontFamily: 'Digitalt',
+                        //         fontSize: 20,
+                        //         fontWeight: FontWeight.bold,
+                        //         color: textPink,
+                        //       ),
+                        //     ),
+                        //     const Text(
+                        //       "£1",
+                        //       style: TextStyle(
+                        //         fontFamily: 'Digitalt',
+                        //         fontSize: 20,
+                        //         fontWeight: FontWeight.bold,
+                        //         color: textPink,
+                        //         letterSpacing: 1
+                        //       ),
+                        //     ),
+                        //   ],
+                        // ),
 
-                        // Button
-                        SizedBox(
-                          width: double.infinity,
-                          child: ElevatedButton(
-                            onPressed: () {},
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Color(0xFFC42AF8),
-                              padding: const EdgeInsets.symmetric(vertical: 14),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                            ),
-                            child: const Text(
-                              "Pay Now To Change Colour",
-                              style: TextStyle(
-                                fontFamily: 'Digitalt',
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.white,
-                              ),
-                            ),
-                          ),
-                        )
+                        // const SizedBox(height: 20),
+
+                        // // Button
+                        // SizedBox(
+                        //   width: double.infinity,
+                        //   child: ElevatedButton(
+                        //     onPressed: () {},
+                        //     style: ElevatedButton.styleFrom(
+                        //       backgroundColor: Color(0xFFC42AF8),
+                        //       padding: const EdgeInsets.symmetric(vertical: 14),
+                        //       shape: RoundedRectangleBorder(
+                        //         borderRadius: BorderRadius.circular(8),
+                        //       ),
+                        //     ),
+                        //     child: const Text(
+                        //       "Pay Now To Change Colour",
+                        //       style: TextStyle(
+                        //         fontFamily: 'Digitalt',
+                        //         fontSize: 16,
+                        //         fontWeight: FontWeight.bold,
+                        //         color: Colors.white,
+                        //       ),
+                        //     ),
+                        //   ),
+                        // )
                       ],
                     ),
                   ),

@@ -3,6 +3,7 @@ import 'package:jol_app/screens/play/services/room_service.dart';
 import 'package:jol_app/screens/play/waiting_lobby_screen.dart';
 import 'package:uuid/uuid.dart';
 import 'controller/multiplayer_game_controller.dart';
+import 'controller/game_controller.dart'; // For PuzzleOperation enum
 import 'models/room_models.dart';
 
 class CreateRoomScreen extends StatefulWidget {
@@ -24,6 +25,8 @@ class _CreateRoomScreenState extends State<CreateRoomScreen> {
   String _selectedMode = 'untimed';
   String _selectedOperation = 'addition';
   int _selectedMaxHints = 2; // NEW: Configurable hints
+  bool _useDecimals = false; // NEW: Decimal support
+  bool _hardMode = false; // NEW: Hard mode support
   bool _isCreating = false;
 
   @override
@@ -61,6 +64,8 @@ class _CreateRoomScreenState extends State<CreateRoomScreen> {
         timeLimit: _selectedMode == 'timed' ? 300 : 0,
         maxHints: _selectedMaxHints, // Use selected hint count
         maxPlayers: 4,
+        useDecimals: _useDecimals, // Pass decimal setting
+        hardMode: _hardMode,
       );
 
       // Generate puzzle using the proper multiplayer generator
@@ -68,10 +73,13 @@ class _CreateRoomScreenState extends State<CreateRoomScreen> {
           ? PuzzleOperation.addition
           : PuzzleOperation.subtraction;
 
-      debugPrint("Generating puzzle with numbers 1-25...");
+      debugPrint(
+          "Generating puzzle with numbers 1-25 (decimals: $_useDecimals)...");
       final puzzleData = MultiplayerPuzzleGenerator.generatePuzzle(
         gridSize: _selectedGridSize,
         operation: puzzleOperation,
+        useDecimals: _useDecimals,
+        hardMode: _hardMode,
       );
 
       // Validate puzzle before creating room
@@ -111,7 +119,8 @@ class _CreateRoomScreenState extends State<CreateRoomScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error creating room: ${e.toString().split('\n').first}'),
+            content:
+                Text('Error creating room: ${e.toString().split('\n').first}'),
             backgroundColor: Colors.red,
             duration: const Duration(seconds: 4),
           ),
@@ -144,7 +153,8 @@ class _CreateRoomScreenState extends State<CreateRoomScreen> {
     debugPrint("   Total cells: ${_selectedGridSize * _selectedGridSize}");
     debugPrint("   Fixed cells (seeds): $fixedCount");
     debugPrint("   Two-digit numbers: $twoDigitCount");
-    debugPrint("   Player cells: ${_selectedGridSize * _selectedGridSize - fixedCount}");
+    debugPrint(
+        "   Player cells: ${_selectedGridSize * _selectedGridSize - fixedCount}");
   }
 
   /// Validates puzzle structure before saving to Firebase
@@ -154,46 +164,53 @@ class _CreateRoomScreenState extends State<CreateRoomScreen> {
     try {
       // Check grid dimensions
       if (puzzle.grid.length != expectedSize) {
-        debugPrint("❌ Grid has wrong size: ${puzzle.grid.length} (expected $expectedSize)");
+        debugPrint(
+            "❌ Grid has wrong size: ${puzzle.grid.length} (expected $expectedSize)");
         return false;
       }
 
       for (int i = 0; i < puzzle.grid.length; i++) {
         if (puzzle.grid[i].length != expectedSize) {
-          debugPrint("❌ Grid row $i has wrong size: ${puzzle.grid[i].length} (expected $expectedSize)");
+          debugPrint(
+              "❌ Grid row $i has wrong size: ${puzzle.grid[i].length} (expected $expectedSize)");
           return false;
         }
       }
 
       // Check solution dimensions
       if (puzzle.solution.length != expectedSize) {
-        debugPrint("❌ Solution has wrong size: ${puzzle.solution.length} (expected $expectedSize)");
+        debugPrint(
+            "❌ Solution has wrong size: ${puzzle.solution.length} (expected $expectedSize)");
         return false;
       }
 
       for (int i = 0; i < puzzle.solution.length; i++) {
         if (puzzle.solution[i].length != expectedSize) {
-          debugPrint("❌ Solution row $i has wrong size: ${puzzle.solution[i].length} (expected $expectedSize)");
+          debugPrint(
+              "❌ Solution row $i has wrong size: ${puzzle.solution[i].length} (expected $expectedSize)");
           return false;
         }
       }
 
       // Check isFixed dimensions
       if (puzzle.isFixed.length != expectedSize) {
-        debugPrint("❌ isFixed has wrong size: ${puzzle.isFixed.length} (expected $expectedSize)");
+        debugPrint(
+            "❌ isFixed has wrong size: ${puzzle.isFixed.length} (expected $expectedSize)");
         return false;
       }
 
       for (int i = 0; i < puzzle.isFixed.length; i++) {
         if (puzzle.isFixed[i].length != expectedSize) {
-          debugPrint("❌ isFixed row $i has wrong size: ${puzzle.isFixed[i].length} (expected $expectedSize)");
+          debugPrint(
+              "❌ isFixed row $i has wrong size: ${puzzle.isFixed[i].length} (expected $expectedSize)");
           return false;
         }
       }
 
       // Check reference cell [0][0]
       if (puzzle.grid[0][0] != -1 || puzzle.solution[0][0] != -1) {
-        debugPrint("❌ Reference cell [0][0] is not -1 (grid: ${puzzle.grid[0][0]}, solution: ${puzzle.solution[0][0]})");
+        debugPrint(
+            "❌ Reference cell [0][0] is not -1 (grid: ${puzzle.grid[0][0]}, solution: ${puzzle.solution[0][0]})");
         return false;
       }
 
@@ -256,7 +273,8 @@ class _CreateRoomScreenState extends State<CreateRoomScreen> {
       debugPrint("   Grid size: ${expectedSize}x$expectedSize");
       debugPrint("   Fixed cells: $fixedCount");
       debugPrint("   Visible cells: $visibleCount");
-      debugPrint("   Player cells: ${expectedSize * expectedSize - fixedCount}");
+      debugPrint(
+          "   Player cells: ${expectedSize * expectedSize - fixedCount}");
 
       return true;
     } catch (e) {
@@ -415,38 +433,69 @@ class _CreateRoomScreenState extends State<CreateRoomScreen> {
                   Row(
                     children: [
                       Expanded(
-                        child: _buildOperationButton('Addition (+)', 'addition'),
+                        child:
+                            _buildOperationButton('Addition (+)', 'addition'),
                       ),
                       const SizedBox(width: 10),
                       Expanded(
-                        child: _buildOperationButton('Subtraction (-)', 'subtraction'),
+                        child: _buildOperationButton(
+                            'Subtraction (-)', 'subtraction'),
                       ),
                     ],
                   ),
 
                   const SizedBox(height: 30),
 
-                  // NEW: Max Hints Selection
-                  const Text(
-                    "Maximum Hints",
-                    style: TextStyle(
-                      fontFamily: "Rubik",
-                      fontSize: 16,
-                      fontWeight: FontWeight.w700,
-                      color: Colors.black87,
+                  // NEW: Use Decimals Toggle
+                  SwitchListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: const Text(
+                      "Use Decimals",
+                      style: TextStyle(
+                        fontFamily: "Rubik",
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.black87,
+                      ),
                     ),
+                    subtitle: const Text(
+                      "Enable decimal numbers (e.g. 1.5)",
+                      style: TextStyle(
+                        fontFamily: "Rubik",
+                        fontSize: 12,
+                        color: Colors.grey,
+                      ),
+                    ),
+                    value: _useDecimals,
+                    onChanged: (val) => setState(() => _useDecimals = val),
+                    activeThumbColor: textPink,
                   ),
-                  const SizedBox(height: 8),
-                  Row(
-                    children: [
-                      _buildHintButton('1', 1),
-                      const SizedBox(width: 10),
-                      _buildHintButton('2', 2),
-                      const SizedBox(width: 10),
-                      _buildHintButton('3', 3),
-                      const SizedBox(width: 10),
-                      _buildHintButton('4', 4),
-                    ],
+
+                  const SizedBox(height: 12),
+
+                  // NEW: Hard Mode Toggle (below decimal toggle)
+                  SwitchListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: const Text(
+                      "Hard Mode",
+                      style: TextStyle(
+                        fontFamily: "Rubik",
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.black87,
+                      ),
+                    ),
+                    subtitle: const Text(
+                      "Enable harder puzzles with larger numbers",
+                      style: TextStyle(
+                        fontFamily: "Rubik",
+                        fontSize: 12,
+                        color: Colors.grey,
+                      ),
+                    ),
+                    value: _hardMode,
+                    onChanged: (val) => setState(() => _hardMode = val),
+                    activeThumbColor: textPink,
                   ),
 
                   const SizedBox(height: 40),
@@ -465,22 +514,22 @@ class _CreateRoomScreenState extends State<CreateRoomScreen> {
                       onPressed: _isCreating ? null : _createRoom,
                       child: _isCreating
                           ? const SizedBox(
-                        height: 20,
-                        width: 20,
-                        child: CircularProgressIndicator(
-                          color: Colors.white,
-                          strokeWidth: 2,
-                        ),
-                      )
+                              height: 20,
+                              width: 20,
+                              child: CircularProgressIndicator(
+                                color: Colors.white,
+                                strokeWidth: 2,
+                              ),
+                            )
                           : const Text(
-                        "Create Room",
-                        style: TextStyle(
-                          fontFamily: "Rubik",
-                          fontSize: 18,
-                          fontWeight: FontWeight.w700,
-                          color: Colors.white,
-                        ),
-                      ),
+                              "Create Room",
+                              style: TextStyle(
+                                fontFamily: "Rubik",
+                                fontSize: 18,
+                                fontWeight: FontWeight.w700,
+                                color: Colors.white,
+                              ),
+                            ),
                     ),
                   ),
 
@@ -509,7 +558,34 @@ class _CreateRoomScreenState extends State<CreateRoomScreen> {
             ),
           ),
         ),
-        onPressed: () => setState(() => _selectedGridSize = value),
+        onPressed: () {
+          if (value > 4) {
+            showDialog(
+              context: context,
+              builder: (ctx) => AlertDialog(
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16)),
+                title: const Text("Coming Soon",
+                    style: TextStyle(
+                        fontFamily: 'Digitalt',
+                        fontWeight: FontWeight.bold,
+                        color: textPink)),
+                content: const Text(
+                    "This grid size will be available in future updates!",
+                    style: TextStyle(fontFamily: 'Rubik')),
+                actions: [
+                  TextButton(
+                      onPressed: () => Navigator.pop(ctx),
+                      child: const Text("OK",
+                          style: TextStyle(
+                              color: textBlue, fontWeight: FontWeight.bold)))
+                ],
+              ),
+            );
+          } else {
+            setState(() => _selectedGridSize = value);
+          }
+        },
         child: Text(
           label,
           style: TextStyle(
@@ -572,36 +648,6 @@ class _CreateRoomScreenState extends State<CreateRoomScreen> {
           fontSize: 14,
           fontWeight: FontWeight.w700,
           color: isSelected ? Colors.white : Colors.black87,
-        ),
-      ),
-    );
-  }
-
-  // NEW: Hint selection button
-  Widget _buildHintButton(String label, int value) {
-    final isSelected = value == _selectedMaxHints;
-    return Expanded(
-      child: ElevatedButton(
-        style: ElevatedButton.styleFrom(
-          backgroundColor: isSelected ? Colors.purple : Colors.white,
-          padding: const EdgeInsets.symmetric(vertical: 12),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(8),
-            side: BorderSide(
-              color: isSelected ? Colors.purple : Colors.grey.shade300,
-              width: 2,
-            ),
-          ),
-        ),
-        onPressed: () => setState(() => _selectedMaxHints = value),
-        child: Text(
-          label,
-          style: TextStyle(
-            fontFamily: "Rubik",
-            fontSize: 14,
-            fontWeight: FontWeight.w700,
-            color: isSelected ? Colors.white : Colors.black87,
-          ),
         ),
       ),
     );

@@ -154,30 +154,14 @@ class UserProfileService {
 
       print('PATCH User Detail - Body: ${jsonEncode(body)}');
 
-      // ✅ Use ApiClient - it handles 401 automatically
-      // Note: You'll need to add a PATCH method to ApiClient
-      final response = await http.patch(
-        Uri.parse('${ApiClient.baseUrl}/v1/user/detail/'),
-        headers: {
-          'accept': 'application/json',
-          'Content-Type': 'application/json',
-          'Authorization': 'Token $token',
-          'ngrok-skip-browser-warning': 'true',
-        },
-        body: jsonEncode(body),
+      // ✅ Use ApiClient.patch - it handles 401 automatically
+      final response = await ApiClient.patch(
+        '/v1/user/detail/',
+        body: body,
       );
 
       print('PATCH User Detail - Status: ${response.statusCode}');
       print('PATCH User Detail - Response: ${response.body}');
-
-      // Manual 401 check since we're not using ApiClient.patch yet
-      if (response.statusCode == 401) {
-        await _storage.clearAll();
-        return UserResult(
-          success: false,
-          error: 'Session expired. Please log in again.',
-        );
-      }
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
@@ -314,7 +298,8 @@ class UserProfileService {
       if (bio != null) request.fields['bio'] = bio;
       if (location != null) request.fields['location'] = location;
       if (birthDate != null) {
-        request.fields['birth_date'] = birthDate.toIso8601String().split('T')[0];
+        request.fields['birth_date'] =
+            birthDate.toIso8601String().split('T')[0];
       }
 
       print('PATCH Profile (Multipart) - Fields: ${request.fields}');
@@ -327,9 +312,20 @@ class UserProfileService {
       print('PATCH Profile (Multipart) - Status: ${response.statusCode}');
       print('PATCH Profile (Multipart) - Response: ${response.body}');
 
-      // Manual 401 check for multipart requests
-      if (response.statusCode == 401) {
-        await _storage.clearAll();
+      // ✅ Check for invalid/expired token (401 or 403 with 'Invalid token')
+      bool isInvalidToken = response.statusCode == 401;
+      if (response.statusCode == 403) {
+        try {
+          final body = jsonDecode(response.body);
+          final detail = body['detail']?.toString().toLowerCase() ?? '';
+          if (detail.contains('invalid token')) {
+            isInvalidToken = true;
+          }
+        } catch (_) {}
+      }
+
+      if (isInvalidToken) {
+        await ApiClient.handleUnauthorized();
         return ProfileResult(
           success: false,
           error: 'Session expired. Please log in again.',
@@ -397,29 +393,14 @@ class UserProfileService {
 
       print('PATCH Profile - Body: ${jsonEncode(body)}');
 
-      // Manual PATCH request (ApiClient doesn't have PATCH method yet)
-      final response = await http.patch(
-        Uri.parse('${ApiClient.baseUrl}/v1/user/profile/'),
-        headers: {
-          'accept': 'application/json',
-          'Content-Type': 'application/json',
-          'Authorization': 'Token $token',
-          'ngrok-skip-browser-warning': 'true',
-        },
-        body: jsonEncode(body),
+      // ✅ Use ApiClient.patch - it handles 401 automatically
+      final response = await ApiClient.patch(
+        '/v1/user/profile/',
+        body: body,
       );
 
       print('PATCH Profile - Status: ${response.statusCode}');
       print('PATCH Profile - Response: ${response.body}');
-
-      // Manual 401 check
-      if (response.statusCode == 401) {
-        await _storage.clearAll();
-        return ProfileResult(
-          success: false,
-          error: 'Session expired. Please log in again.',
-        );
-      }
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);

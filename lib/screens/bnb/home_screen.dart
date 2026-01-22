@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:jol_app/screens/dashboard/dashboard_screen.dart';
 import 'package:jol_app/screens/dashboard/notification_screen.dart';
-import 'package:jol_app/screens/group/group_list_screen.dart';
 import 'package:jol_app/screens/score%20board/score_board_screen.dart';
 import 'package:jol_app/screens/settings/account_screen.dart';
 import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
@@ -50,7 +49,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   String? _userId;
   String? _userName;
 
-  // ✅ FIXED: Create screens dynamically to ensure userId and userName are available
+  //  FIXED: Create screens dynamically to ensure userId and userName are available
   Widget _getScreen(int index) {
     switch (index) {
       case 0:
@@ -59,14 +58,18 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         return AffiliatesScreen();
       case 2:
         return PlayScreen();
+      // The Group page mapping (case 3) is intentionally commented out
+      // to match the bottom navigation which places Scores at index 3.
+      // case 3:
+      //   return GroupsListScreen(
+      //     userId: _userId ?? '',
+      //     userName: _userName ?? '',
+      //   );
       case 3:
-      // ✅ Pass userId and userName, with fallback to empty strings if not loaded yet
-        return GroupsListScreen(
-          userId: _userId ?? '',
-          userName: _userName ?? '',
-        );
-      case 4:
         return ScoreBoardScreen();
+      case 4:
+        // 'Settings' bottom nav will open Edit Profile
+        return const AccountScreen(showAppBar: false);
       default:
         return DashboardScreen();
     }
@@ -117,7 +120,10 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
   Future<void> _loadUserProfile() async {
     // Check if we already have cached data
-    if (_hasLoadedOnce && _cachedProfile != null && _userId != null && _userName != null) {
+    if (_hasLoadedOnce &&
+        _cachedProfile != null &&
+        _userId != null &&
+        _userName != null) {
       setState(() {
         _userProfile = _cachedProfile;
         _isLoadingProfile = false;
@@ -316,7 +322,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                             await Navigator.push(
                               context,
                               MaterialPageRoute(
-                                builder: (context) => const NotificationScreen(),
+                                builder: (context) =>
+                                    const NotificationScreen(),
                               ),
                             );
                             _refreshWalletSilently();
@@ -397,8 +404,10 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                 _navItem("History", MdiIcons.history, 0),
                 _navItem("Affiliates", MdiIcons.podium, 1),
                 const SizedBox(width: 60), // Space for center button
-                _navItem("Group", MdiIcons.accountGroupOutline, 3),
-                _navItem("Scores", MdiIcons.scoreboardOutline, 4),
+                //_navItem("Group", MdiIcons.accountGroupOutline, 3),
+                _navItem("Scores", MdiIcons.scoreboardOutline, 3),
+                //settings
+                _navItem("Settings", MdiIcons.cogOutline, 4),
               ],
             ),
           ),
@@ -424,7 +433,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                     ),
                     child: Center(
                       child: Icon(
-                        _selectedIndex == 2 ? MdiIcons.play : MdiIcons.playOutline,
+                        _selectedIndex == 2
+                            ? MdiIcons.play
+                            : MdiIcons.playOutline,
                         size: 38,
                         color: const Color(0xFFF82A87),
                       ),
@@ -635,7 +646,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     return Row(
       children: List.generate(
         letters.length,
-            (index) => Text(
+        (index) => Text(
           letters[index],
           style: const TextStyle(
             fontFamily: 'Digitalt',

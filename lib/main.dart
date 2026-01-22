@@ -15,7 +15,7 @@ import 'firebase_options.dart';
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
 void main() async {
-  WidgetsFlutterBinding.ensureInitialized(); // 👈 Required before SystemChrome
+  WidgetsFlutterBinding.ensureInitialized(); 
 
   MobileAds.instance.initialize();
 
@@ -53,7 +53,7 @@ class MyApp extends StatelessWidget {
           // DashboardScreen(),
           // GameScreen(),
           // GameScreen5(),
-          SplashScreen(),
+           SplashScreen(),
     );
   }
 }

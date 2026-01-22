@@ -7,6 +7,8 @@ class RoomSettings {
   final int timeLimit;
   final int maxHints;
   final int maxPlayers;
+  final bool useDecimals; // ADDED
+  final bool hardMode; // ADDED
 
   RoomSettings({
     required this.gridSize,
@@ -15,30 +17,36 @@ class RoomSettings {
     this.timeLimit = 300,
     this.maxHints = 2,
     this.maxPlayers = 4,
+    this.useDecimals = false, // ADDED
+    this.hardMode = false, // ADDED
   });
 
   Map<String, dynamic> toJson() => {
-    'gridSize': gridSize,
-    'mode': mode,
-    'operation': operation,
-    'timeLimit': timeLimit,
-    'maxHints': maxHints,
-    'maxPlayers': maxPlayers,
-  };
+        'gridSize': gridSize,
+        'mode': mode,
+        'operation': operation,
+        'timeLimit': timeLimit,
+        'maxHints': maxHints,
+        'maxPlayers': maxPlayers,
+        'useDecimals': useDecimals, // ADDED
+        'hardMode': hardMode,
+      };
 
   factory RoomSettings.fromJson(Map<dynamic, dynamic> json) => RoomSettings(
-    gridSize: json['gridSize'] ?? 4,
-    mode: json['mode'] ?? 'untimed',
-    operation: json['operation'] ?? 'addition',
-    timeLimit: json['timeLimit'] ?? 300,
-    maxHints: json['maxHints'] ?? 2,
-    maxPlayers: json['maxPlayers'] ?? 4,
-  );
+        gridSize: json['gridSize'] ?? 4,
+        mode: json['mode'] ?? 'untimed',
+        operation: json['operation'] ?? 'addition',
+        timeLimit: json['timeLimit'] ?? 300,
+        maxHints: json['maxHints'] ?? 2,
+        maxPlayers: json['maxPlayers'] ?? 4,
+        useDecimals: json['useDecimals'] ?? false, // ADDED
+        hardMode: json['hardMode'] ?? false,
+      );
 }
 
 class PuzzleData {
-  final List<List<int?>> grid;
-  final List<List<int?>> solution;
+  final List<List<double?>> grid;
+  final List<List<double?>> solution;
   final List<List<bool>> isFixed;
 
   PuzzleData({
@@ -48,10 +56,12 @@ class PuzzleData {
   });
 
   Map<String, dynamic> toJson() => {
-    'grid': grid.map((row) => row.map((cell) => cell).toList()).toList(),
-    'solution': solution.map((row) => row.map((cell) => cell).toList()).toList(),
-    'isFixed': isFixed.map((row) => row.map((cell) => cell).toList()).toList(),
-  };
+        'grid': grid.map((row) => row.map((cell) => cell).toList()).toList(),
+        'solution':
+            solution.map((row) => row.map((cell) => cell).toList()).toList(),
+        'isFixed':
+            isFixed.map((row) => row.map((cell) => cell).toList()).toList(),
+      };
 
   factory PuzzleData.fromJson(Map<dynamic, dynamic> json) {
     try {
@@ -66,7 +76,7 @@ class PuzzleData {
     }
   }
 
-  static List<List<int?>> _parseGrid(dynamic data) {
+  static List<List<double?>> _parseGrid(dynamic data) {
     if (data == null) {
       print('⚠️ Grid data is null');
       return [];
@@ -93,13 +103,13 @@ class PuzzleData {
     }
 
     // Parse rows
-    final rows = <List<int?>>[];
+    final rows = <List<double?>>[];
     for (var i = 0; i < dataList.length; i++) {
       var row = dataList[i];
 
       if (row == null) {
         print('⚠️ Row $i is null');
-        rows.add(<int?>[]);
+        rows.add(<double?>[]);
         continue;
       }
 
@@ -118,20 +128,20 @@ class PuzzleData {
         rowList = row;
       } else {
         print('❌ Unexpected row type at index $i: ${row.runtimeType}');
-        rows.add(<int?>[]);
+        rows.add(<double?>[]);
         continue;
       }
 
       // Parse cells
-      final cells = <int?>[];
+      final cells = <double?>[];
       for (var j = 0; j < rowList.length; j++) {
         final cell = rowList[j];
         if (cell == null) {
           cells.add(null);
         } else if (cell is num) {
-          cells.add(cell.toInt());
-        } else if (cell is int) {
-          cells.add(cell);
+          cells.add(cell.toDouble());
+        } else if (cell is String) {
+          cells.add(double.tryParse(cell));
         } else {
           print('⚠️ Unexpected cell type at [$i][$j]: ${cell.runtimeType}');
           cells.add(null);
@@ -220,18 +230,18 @@ class GameState {
   });
 
   Map<String, dynamic> toJson() => {
-    'status': status,
-    'hostId': hostId,
-    'startTime': startTime,
-    'endTime': endTime,
-  };
+        'status': status,
+        'hostId': hostId,
+        'startTime': startTime,
+        'endTime': endTime,
+      };
 
   factory GameState.fromJson(Map<dynamic, dynamic> json) => GameState(
-    status: json['status'] ?? 'waiting',
-    hostId: json['hostId'] ?? '',
-    startTime: json['startTime'],
-    endTime: json['endTime'],
-  );
+        status: json['status'] ?? 'waiting',
+        hostId: json['hostId'] ?? '',
+        startTime: json['startTime'],
+        endTime: json['endTime'],
+      );
 }
 
 class Player {
@@ -258,28 +268,29 @@ class Player {
   });
 
   Map<String, dynamic> toJson() => {
-    'id': id,
-    'name': name,
-    'isReady': isReady,
-    'score': score,
-    'hintsUsed': hintsUsed,
-    'completedAt': completedAt,
-    'isActive': isActive,
-    'isHost': isHost,
-    'lastUpdated': lastUpdated,
-  };
+        'id': id,
+        'name': name,
+        'isReady': isReady,
+        'score': score,
+        'hintsUsed': hintsUsed,
+        'completedAt': completedAt,
+        'isActive': isActive,
+        'isHost': isHost,
+        'lastUpdated': lastUpdated,
+      };
 
   factory Player.fromJson(String id, Map<dynamic, dynamic> json) => Player(
-    id: id,
-    name: json['name'] ?? 'Unknown',
-    isReady: json['isReady'] ?? false,
-    score: (json['score'] is num) ? (json['score'] as num).toInt() : 0,
-    hintsUsed: (json['hintsUsed'] is num) ? (json['hintsUsed'] as num).toInt() : 0,
-    completedAt: json['completedAt'],
-    isActive: json['isActive'] ?? true,
-    isHost: json['isHost'] ?? false,
-    lastUpdated: json['lastUpdated'],
-  );
+        id: id,
+        name: json['name'] ?? 'Unknown',
+        isReady: json['isReady'] ?? false,
+        score: (json['score'] is num) ? (json['score'] as num).toInt() : 0,
+        hintsUsed:
+            (json['hintsUsed'] is num) ? (json['hintsUsed'] as num).toInt() : 0,
+        completedAt: json['completedAt'],
+        isActive: json['isActive'] ?? true,
+        isHost: json['isHost'] ?? false,
+        lastUpdated: json['lastUpdated'],
+      );
 
   Player copyWith({
     String? name,
@@ -331,7 +342,8 @@ class Room {
       if (rawPlayers is Map) {
         rawPlayers.forEach((key, value) {
           if (value is Map) {
-            parsePlayers[key.toString()] = Player.fromJson(key.toString(), value);
+            parsePlayers[key.toString()] =
+                Player.fromJson(key.toString(), value);
           }
         });
       }
@@ -340,7 +352,8 @@ class Room {
     return Room(
       id: id,
       settings: RoomSettings.fromJson(json['settings'] ?? {}),
-      puzzle: json['puzzle'] != null ? PuzzleData.fromJson(json['puzzle']) : null,
+      puzzle:
+          json['puzzle'] != null ? PuzzleData.fromJson(json['puzzle']) : null,
       gameState: GameState.fromJson(json['gameState'] ?? {}),
       players: parsePlayers,
       winnerId: json['results']?['winnerId'],
