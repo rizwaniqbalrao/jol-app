@@ -21,7 +21,7 @@ abstract class BaseGameControllerNxN extends ChangeNotifier {
   late List<List<bool>> isWrong;
   
   // Gameplay State
-  Duration timeLeft = const Duration(minutes: 5);
+  Duration timeLeft = const Duration(minutes: 10);
   Timer? _timer;
   bool isPlaying = false;
   bool isGenerating = true;
@@ -449,14 +449,25 @@ abstract class BaseGameControllerNxN extends ChangeNotifier {
   }
 
   double _generateRandomNumber(Random random) {
-      if (_useDecimals) {
-          final max = _hardMode ? 332 : 9;
-          return ((random.nextInt(max * 10 - 10) + 11) / 10.0);
-      } else {
-          final maxSeed = _hardMode ? 332 : (gridSize * gridSize); // Dynamic scaling
-          return (random.nextInt(maxSeed) + 1).toDouble();
-      }
+  const int ABSOLUTE_MAX = 332;
+
+  if (_useDecimals) {
+    final int max = _hardMode ? ABSOLUTE_MAX : 9;
+
+    // Generates 1.1 → max.x but never above 332
+    return ((random.nextInt(max * 10 - 10) + 11) / 10.0);
+  } else {
+    final int dynamicMax = _hardMode
+        ? ABSOLUTE_MAX
+        : (gridSize * gridSize);
+
+    final int safeMax = dynamicMax > ABSOLUTE_MAX
+        ? ABSOLUTE_MAX
+        : dynamicMax;
+
+    return (random.nextInt(safeMax) + 1).toDouble();
   }
+}
 
   bool _isNumberUsedInRowOrCol(double number, int row, int col) {
       const tolerance = 0.001;
@@ -567,7 +578,8 @@ abstract class BaseGameControllerNxN extends ChangeNotifier {
   }
 
   void _addAdditionalSeeds(Random random) {
-      int target = (gridSize * 1.5).ceil();
+      // int target = (gridSize * 1.5).ceil();
+      int target = (gridSize*2)-2; // hope this will resolve the issue
       int localAttempts = 0;
       
       List<int> availableRows = List.generate(gridSize, (i) => i);
