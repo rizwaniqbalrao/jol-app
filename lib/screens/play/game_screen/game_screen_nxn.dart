@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
@@ -36,6 +37,7 @@ class _GameScreenNxNState extends State<GameScreenNxN> {
   bool _endDialogShown = false;
   bool _isProcessingEnd = false;
   bool? _lastControllerPlayingState;
+  Timer? _debounceTimer;
 
   @override
   void initState() {
@@ -45,6 +47,7 @@ class _GameScreenNxNState extends State<GameScreenNxN> {
 
   @override
   void dispose() {
+    _debounceTimer?.cancel();
     _disposeControllers();
     super.dispose();
   }
@@ -174,12 +177,18 @@ class _GameScreenNxNState extends State<GameScreenNxN> {
           }
       }
 
-      if (allFilled && _isGameStarted) {
+    if (allFilled && _isGameStarted) {
+      // Debounce logic
+      _debounceTimer?.cancel();
+      _debounceTimer = Timer(const Duration(seconds: 3), () {
+        if (mounted && _isGameStarted) {
           _isProcessingEnd = true;
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-              _showStopGameDialog(context, controller);
-          });
-      }
+          _showStopGameDialog(context, controller);
+        }
+      });
+    } else {
+      _debounceTimer?.cancel();
+    }
   }
 
   void _showStopGameDialog(BuildContext context, BaseGameControllerNxN controller) {

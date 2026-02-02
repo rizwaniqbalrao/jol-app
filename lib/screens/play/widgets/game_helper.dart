@@ -5,6 +5,7 @@ import '../../dashboard/models/game_models.dart';
 import '../../dashboard/services/game_service.dart';
 import '../../settings/services/user_profile_services.dart';
 import '../controller/game_controller.dart';
+import '../controller/base_game_controller_nxn.dart' show PuzzleOperation;
 
 class GameSaveHelper {
   final GameService _gameService = GameService();
@@ -38,7 +39,8 @@ class GameSaveHelper {
       }
 // Priority 2: Calculate it manually if the game is being stopped/abandoned
       else if (controller.gameStartTime != null) {
-        completionTime = DateTime.now().difference(controller.gameStartTime!).inSeconds;
+        completionTime =
+            DateTime.now().difference(controller.gameStartTime!).inSeconds;
       }
 // Priority 3: Default to 0 if the game hasn't started but is being saved
       else {
@@ -47,7 +49,8 @@ class GameSaveHelper {
 
       // Step 3: Determine game status
       String finalStatus = gameStatus;
-      if (controller.mode == GameMode.timed && controller.timeLeft.inSeconds <= 0) {
+      if (controller.mode == GameMode.timed &&
+          controller.timeLeft.inSeconds <= 0) {
         finalStatus = 'timed_out';
       }
 
@@ -57,7 +60,9 @@ class GameSaveHelper {
         playerId: userId,
         gameType: 'solo',
         gameMode: controller.mode == GameMode.timed ? 'timed' : 'untimed',
-        operation: controller.operation == PuzzleOperation.addition ? 'addition' : 'subtraction',
+        operation: controller.operation == PuzzleOperation.addition
+            ? 'addition'
+            : 'subtraction',
         gridSize: controller.gridSize,
         timestamp: DateTime.now().toUtc().toIso8601String(),
         status: finalStatus,
@@ -90,7 +95,8 @@ class GameSaveHelper {
 
         return {
           'success': true,
-          'message': 'Game saved successfully! You earned ${saveResult.data!.pointsEarned} points.',
+          'message':
+              'Game saved successfully! You earned ${saveResult.data!.pointsEarned} points.',
           'matchId': saveResult.data!.matchId,
           'pointsEarned': saveResult.data!.pointsEarned,
           'game': savedGame,
@@ -150,7 +156,8 @@ class GameSaveHelper {
   }
 
   String determineGameStatus(GameController controller, bool wasCompleted) {
-    if (controller.mode == GameMode.timed && controller.timeLeft.inSeconds <= 0) {
+    if (controller.mode == GameMode.timed &&
+        controller.timeLeft.inSeconds <= 0) {
       return 'timed_out';
     }
     return wasCompleted ? 'completed' : 'abandoned';

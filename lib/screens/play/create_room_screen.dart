@@ -3,7 +3,7 @@ import 'package:jol_app/screens/play/services/room_service.dart';
 import 'package:jol_app/screens/play/waiting_lobby_screen.dart';
 import 'package:uuid/uuid.dart';
 import 'controller/multiplayer_game_controller.dart';
-import 'controller/game_controller.dart'; // For PuzzleOperation enum
+import 'controller/base_game_controller_nxn.dart' show PuzzleOperation;
 import 'models/room_models.dart';
 
 class CreateRoomScreen extends StatefulWidget {

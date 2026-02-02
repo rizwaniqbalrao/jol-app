@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math';
 
 import 'package:flutter/material.dart';
@@ -6,6 +7,7 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../../dashboard/models/game_models.dart';
 import '../controller/game_controller.dart';
+import '../controller/base_game_controller_nxn.dart' show PuzzleOperation;
 import '../widgets/game_helper.dart';
 import 'widgets/game_grid_widget.dart';
 import 'widgets/game_keyboard_widget.dart';
@@ -42,8 +44,11 @@ class _GameScreenState extends State<GameScreen> {
   bool _isProcessingEnd =
       false; // New flag to prevent multiple end-game processes
 
+  Timer? _debounceTimer;
+
   @override
   void dispose() {
+    _debounceTimer?.cancel();
     _disposeControllers();
     super.dispose();
   }
@@ -251,10 +256,17 @@ class _GameScreenState extends State<GameScreen> {
     }
 
     if (allFilled && _isGameStarted) {
-      _isProcessingEnd = true;
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        _showStopGameDialog(context, controller);
+      // Debounce: Reset timer if user keeps typing
+      _debounceTimer?.cancel();
+      _debounceTimer = Timer(const Duration(seconds: 3), () {
+        if (mounted && _isGameStarted) {
+          _isProcessingEnd = true;
+          _showStopGameDialog(context, controller);
+        }
       });
+    } else {
+      // If user clears a cell, cancel the pending dialog
+      _debounceTimer?.cancel();
     }
   }
 
