@@ -125,7 +125,7 @@ class GameGridWidget extends StatelessWidget {
                           )
                         : isFixedCell
                             ? Text(
-                                _formatNumber(value),
+                                isGameStarted ? _formatNumber(value) : "",
                                 style: TextStyle(
                                   fontWeight: FontWeight.bold,
                                   fontSize: unifiedFontSize,

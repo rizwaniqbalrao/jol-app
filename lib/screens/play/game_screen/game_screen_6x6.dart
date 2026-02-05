@@ -405,7 +405,7 @@ class _GameScreen6x6State extends State<GameScreen6x6> {
                 child: Icon(Icons.arrow_back_ios_new, color: Colors.white, size: 18)),
           ),
           const Spacer(),
-          const Text("JOL 6x6 Puzzle",
+          const Text("JOL Puzzle",
               style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
           const Spacer(),
           const SizedBox(width: 40),

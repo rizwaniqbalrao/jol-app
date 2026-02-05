@@ -123,15 +123,15 @@ class GameGridWidgetNxN extends StatelessWidget {
                               ),
                             ),
                           )
-                        : isFixedCell
-                            ? Text(
-                                _formatNumber(value),
-                                style: TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: unifiedFontSize,
-                                  color: Colors.black,
-                                ),
-                              )
+                          : isFixedCell
+                              ? Text(
+                                  isGameStarted ? _formatNumber(value) : "",
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: unifiedFontSize,
+                                    color: Colors.black,
+                                  ),
+                                )
                             : TextField(
                                 key: ValueKey('cell-$row-$col'),
                                 controller: inputControllers[_getKey(row, col)],

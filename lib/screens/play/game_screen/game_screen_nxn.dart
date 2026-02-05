@@ -408,7 +408,7 @@ class _GameScreenNxNState extends State<GameScreenNxN> {
                     color: Colors.white, size: 18)),
           ),
           const Spacer(),
-          Text("Jol Puzzle ${controller.gridSize}x${controller.gridSize}",
+          Text("JOL Puzzle",
               style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
           const Spacer(),
           const SizedBox(width: 40),
@@ -508,7 +508,16 @@ class _GameScreenNxNState extends State<GameScreenNxN> {
                   ? null
                   : () {
                       if (_isGameStarted) {
-                        _showStopGameDialog(context, controller);
+                        // Directly submit the game without confirmation dialog
+                        controller.stopTimer();
+                        controller.endGame();
+
+                        setState(() {
+                          _isGameStarted = false;
+                          _needsReset = true;
+                        });
+
+                        _saveGameToBackend(context, controller, 'completed');
                       } else {
                         setState(() {
                           _isGameStarted = true;
