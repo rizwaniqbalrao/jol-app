@@ -571,7 +571,7 @@ class _GameScreenState extends State<GameScreen> {
                     color: Colors.white, size: 18)),
           ),
           const Spacer(),
-          const Text("Jol Puzzle",
+          const Text("JOL Puzzle",
               style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
           const Spacer(),
           const SizedBox(width: 40),

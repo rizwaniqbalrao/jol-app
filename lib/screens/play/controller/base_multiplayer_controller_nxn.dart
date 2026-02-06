@@ -13,7 +13,7 @@ abstract class BaseMultiplayerControllerNxN extends ChangeNotifier {
   Room? _room;
   StreamSubscription? _roomSubscription;
   Timer? _timerCountdown;
-  Duration timeLeft = const Duration(minutes: 5);
+  Duration timeLeft = const Duration(minutes: 12);
 
   // Local gameplay - dynamic size
   int gridSize = 4;
@@ -154,11 +154,15 @@ abstract class BaseMultiplayerControllerNxN extends ChangeNotifier {
 
           if (cellIsFixed) {
             if (i < puzzle.grid.length && j < puzzle.grid[i].length) {
-              grid[i][j] = puzzle.grid[i][j];
+              final rawValue = puzzle.grid[i][j];
+              // Round to 1 decimal place to avoid floating-point errors
+              grid[i][j] = rawValue != null ? (rawValue * 10).round() / 10.0 : null;
             }
             if (grid[i][j] == null || grid[i][j] == -1) {
               if (i < puzzle.solution.length && j < puzzle.solution[i].length) {
-                grid[i][j] = puzzle.solution[i][j];
+                final rawValue = puzzle.solution[i][j];
+                // Round to 1 decimal place to avoid floating-point errors
+                grid[i][j] = rawValue != null ? (rawValue * 10).round() / 10.0 : null;
               }
             }
           } else {
@@ -264,7 +268,11 @@ abstract class BaseMultiplayerControllerNxN extends ChangeNotifier {
     if (isHinted[row][col]) return;
     if (value != null && value < 0) return;
 
-    grid[row][col] = value;
+    if (value != null) {
+      grid[row][col] = (value * 10).round() / 10.0;
+    } else {
+      grid[row][col] = null;
+    }
     _validateGrid(progressOnly: true);
     notifyListeners();
   }
@@ -276,7 +284,7 @@ abstract class BaseMultiplayerControllerNxN extends ChangeNotifier {
     int correctCount = 0;
     int filledCount = 0;
     int totalPlayerCells = 0;
-    double tolerance = 0.01;
+    const tolerance = 0.001;
 
     for (int i = 0; i < gridSize; i++) {
       for (int j = 0; j < gridSize; j++) {
@@ -309,14 +317,19 @@ abstract class BaseMultiplayerControllerNxN extends ChangeNotifier {
         final current = grid[i][j];
         double? correct;
         if (i < puzzle.solution.length && j < puzzle.solution[i].length) {
-          correct = puzzle.solution[i][j];
+          final rawCorrect = puzzle.solution[i][j];
+          // Round solution value to 1 decimal place for consistent comparison
+          correct = rawCorrect != null ? (rawCorrect * 10).round() / 10.0 : null;
         }
 
         if (current != null) filledCount++;
 
         bool isCorrect = false;
         if (current != null && correct != null) {
-          isCorrect = (current - correct).abs() < tolerance;
+          // Round both values to ensure consistency, then compare with tolerance
+          final roundedCurrent = (current * 10).round() / 10.0;
+          final roundedCorrect = (correct * 10).round() / 10.0;
+          isCorrect = (roundedCurrent - roundedCorrect).abs() < tolerance;
         }
 
         if (isCorrect) correctCount++;

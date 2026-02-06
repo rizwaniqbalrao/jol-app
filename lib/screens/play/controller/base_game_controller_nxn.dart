@@ -103,7 +103,7 @@ abstract class BaseGameControllerNxN extends ChangeNotifier {
     stopTimer(); // Ensure existing timer is cancelled
     if (_mode == GameMode.untimed) return;
     
-    timeLeft = const Duration(minutes: 5);
+    timeLeft = const Duration(minutes: 10);
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
       if (timeLeft.inSeconds > 0) {
         timeLeft = timeLeft - const Duration(seconds: 1);
@@ -121,7 +121,7 @@ abstract class BaseGameControllerNxN extends ChangeNotifier {
     _gameStartTime = null;
     score = 0;
     _accuracyPercentage = 0.0;
-    timeLeft = const Duration(minutes: 5);
+    timeLeft = const Duration(minutes: 10);
     rawInputs.clear();
     initGrid();
   }
@@ -161,7 +161,11 @@ abstract class BaseGameControllerNxN extends ChangeNotifier {
 
   void updateCell(int row, int col, double? value) {
     if (!_isValidCell(row, col) || isFixed[row][col]) return;
-    grid[row][col] = value;
+    if (value != null) {
+      grid[row][col] = (value * 10).round() / 10.0;
+    } else {
+      grid[row][col] = null;
+    }
     notifyListeners();
   }
 
@@ -178,7 +182,7 @@ abstract class BaseGameControllerNxN extends ChangeNotifier {
       // if parsable, otherwise ignore or keep previous
       final parsed = double.tryParse(rawText);
       if (parsed != null) {
-        grid[row][col] = parsed;
+        grid[row][col] = (parsed * 10).round() / 10.0;
       }
     }
     notifyListeners();
@@ -214,7 +218,7 @@ abstract class BaseGameControllerNxN extends ChangeNotifier {
   void validateAll() {
     int correctCount = 0;
     int totalPlayerCount = 0;
-    const tolerance = 0.01;
+    const tolerance = 0.001;
 
     // Reset wrong status
     for (int i = 0; i < gridSize; i++) {
@@ -338,7 +342,6 @@ abstract class BaseGameControllerNxN extends ChangeNotifier {
     _createBoard(random);
 
     isGenerating = false;
-    isPlaying = true; // Auto-play after generation?
     notifyListeners();
   }
 
@@ -530,7 +533,7 @@ abstract class BaseGameControllerNxN extends ChangeNotifier {
                   } else { // Middle
                         if (_solutionGrid[i][0] != null && _solutionGrid[0][j] != null) {
                             final res = _solutionGrid[i][0]! + _solutionGrid[0][j]!;
-                            _solutionGrid[i][j] = _safeResult(res);
+                            _solutionGrid[i][j] = _safeResult((res * 10).round() / 10.0);
                         }
                   }
               }
@@ -573,8 +576,8 @@ abstract class BaseGameControllerNxN extends ChangeNotifier {
   }
 
   double? _safeResult(double val) {
-      if (_hardMode && val > (_hardMode ? 999 : double.infinity)) return null;
-      return val;
+    if (_hardMode && val > (_hardMode ? 999 : double.infinity)) return null;
+    return (val * 10).round() / 10.0;
   }
 
   void _addAdditionalSeeds(Random random) {

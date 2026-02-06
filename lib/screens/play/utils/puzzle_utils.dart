@@ -17,7 +17,7 @@ class PuzzleUtils {
   static double? _staticSafeResult(double value, bool hardMode) {
     final maxResultValue = hardMode ? 999.0 : double.infinity;
     if (hardMode && value > maxResultValue) return null;
-    return value;
+    return (value * 10).round() / 10.0;
   }
 
   static double _randomNumberNotInRowCol(
@@ -111,7 +111,7 @@ class PuzzleUtils {
           if (solutionGrid[i][j] == null) {
             for (int n = 1; n < gridSize; n++) {
               if (solutionGrid[n][i] != null && solutionGrid[n][j] != null) {
-                solutionGrid[i][j] = (solutionGrid[n][i]! + solutionGrid[n][j]!);
+                solutionGrid[i][j] = ((solutionGrid[n][i]! + solutionGrid[n][j]!) * 10).round() / 10.0;
                 break;
               }
             }
@@ -120,7 +120,9 @@ class PuzzleUtils {
           if (solutionGrid[i][j] == null) {
             for (int n = 1; n < gridSize; n++) {
               if (solutionGrid[i][n] != null && solutionGrid[0][n] != null) {
-                solutionGrid[i][j] = (solutionGrid[0][n]! + solutionGrid[i][n]!);
+                solutionGrid[i][j] =
+                    ((solutionGrid[0][n]! + solutionGrid[i][n]!) * 10).round() /
+                        10.0;
                 break;
               }
             }
@@ -129,7 +131,7 @@ class PuzzleUtils {
           if (solutionGrid[i][j] == null) {
             if (solutionGrid[i][0] != null && solutionGrid[0][j] != null) {
               solutionGrid[i][j] =
-                  (solutionGrid[i][0]! - solutionGrid[0][j]!).abs();
+                  (((solutionGrid[i][0]! - solutionGrid[0][j]!).abs()) * 10).round() / 10.0;
             }
           }
         }
@@ -334,10 +336,12 @@ class PuzzleUtils {
 
         if (r != 0 && c != 0 && solutionGrid[r][c] == null &&
             checkConditionStatic(r, c, solutionGrid, gridSize)) {
-            solutionGrid[r][c] = generateRandomNumber(random, useDecimals, hardMode, gridSize);
-            grid[r][c] = solutionGrid[r][c];
-            isFixed[r][c] = true;
-            seedNumbers++;
+          final rawVal =
+              generateRandomNumber(random, useDecimals, hardMode, gridSize);
+          solutionGrid[r][c] = (rawVal * 10).round() / 10.0;
+          grid[r][c] = solutionGrid[r][c];
+          isFixed[r][c] = true;
+          seedNumbers++;
             for (int n = 0; n < 10; n++) {
                 solvingBoardStatic(solutionGrid, gridSize, operation, hardMode);
             }

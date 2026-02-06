@@ -63,7 +63,7 @@ class GameController5x5 extends ChangeNotifier {
 
   double? _safeResult(double value) {
     if (_hardMode && value > _maxResultValue) return null;
-    return value;
+    return (value * 10).round() / 10.0;
   }
 
   Future<void> _initGrid() async {
@@ -426,7 +426,7 @@ class GameController5x5 extends ChangeNotifier {
   }
 
   void validateAll() {
-    const tolerance = 0.01;
+    const tolerance = 0.001;
 
     // Reset wrong status
     for (int i = 0; i < gridSize; i++) {

@@ -19,7 +19,7 @@ class GameController extends ChangeNotifier {
   final Map<String, String> rawInputs = {};
 
   int score = 0;
-  Duration timeLeft = const Duration(minutes: 5);
+  Duration timeLeft = const Duration(minutes: 7); // 7 minutes are enough for 4x4 grid
   Timer? _timer;
   bool isPlaying = false;
   bool isGenerating = true;
@@ -99,7 +99,6 @@ class GameController extends ChangeNotifier {
     _createBoard(Random());
 
     isGenerating = false;
-    isPlaying = true;
     notifyListeners();
   }
 
@@ -317,7 +316,7 @@ class GameController extends ChangeNotifier {
 
   void startTimer() {
     if (_mode != GameMode.timed || _timer != null) return;
-    timeLeft = const Duration(minutes: 5);
+    timeLeft = const Duration(minutes: 7);
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
       if (timeLeft.inSeconds > 0) {
         timeLeft -= const Duration(seconds: 1);
@@ -371,7 +370,7 @@ class GameController extends ChangeNotifier {
   bool validateGrid() {
     int correct = 0;
     int total = 0;
-    const tolerance = 0.01;
+    const tolerance = 0.001;
 
     for (int i = 0; i < gridSize; i++) {
         for (int j = 0; j < gridSize; j++) {

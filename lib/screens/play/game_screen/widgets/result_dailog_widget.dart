@@ -103,7 +103,7 @@ class ResultDialogWidget extends StatelessWidget {
                           children: [
                             _buildSubStat("Correct", "$correctCount", successGreen),
                             _buildVerticalDivider(),
-                            _buildSubStat("Total", "$totalCells", primaryBlue),
+                            _buildSubStat("Total", "${totalCells-6}", primaryBlue),
                             if (savedGame?.completionTime != null) ...[
                               _buildVerticalDivider(),
                               _buildSubStat("Time", _formatTime(savedGame!.completionTime!), Colors.orange),
