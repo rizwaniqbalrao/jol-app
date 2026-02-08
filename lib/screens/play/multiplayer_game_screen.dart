@@ -393,39 +393,27 @@ class _MultiplayerGameScreenState extends State<MultiplayerGameScreen> {
                                           borderRadius:
                                               BorderRadius.circular(10),
                                         ),
-                                        child: Row(
-                                          mainAxisAlignment:
-                                              MainAxisAlignment.spaceBetween,
-                                          children: [
-                                            isTimed
-                                                ? Text(
-                                                    "Time: ${controller.timeLeft.inMinutes.toString().padLeft(2, '0')}:${(controller.timeLeft.inSeconds % 60).toString().padLeft(2, '0')}",
-                                                    style: const TextStyle(
-                                                      color: Colors.white,
-                                                      fontWeight:
-                                                          FontWeight.w700,
-                                                      fontSize: 14,
-                                                    ),
-                                                  )
-                                                : const Text(
-                                                    "Mode: Untimed",
-                                                    style: TextStyle(
-                                                      color: Colors.white,
-                                                      fontWeight:
-                                                          FontWeight.w700,
-                                                      fontSize: 14,
-                                                    ),
-                                                  ),
-                                            Text(
-                                              "Hints: ${controller.hintsRemaining}",
-                                              style: const TextStyle(
-                                                color: Colors.white,
-                                                fontWeight: FontWeight.w700,
-                                                fontSize: 14,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
+                                         child: Center(
+                                           child: isTimed
+                                               ? Text(
+                                                   "Time: ${controller.timeLeft.inMinutes.toString().padLeft(2, '0')}:${(controller.timeLeft.inSeconds % 60).toString().padLeft(2, '0')}",
+                                                   style: const TextStyle(
+                                                     color: Colors.white,
+                                                     fontWeight:
+                                                         FontWeight.w700,
+                                                     fontSize: 14,
+                                                   ),
+                                                 )
+                                               : const Text(
+                                                   "Mode: Untimed",
+                                                   style: TextStyle(
+                                                     color: Colors.white,
+                                                     fontWeight:
+                                                         FontWeight.w700,
+                                                     fontSize: 14,
+                                                   ),
+                                                 ),
+                                         ),
                                       ),
                                     ),
                                   ],
@@ -487,22 +475,6 @@ class _MultiplayerGameScreenState extends State<MultiplayerGameScreen> {
                                   ),
                                 ),
                               ),
-                              const SizedBox(height: 8),
-
-                              Padding(
-                                padding:
-                                    const EdgeInsets.symmetric(horizontal: 20),
-                                child: Text(
-                                  "Double tap a cell to use a hint (if available)",
-                                  style: TextStyle(
-                                    fontFamily: "Rubik",
-                                    fontSize: 12,
-                                    color: Colors.grey.shade700,
-                                    fontStyle: FontStyle.italic,
-                                  ),
-                                  textAlign: TextAlign.center,
-                                ),
-                              ),
                               const SizedBox(height: 16),
 
                               /// 4. Grid - Fixed height to prevent overflow
@@ -561,16 +533,7 @@ class _MultiplayerGameScreenState extends State<MultiplayerGameScreen> {
                                               cellColor =
                                                   const Color(0xFFFFD54F);
                                             }
-                                            return GestureDetector(
-                                              onDoubleTap: () {
-                                                if (!isFixedCell &&
-                                                    controller.hintsRemaining >
-                                                        0) {
-                                                  _showHintDialog(
-                                                      controller, row, col);
-                                                }
-                                              },
-                                              child: Container(
+                                             return Container(
                                                 decoration: BoxDecoration(
                                                   color: cellColor,
                                                   borderRadius:
@@ -644,8 +607,7 @@ class _MultiplayerGameScreenState extends State<MultiplayerGameScreen> {
                                                               ),
                                                             ),
                                                 ),
-                                              ),
-                                            );
+                                              );
                                           },
                                         );
                                       },
@@ -892,35 +854,6 @@ class _MultiplayerGameScreenState extends State<MultiplayerGameScreen> {
     );
   }
 
-  void _showHintDialog(
-      BaseMultiplayerControllerNxN controller, int row, int col) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Use Hint?'),
-        content: Text(
-            'Use a hint for this cell? (${controller.hintsRemaining} remaining)\n\nThis will deduct 5 points.'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () async {
-              Navigator.pop(context);
-              final success = await controller.useHint(row, col);
-              if (success) {
-                _inputControllers[_getKey(row, col)]?.text = _formatGridValue(
-                    controller.grid[row][col],
-                    controller.room?.settings.useDecimals ?? false);
-              }
-            },
-            child: const Text('Use Hint'),
-          ),
-        ],
-      ),
-    );
-  }
 
   void _showLeaveConfirmation(BaseMultiplayerControllerNxN controller) {
     showDialog(

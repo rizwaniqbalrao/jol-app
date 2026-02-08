@@ -24,7 +24,7 @@ class _CreateRoomScreenState extends State<CreateRoomScreen> {
   int _selectedGridSize = 4;
   String _selectedMode = 'untimed';
   String _selectedOperation = 'addition';
-  int _selectedMaxHints = 2; // NEW: Configurable hints
+
   bool _useDecimals = false; // NEW: Decimal support
   bool _hardMode = false; // NEW: Hard mode support
   bool _isCreating = false;
@@ -54,7 +54,6 @@ class _CreateRoomScreenState extends State<CreateRoomScreen> {
       debugPrint("   Grid Size: $_selectedGridSize");
       debugPrint("   Mode: $_selectedMode");
       debugPrint("   Operation: $_selectedOperation");
-      debugPrint("   Max Hints: $_selectedMaxHints");
 
       // Create room settings
       final settings = RoomSettings(
@@ -62,7 +61,7 @@ class _CreateRoomScreenState extends State<CreateRoomScreen> {
         mode: _selectedMode,
         operation: _selectedOperation,
         timeLimit: _selectedMode == 'timed' ? 300 : 0,
-        maxHints: _selectedMaxHints, // Use selected hint count
+        maxHints: 0, // Hints disabled
         maxPlayers: 4,
         useDecimals: _useDecimals, // Pass decimal setting
         hardMode: _hardMode,
@@ -444,32 +443,8 @@ class _CreateRoomScreenState extends State<CreateRoomScreen> {
                     ],
                   ),
 
-                  const SizedBox(height: 30),
+                   const SizedBox(height: 30),
 
-                  // NEW: Max Hints Selection
-                  const Text(
-                    "Maximum Hints",
-                    style: TextStyle(
-                      fontFamily: "Rubik",
-                      fontSize: 16,
-                      fontWeight: FontWeight.w700,
-                      color: Colors.black87,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Row(
-                    children: [
-                      _buildHintButton('1', 1),
-                      const SizedBox(width: 10),
-                      _buildHintButton('2', 2),
-                      const SizedBox(width: 10),
-                      _buildHintButton('3', 3),
-                      const SizedBox(width: 10),
-                      _buildHintButton('4', 4),
-                    ],
-                  ),
-
-                  const SizedBox(height: 30),
 
                   // NEW: Use Decimals Toggle
                   SwitchListTile(
@@ -651,33 +626,5 @@ class _CreateRoomScreenState extends State<CreateRoomScreen> {
     );
   }
 
-  // NEW: Hint selection button
-  Widget _buildHintButton(String label, int value) {
-    final isSelected = value == _selectedMaxHints;
-    return Expanded(
-      child: ElevatedButton(
-        style: ElevatedButton.styleFrom(
-          backgroundColor: isSelected ? Colors.purple : Colors.white,
-          padding: const EdgeInsets.symmetric(vertical: 12),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(8),
-            side: BorderSide(
-              color: isSelected ? Colors.purple : Colors.grey.shade300,
-              width: 2,
-            ),
-          ),
-        ),
-        onPressed: () => setState(() => _selectedMaxHints = value),
-        child: Text(
-          label,
-          style: TextStyle(
-            fontFamily: "Rubik",
-            fontSize: 14,
-            fontWeight: FontWeight.w700,
-            color: isSelected ? Colors.white : Colors.black87,
-          ),
-        ),
-      ),
-    );
-  }
+
 }
