@@ -6,7 +6,7 @@ import 'package:provider/provider.dart';
 import '../../dashboard/models/game_models.dart';
 import '../controller/base_game_controller_nxn.dart';
 import '../controller/game_controller_6x6.dart';
-import '../widgets_nxn/game_helper_nxn.dart'; 
+import '../widgets_nxn/game_helper_nxn.dart';
 import '../widgets_nxn/game_grid_widget_nxn.dart';
 import '../widgets_nxn/game_keyboard_widget_nxn.dart';
 import '../widgets_nxn/game_dialogs_nxn.dart';
@@ -39,7 +39,6 @@ class _GameScreen6x6State extends State<GameScreen6x6> {
   Timer? _debounceTimer;
 
   @override
-
   @override
   void initState() {
     super.initState();
@@ -80,7 +79,9 @@ class _GameScreen6x6State extends State<GameScreen6x6> {
           final textController = TextEditingController();
           final val = controller.getCell(i, j);
           if (val != null) {
-            textController.text = (val == val.toInt()) ? val.toInt().toString() : val.toStringAsFixed(1);
+            textController.text = (val == val.toInt())
+                ? val.toInt().toString()
+                : val.toStringAsFixed(1);
           }
 
           _inputControllers[key] = textController;
@@ -90,14 +91,17 @@ class _GameScreen6x6State extends State<GameScreen6x6> {
             if (node.hasFocus) {
               if (mounted) {
                 SchedulerBinding.instance.addPostFrameCallback((_) {
-                  if (mounted && _selectedCell != key) setState(() => _selectedCell = key);
+                  if (mounted && _selectedCell != key)
+                    setState(() => _selectedCell = key);
                 });
               }
             } else {
               try {
-                controller.finalizeCellInput(i, j, _inputControllers[key]?.text ?? '');
+                controller.finalizeCellInput(
+                    i, j, _inputControllers[key]?.text ?? '');
               } catch (_) {}
-              if (mounted && _selectedCell == key) setState(() => _selectedCell = null);
+              if (mounted && _selectedCell == key)
+                setState(() => _selectedCell = null);
             }
           });
           _focusNodes[key] = node;
@@ -109,7 +113,8 @@ class _GameScreen6x6State extends State<GameScreen6x6> {
 
   Future<bool> _onWillPop(BaseGameControllerNxN controller) async {
     if (!_isGameStarted) return true;
-    final shouldLeave = await GameDialogsNxN.showAbandonGameDialog(context, controller);
+    final shouldLeave =
+        await GameDialogsNxN.showAbandonGameDialog(context, controller);
     return shouldLeave ?? false;
   }
 
@@ -136,10 +141,10 @@ class _GameScreen6x6State extends State<GameScreen6x6> {
 
     if (value == 'clear') {
       if (textController.text.isEmpty) return;
-      final newText = textController.text.substring(0, textController.text.length - 1);
+      final newText =
+          textController.text.substring(0, textController.text.length - 1);
       textController.text = newText;
       controller.updateRawInput(row, col, newText);
-      _checkIfAllCellsFilled(controller);
       return;
     }
 
@@ -147,7 +152,9 @@ class _GameScreen6x6State extends State<GameScreen6x6> {
     String newText = currentText + value;
 
     if (value == '.') {
-      if (!controller.useDecimals || currentText.contains('.') || currentText.isEmpty) {
+      if (!controller.useDecimals ||
+          currentText.contains('.') ||
+          currentText.isEmpty) {
         return;
       }
     }
@@ -157,36 +164,10 @@ class _GameScreen6x6State extends State<GameScreen6x6> {
 
     textController.text = newText;
     controller.updateRawInput(row, col, newText);
-    _checkIfAllCellsFilled(controller);
   }
 
-  void _checkIfAllCellsFilled(BaseGameControllerNxN controller) {
-    bool allFilled = true;
-    for (int i = 0; i < controller.gridSize; i++) {
-        for (int j = 0; j < controller.gridSize; j++) {
-            if (i == 0 && j == 0) continue;
-            if (controller.getCell(i, j) == null) {
-                allFilled = false;
-                break;
-            }
-        }
-    }
-
-    if (allFilled && _isGameStarted) {
-      // Debounce logic
-      _debounceTimer?.cancel();
-      _debounceTimer = Timer(const Duration(seconds: 3), () {
-        if (mounted && _isGameStarted) {
-          _isProcessingEnd = true;
-          _showStopGameDialog(context, controller);
-        }
-      });
-    } else {
-      _debounceTimer?.cancel();
-    }
-  }
-
-  void _showStopGameDialog(BuildContext context, BaseGameControllerNxN controller) {
+  void _showStopGameDialog(
+      BuildContext context, BaseGameControllerNxN controller) {
     GameDialogsNxN.showStopGameDialog(context, controller, () async {
       controller.stopTimer();
       controller.endGame();
@@ -200,7 +181,8 @@ class _GameScreen6x6State extends State<GameScreen6x6> {
     });
   }
 
-  Future<void> _saveGameToBackend(BuildContext context, BaseGameControllerNxN controller, String status) async {
+  Future<void> _saveGameToBackend(BuildContext context,
+      BaseGameControllerNxN controller, String status) async {
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -212,13 +194,15 @@ class _GameScreen6x6State extends State<GameScreen6x6> {
       // Assuming GameSaveHelperNxN exists or GameSaveHelper is generic enough.
       // If not, we might need a GameHelperNxN.
       // Based on imports, we have `game_helper_nxn.dart`. Let's assume it has GameSaveHelperNxN.
-      
-      final result = await GameSaveHelperNxN().saveSoloGame(controller: controller, gameStatus: status);
-      
+
+      final result = await GameSaveHelperNxN()
+          .saveSoloGame(controller: controller, gameStatus: status);
+
       if (mounted) Navigator.pop(context);
 
       if (result['success']) {
-        _showResultDialog(context, controller, savedGame: result['game'], pointsEarned: result['pointsEarned']);
+        _showResultDialog(context, controller,
+            savedGame: result['game'], pointsEarned: result['pointsEarned']);
       }
     } catch (e) {
       if (mounted) Navigator.pop(context);
@@ -227,7 +211,8 @@ class _GameScreen6x6State extends State<GameScreen6x6> {
     }
   }
 
-  void _showResultDialog(BuildContext context, BaseGameControllerNxN controller, {Game? savedGame, int? pointsEarned}) {
+  void _showResultDialog(BuildContext context, BaseGameControllerNxN controller,
+      {Game? savedGame, int? pointsEarned}) {
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -261,7 +246,7 @@ class _GameScreen6x6State extends State<GameScreen6x6> {
       child: Consumer<GameController6x6>(
         builder: (context, controller, _) {
           if (!controller.isGenerating && !_isInitialized) {
-             WidgetsBinding.instance.addPostFrameCallback((_) {
+            WidgetsBinding.instance.addPostFrameCallback((_) {
               if (!_isInitialized && mounted) {
                 _initializeGridState(controller);
               }
@@ -270,7 +255,8 @@ class _GameScreen6x6State extends State<GameScreen6x6> {
 
           bool gameJustStopped = _isGameStarted &&
               !controller.isPlaying &&
-              (_lastControllerPlayingState == null || _lastControllerPlayingState == true) &&
+              (_lastControllerPlayingState == null ||
+                  _lastControllerPlayingState == true) &&
               !_needsReset &&
               !_endDialogShown &&
               !_isProcessingEnd;
@@ -324,48 +310,65 @@ class _GameScreen6x6State extends State<GameScreen6x6> {
                                     focusNodes: _focusNodes,
                                     showMinus: _showMinus,
                                     isGameStarted: _isGameStarted,
+                                    needsReset: _needsReset,
                                     onOperationToggle: (val) {
                                       setState(() {
                                         _showMinus = val;
                                         _isInitialized = false;
                                       });
-                                      controller.setOperation(val ? PuzzleOperation.subtraction : PuzzleOperation.addition);
+                                      controller.setOperation(val
+                                          ? PuzzleOperation.subtraction
+                                          : PuzzleOperation.addition);
                                       setState(() => _selectedCell = null);
                                     },
                                     onCellTap: (row, col) {
-                                       final key = _getKey(row, col);
-                                       if (!_inputControllers.containsKey(key)) {
-                                          _inputControllers[key] = TextEditingController();
-                                       }
-                                       if (!_focusNodes.containsKey(key)) {
-                                          final node = FocusNode();
-                                          node.addListener(() {
-                                             if (node.hasFocus && mounted) {
-                                                 SchedulerBinding.instance.addPostFrameCallback((_) {
-                                                     if (mounted && _selectedCell != key) setState(() => _selectedCell = key);
-                                                 });
-                                             } else {
-                                                 try {
-                                                    controller.finalizeCellInput(row, col, _inputControllers[key]?.text ?? '');
-                                                 } catch (_) {}
-                                                 if (mounted && _selectedCell == key) setState(() => _selectedCell = null);
-                                             }
-                                          });
-                                          _focusNodes[key] = node;
-                                       }
-                                       setState(() => _selectedCell = key);
-                                       _focusNodes[key]?.requestFocus();
+                                      final key = _getKey(row, col);
+                                      if (!_inputControllers.containsKey(key)) {
+                                        _inputControllers[key] =
+                                            TextEditingController();
+                                      }
+                                      if (!_focusNodes.containsKey(key)) {
+                                        final node = FocusNode();
+                                        node.addListener(() {
+                                          if (node.hasFocus && mounted) {
+                                            SchedulerBinding.instance
+                                                .addPostFrameCallback((_) {
+                                              if (mounted &&
+                                                  _selectedCell != key)
+                                                setState(
+                                                    () => _selectedCell = key);
+                                            });
+                                          } else {
+                                            try {
+                                              controller.finalizeCellInput(
+                                                  row,
+                                                  col,
+                                                  _inputControllers[key]
+                                                          ?.text ??
+                                                      '');
+                                            } catch (_) {}
+                                            if (mounted && _selectedCell == key)
+                                              setState(
+                                                  () => _selectedCell = null);
+                                          }
+                                        });
+                                        _focusNodes[key] = node;
+                                      }
+                                      setState(() => _selectedCell = key);
+                                      _focusNodes[key]?.requestFocus();
                                     },
                                     onCellChanged: (row, col) {
-                                        // Handled in widget via controller.updateRawInput
+                                      // Handled in widget via controller.updateRawInput
                                     },
                                   ),
                                   SizedBox(height: h * 0.02),
                                   GameKeyboardWidgetNxN(
                                     controller: controller,
                                     isGameStarted: _isGameStarted,
-                                    onKeyTap: (val) => _onKeyboardTap(val, controller),
-                                    onDecimalToggle: (useDecimals) => controller.setUseDecimals(useDecimals),
+                                    onKeyTap: (val) =>
+                                        _onKeyboardTap(val, controller),
+                                    onDecimalToggle: (useDecimals) =>
+                                        controller.setUseDecimals(useDecimals),
                                     screenHeight: h,
                                     screenWidth: w,
                                   ),
@@ -398,11 +401,13 @@ class _GameScreen6x6State extends State<GameScreen6x6> {
         children: [
           IconButton(
             onPressed: () async {
-              if (await _onWillPop(controller) && mounted) Navigator.pop(context);
+              if (await _onWillPop(controller) && mounted)
+                Navigator.pop(context);
             },
             icon: const CircleAvatar(
                 backgroundColor: textPink,
-                child: Icon(Icons.arrow_back_ios_new, color: Colors.white, size: 18)),
+                child: Icon(Icons.arrow_back_ios_new,
+                    color: Colors.white, size: 18)),
           ),
           const Spacer(),
           const Text("JOL Puzzle",
@@ -438,7 +443,8 @@ class _GameScreen6x6State extends State<GameScreen6x6> {
                           _endDialogShown = false;
                         });
                         controller.startGame();
-                        if (controller.mode == GameMode.timed) controller.startTimer();
+                        if (controller.mode == GameMode.timed)
+                          controller.startTimer();
                       }
                     }),
         ],
@@ -446,7 +452,8 @@ class _GameScreen6x6State extends State<GameScreen6x6> {
     );
   }
 
-  Widget _actionBtn(String label, IconData icon, Color color, VoidCallback? onPressed) {
+  Widget _actionBtn(
+      String label, IconData icon, Color color, VoidCallback? onPressed) {
     return Expanded(
       child: ElevatedButton(
         onPressed: onPressed,
@@ -454,9 +461,11 @@ class _GameScreen6x6State extends State<GameScreen6x6> {
             backgroundColor: color,
             disabledBackgroundColor: Colors.grey.shade400,
             padding: const EdgeInsets.symmetric(vertical: 12),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8))),
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(8))),
         child: Text(label,
-            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+            style: const TextStyle(
+                color: Colors.white, fontWeight: FontWeight.bold)),
       ),
     );
   }
@@ -476,21 +485,27 @@ class _GameScreen6x6State extends State<GameScreen6x6> {
                   controller.mode == GameMode.timed
                       ? "Time: ${controller.timeLeft.inMinutes}:${(controller.timeLeft.inSeconds % 60).toString().padLeft(2, '0')}"
                       : "Mode: Untimed",
-                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                  style: const TextStyle(
+                      color: Colors.white, fontWeight: FontWeight.bold),
                 ),
               ),
             ),
           ),
           const SizedBox(width: 10),
           GestureDetector(
-            onTap: (_isGameStarted || _needsReset) ? null : () => controller.toggleMode(),
+            onTap: (_isGameStarted || _needsReset)
+                ? null
+                : () => controller.toggleMode(),
             child: Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                  color: (_isGameStarted || _needsReset) ? Colors.grey : textGreen,
+                  color:
+                      (_isGameStarted || _needsReset) ? Colors.grey : textGreen,
                   borderRadius: BorderRadius.circular(10)),
               child: Icon(
-                  controller.mode == GameMode.timed ? Icons.timer : Icons.timer_off,
+                  controller.mode == GameMode.timed
+                      ? Icons.timer
+                      : Icons.timer_off,
                   color: Colors.white),
             ),
           ),
@@ -505,7 +520,8 @@ class _GameScreen6x6State extends State<GameScreen6x6> {
     final bool enabled = !_isGameStarted && !_needsReset;
     final Color bgColor = controller.hardMode ? textPink : Colors.grey;
 
-    final TextStyle? btnTextStyle = Theme.of(context).textTheme.labelLarge?.copyWith(
+    final TextStyle? btnTextStyle =
+        Theme.of(context).textTheme.labelLarge?.copyWith(
               color: Colors.white,
               fontWeight: FontWeight.bold,
               letterSpacing: 1.1,
@@ -521,8 +537,10 @@ class _GameScreen6x6State extends State<GameScreen6x6> {
       style: ButtonStyle(
         backgroundColor: WidgetStateProperty.resolveWith<Color?>(
             (states) => enabled ? bgColor : Colors.grey.shade400),
-        padding: WidgetStateProperty.all(const EdgeInsets.symmetric(horizontal: 14, vertical: 12)),
-        shape: WidgetStateProperty.all(RoundedRectangleBorder(borderRadius: BorderRadius.circular(8))),
+        padding: WidgetStateProperty.all(
+            const EdgeInsets.symmetric(horizontal: 14, vertical: 12)),
+        shape: WidgetStateProperty.all(
+            RoundedRectangleBorder(borderRadius: BorderRadius.circular(8))),
       ),
       child: Text('Hard', style: btnTextStyle),
     );

@@ -7,6 +7,7 @@ class GameGridWidgetNxN extends StatelessWidget {
   final Map<String, FocusNode> focusNodes;
   final bool showMinus;
   final bool isGameStarted;
+  final bool needsReset;
   final Function(bool) onOperationToggle;
   final double screenHeight;
   final double screenWidth;
@@ -20,6 +21,7 @@ class GameGridWidgetNxN extends StatelessWidget {
     required this.focusNodes,
     required this.showMinus,
     required this.isGameStarted,
+    this.needsReset = false,
     required this.onOperationToggle,
     required this.screenHeight,
     required this.screenWidth,
@@ -109,7 +111,7 @@ class GameGridWidgetNxN extends StatelessWidget {
                   child: Center(
                     child: (row == 0 && col == 0)
                         ? GestureDetector(
-                            onTap: isGameStarted
+                            onTap: (isGameStarted || needsReset)
                                 ? null
                                 : () {
                                     onOperationToggle(!showMinus);
@@ -123,15 +125,17 @@ class GameGridWidgetNxN extends StatelessWidget {
                               ),
                             ),
                           )
-                          : isFixedCell
-                              ? Text(
-                                  isGameStarted ? _formatNumber(value) : "",
-                                  style: TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: unifiedFontSize,
-                                    color: Colors.black,
-                                  ),
-                                )
+                        : isFixedCell
+                            ? Text(
+                                (isGameStarted || needsReset)
+                                    ? _formatNumber(value)
+                                    : "",
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: unifiedFontSize,
+                                  color: Colors.black,
+                                ),
+                              )
                             : TextField(
                                 key: ValueKey('cell-$row-$col'),
                                 controller: inputControllers[_getKey(row, col)],

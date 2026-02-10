@@ -243,28 +243,30 @@ class _CreateRoomScreenState extends State<CreateRoomScreen> {
           final colHeader = puzzle.solution[0][j];
           final cellValue = puzzle.solution[i][j];
 
-          if (rowHeader == null || colHeader == null || cellValue == null) continue;
+          if (rowHeader == null || colHeader == null || cellValue == null)
+            continue;
 
           double expectedValue;
           if (_selectedOperation == 'addition') {
-             expectedValue = rowHeader + colHeader;
+            expectedValue = rowHeader + colHeader;
           } else {
-             expectedValue = (rowHeader - colHeader).abs();
+            expectedValue = (rowHeader - colHeader).abs();
           }
-          
+
           final roundedExpected = (expectedValue * 10).round() / 10.0;
           final roundedActual = (cellValue * 10).round() / 10.0;
-          
+
           if ((roundedExpected - roundedActual).abs() > 0.001) {
-             debugPrint("❌ Arithmetic Error at [$i][$j]: ${_selectedOperation.toUpperCase()} Row($rowHeader) op Col($colHeader) != Cell($cellValue). Expected: $roundedExpected");
-             arithmeticErrors++;
+            debugPrint(
+                "❌ Arithmetic Error at [$i][$j]: ${_selectedOperation.toUpperCase()} Row($rowHeader) op Col($colHeader) != Cell($cellValue). Expected: $roundedExpected");
+            arithmeticErrors++;
           }
         }
       }
-      
+
       if (arithmeticErrors > 0) {
-         debugPrint("❌ Found $arithmeticErrors arithmetic inconsistencies.");
-         return false;
+        debugPrint("❌ Found $arithmeticErrors arithmetic inconsistencies.");
+        return false;
       }
 
       // Count fixed cells (seed numbers)
@@ -475,12 +477,8 @@ class _CreateRoomScreenState extends State<CreateRoomScreen> {
                     ],
                   ),
 
-                   const SizedBox(height: 30),
+                  const SizedBox(height: 30),
 
-<<<<<<< HEAD
-=======
-
->>>>>>> 096fc12a0ec2148f55996ddb0bc5816b583caf44
                   // NEW: Use Decimals Toggle
                   SwitchListTile(
                     contentPadding: EdgeInsets.zero,
@@ -687,9 +685,4 @@ class _CreateRoomScreenState extends State<CreateRoomScreen> {
       ),
     );
   }
-<<<<<<< HEAD
-=======
-
-
->>>>>>> 096fc12a0ec2148f55996ddb0bc5816b583caf44
 }

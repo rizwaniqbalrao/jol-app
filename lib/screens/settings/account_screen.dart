@@ -534,6 +534,16 @@ class _AccountScreenState extends State<AccountScreen> {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
   }
 
+  /// Check if an error message indicates a token/auth issue
+  bool _isTokenError(String error) {
+    final lower = error.toLowerCase();
+    return lower.contains('authenticated') ||
+        lower.contains('token') ||
+        lower.contains('session') ||
+        lower.contains('log in') ||
+        lower.contains('login');
+  }
+
   Widget _sectionCard({required Widget child, double vertical = 8}) {
     return Container(
       width: double.infinity,
@@ -1305,17 +1315,58 @@ class _AccountScreenState extends State<AccountScreen> {
                         Center(
                           child: Column(
                             children: [
-                              Text(_error!,
-                                  style: const TextStyle(color: Colors.white)),
-                              const SizedBox(height: 12),
-                              ElevatedButton(
-                                onPressed: _loadProfile,
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: Colors.white,
-                                  foregroundColor: textPink,
-                                ),
-                                child: const Text('Retry'),
+                              Text(
+                                _isTokenError(_error!)
+                                    ? 'Please logout and login again with the correct username.'
+                                    : _error!,
+                                style: const TextStyle(color: Colors.white),
+                                textAlign: TextAlign.center,
                               ),
+                              const SizedBox(height: 12),
+                              if (_isTokenError(_error!))
+                                ElevatedButton.icon(
+                                  onPressed:
+                                      _isLoggingOut ? null : _handleLogout,
+                                  icon: _isLoggingOut
+                                      ? const SizedBox(
+                                          width: 18,
+                                          height: 18,
+                                          child: CircularProgressIndicator(
+                                            strokeWidth: 2,
+                                            valueColor:
+                                                AlwaysStoppedAnimation<Color>(
+                                                    Colors.white),
+                                          ),
+                                        )
+                                      : const Icon(Icons.logout,
+                                          color: Colors.white),
+                                  label: Text(
+                                    _isLoggingOut ? 'LOGGING OUT...' : 'LOGOUT',
+                                    style: const TextStyle(
+                                      fontFamily: 'Digitalt',
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: Colors.red.shade600,
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 20, vertical: 12),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                  ),
+                                )
+                              else
+                                ElevatedButton(
+                                  onPressed: _loadProfile,
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: Colors.white,
+                                    foregroundColor: textPink,
+                                  ),
+                                  child: const Text('Retry'),
+                                ),
                             ],
                           ),
                         )

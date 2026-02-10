@@ -302,7 +302,8 @@ class ApiClient {
       if (context != null && context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Session expired. Please log in again.'),
+            content: Text(
+                'Invalid session. Please logout and login again with the correct username.'),
             duration: Duration(seconds: 3),
             backgroundColor: Colors.orange,
           ),
@@ -336,5 +337,21 @@ class ApiClient {
   /// Check if user is authenticated
   static Future<bool> isAuthenticated() async {
     return await _storage.isLoggedIn();
+  }
+
+  /// Validate the current token by making a lightweight API call.
+  /// Returns true if the token is valid, false otherwise.
+  static Future<bool> validateToken() async {
+    try {
+      final token = await _storage.getToken();
+      if (token == null || token.isEmpty) return false;
+
+      final response = await get('/v1/user/detail/');
+      return !_isInvalidTokenResponse(response);
+    } catch (e) {
+      debugPrint('Token validation error: $e');
+      // On network error, give benefit of the doubt
+      return true;
+    }
   }
 }

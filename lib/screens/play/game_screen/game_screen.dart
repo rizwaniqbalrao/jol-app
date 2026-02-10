@@ -191,7 +191,6 @@ class _GameScreenState extends State<GameScreen> {
           parsed; // direct grid update (or use updateRawInput if you keep it)
       controller.notifyListeners();
 
-      _checkIfAllCellsFilled(controller);
       return;
     }
 
@@ -225,47 +224,6 @@ class _GameScreenState extends State<GameScreen> {
       // controller.updateRawInput(row, col, newText);
 
       controller.notifyListeners();
-    }
-
-    // Check if puzzle is complete (after valid input)
-    _checkIfAllCellsFilled(controller);
-  }
-
-  // bool _checkIfAllCellsFilled(GameController controller) {
-  //   for (int i = 0; i < controller.gridSize; i++) {
-  //     for (int j = 0; j < controller.gridSize; j++) {
-  //       if (i == 0 && j == 0) continue;
-  //       if (controller.grid[i][j] == null) return false;
-  //     }
-  //   }
-  //   return true;
-  // }
-
-  void _checkIfAllCellsFilled(GameController controller) {
-    bool allFilled = true;
-
-    for (int i = 0; i < controller.gridSize; i++) {
-      for (int j = 0; j < controller.gridSize; j++) {
-        if (i == 0 && j == 0) continue;
-        if (controller.grid[i][j] == null) {
-          allFilled = false;
-          break;
-        }
-      }
-    }
-
-    if (allFilled && _isGameStarted) {
-      // Debounce: Reset timer if user keeps typing
-      _debounceTimer?.cancel();
-      _debounceTimer = Timer(const Duration(seconds: 3), () {
-        if (mounted && _isGameStarted) {
-          _isProcessingEnd = true;
-          _showStopGameDialog(context, controller);
-        }
-      });
-    } else {
-      // If user clears a cell, cancel the pending dialog
-      _debounceTimer?.cancel();
     }
   }
 
@@ -457,6 +415,7 @@ class _GameScreenState extends State<GameScreen> {
                                     focusNodes: _focusNodes,
                                     showMinus: _showMinus,
                                     isGameStarted: _isGameStarted,
+                                    needsReset: _needsReset,
                                     onOperationToggle: (val) {
                                       setState(() {
                                         _showMinus = val;

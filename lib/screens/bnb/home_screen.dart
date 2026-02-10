@@ -6,6 +6,10 @@ import 'package:jol_app/screens/score%20board/score_board_screen.dart';
 import 'package:jol_app/screens/settings/account_screen.dart';
 import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
 
+import '../auth/services/api_client.dart';
+import '../auth/services/auth_services.dart';
+
+import '../auth/login_screen.dart';
 import '../Affiliates/affiliates_screen.dart';
 import '../play/play_screen.dart';
 import '../settings/services/user_profile_services.dart';
@@ -220,9 +224,136 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   }
 
   void _onItemTapped(int index) {
+    if (index == 2) {
+      // Validate token before opening Play screen
+      _validateAndNavigateToPlay();
+      return;
+    }
     setState(() {
       _selectedIndex = index;
     });
+  }
+
+  Future<void> _validateAndNavigateToPlay() async {
+    final isValid = await ApiClient.validateToken();
+    if (!mounted) return;
+
+    if (isValid) {
+      setState(() {
+        _selectedIndex = 2;
+      });
+    } else {
+      _showInvalidTokenDialog();
+    }
+  }
+
+  void _showInvalidTokenDialog() {
+    showDialog(
+      context: context,
+      builder: (dialogContext) => Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 50,
+                height: 50,
+                decoration: BoxDecoration(
+                  color: Colors.orange.withOpacity(0.2),
+                  shape: BoxShape.circle,
+                  border: Border.all(color: Colors.orange, width: 2),
+                ),
+                child: const Icon(Icons.warning_amber_rounded,
+                    color: Colors.orange, size: 28),
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                "SESSION EXPIRED",
+                style: TextStyle(
+                  fontFamily: 'Digitalt',
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFFF82A87),
+                  letterSpacing: 1,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 8),
+              Text(
+                "Please logout and login again with the correct username.",
+                style: TextStyle(
+                  fontFamily: 'Rubik',
+                  fontSize: 13,
+                  color: Colors.black.withOpacity(0.7),
+                  height: 1.3,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () => Navigator.pop(dialogContext),
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 10),
+                        side:
+                            const BorderSide(color: Colors.black26, width: 1.5),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10)),
+                      ),
+                      child: const Text("CANCEL",
+                          style: TextStyle(
+                              fontFamily: 'Digitalt',
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.black54,
+                              letterSpacing: 0.8)),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: () {
+                        Navigator.pop(dialogContext);
+                        _performLogout();
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.red.shade600,
+                        padding: const EdgeInsets.symmetric(vertical: 10),
+                        elevation: 0,
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10)),
+                      ),
+                      child: const Text("LOGOUT",
+                          style: TextStyle(
+                              fontFamily: 'Digitalt',
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                              letterSpacing: 0.8)),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _performLogout() async {
+    final authService = AuthService();
+    await authService.logout();
+    if (mounted) {
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(builder: (_) => const LoginScreen()),
+        (route) => false,
+      );
+    }
   }
 
   // Format coins for display (e.g., 1500 -> "1.5K", 1500000 -> "1.5M")
@@ -530,9 +661,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     final formattedCoins = _formatCoins(availableCoins);
 
     return GestureDetector(
-      onTap: () async {
-        // Refresh wallet on tap
-        await refreshWallet();
+      onTap: () {
+        // Show store dialog
+        _showStoreDialog();
       },
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
@@ -576,6 +707,85 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+  void _showStoreDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 60,
+                height: 60,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFE1BEE7), // Light purple
+                  shape: BoxShape.circle,
+                  border: Border.all(color: textPink, width: 2),
+                ),
+                child: const Icon(
+                  Icons.storefront_rounded,
+                  color: textPink,
+                  size: 32,
+                ),
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                "STORE COMING SOON",
+                style: TextStyle(
+                  fontFamily: 'Digitalt',
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: textPink,
+                  letterSpacing: 1,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 12),
+              Text(
+                "The store is coming soon and you will be able to use your coins to purchase items in the app.",
+                style: TextStyle(
+                  fontFamily: 'Rubik',
+                  fontSize: 14,
+                  color: Colors.black.withOpacity(0.7),
+                  height: 1.4,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 24),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () => Navigator.pop(context),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: textPink,
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    elevation: 0,
+                  ),
+                  child: const Text(
+                    "GOT IT!",
+                    style: TextStyle(
+                      fontFamily: 'Digitalt',
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                      letterSpacing: 1,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
