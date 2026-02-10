@@ -5,7 +5,8 @@ import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:jol_app/screens/dashboard/dashboard_screen.dart';
 import 'package:jol_app/screens/play/controller/game_controller.dart';
 import 'package:jol_app/screens/play/game_screen/game_screen.dart';
-import 'package:jol_app/screens/play/game_screen/game_screen_5x5.dart';
+import 'package:jol_app/screens/play/game_screen/game_screen_6x6.dart';
+import 'package:jol_app/screens/play/game_screen/game_screen_nxn.dart';
 import 'package:jol_app/screens/splash_screen.dart';
 import 'package:provider/provider.dart';
 
@@ -54,6 +55,7 @@ class MyApp extends StatelessWidget {
           // GameScreen(),
           // GameScreen5(),
            SplashScreen(),
+        //  GameScreen6x6(),
     );
   }
 }

@@ -1,20 +1,17 @@
-// File: helpers/game_save_helper.dart
-
 import 'package:uuid/uuid.dart';
 import '../../dashboard/models/game_models.dart';
 import '../../dashboard/services/game_service.dart';
 import '../../settings/services/user_profile_services.dart';
-import '../controller/game_controller.dart';
-import '../controller/base_game_controller_nxn.dart' show PuzzleOperation;
+import '../controller/base_game_controller_nxn.dart';
 
-class GameSaveHelper {
+class GameSaveHelperNxN {
   final GameService _gameService = GameService();
   final UserProfileService _userService = UserProfileService();
   final _uuid = Uuid();
 
   /// Save a completed solo game to the backend
   Future<Map<String, dynamic>> saveSoloGame({
-    required GameController controller,
+    required BaseGameControllerNxN controller,
     required String gameStatus, // "completed", "abandoned", or "timed_out"
   }) async {
     try {
@@ -33,24 +30,22 @@ class GameSaveHelper {
       // Step 2: Calculate completion time safely
       int? completionTime;
 
-// Priority 1: Use the controller's recorded completion time
+      // Priority 1: Use the controller's recorded completion time
       if (controller.completionTimeSeconds != null) {
         completionTime = controller.completionTimeSeconds;
       }
-// Priority 2: Calculate it manually if the game is being stopped/abandoned
+      // Priority 2: Calculate it manually if the game is being stopped/abandoned
       else if (controller.gameStartTime != null) {
-        completionTime =
-            DateTime.now().difference(controller.gameStartTime!).inSeconds;
+        completionTime = DateTime.now().difference(controller.gameStartTime!).inSeconds;
       }
-// Priority 3: Default to 0 if the game hasn't started but is being saved
+      // Priority 3: Default to 0 if the game hasn't started but is being saved
       else {
         completionTime = 0;
       }
 
       // Step 3: Determine game status
       String finalStatus = gameStatus;
-      if (controller.mode == GameMode.timed &&
-          controller.timeLeft.inSeconds <= 0) {
+      if (controller.mode == GameMode.timed && controller.timeLeft.inSeconds <= 0) {
         finalStatus = 'timed_out';
       }
 
@@ -60,9 +55,7 @@ class GameSaveHelper {
         playerId: userId,
         gameType: 'solo',
         gameMode: controller.mode == GameMode.timed ? 'timed' : 'untimed',
-        operation: controller.operation == PuzzleOperation.addition
-            ? 'addition'
-            : 'subtraction',
+        operation: controller.operation == PuzzleOperation.addition ? 'addition' : 'subtraction',
         gridSize: controller.gridSize,
         timestamp: DateTime.now().toUtc().toIso8601String(),
         status: finalStatus,
@@ -95,8 +88,7 @@ class GameSaveHelper {
 
         return {
           'success': true,
-          'message':
-              'Game saved successfully! You earned ${saveResult.data!.pointsEarned} points.',
+          'message': 'Game saved successfully! You earned ${saveResult.data!.pointsEarned} points.',
           'matchId': saveResult.data!.matchId,
           'pointsEarned': saveResult.data!.pointsEarned,
           'game': savedGame,
@@ -136,7 +128,6 @@ class GameSaveHelper {
     );
   }
 
-  /// Updated Validation: Removed hint-specific logic
   String? _validateGameData(Game game) {
     if (game.finalScore < 0 || game.finalScore > 100) {
       return 'Invalid score: ${game.finalScore}. Must be between 0-100.';
@@ -146,20 +137,10 @@ class GameSaveHelper {
       return 'Invalid accuracy: ${game.accuracyPercentage}%. Must be between 0-100.';
     }
 
-    // Relaxed constraint: In some abandoned scenarios, completionTime might be null
-    // but the backend usually expects it if status is 'completed'
     if (game.status == 'completed' && game.completionTime == null) {
       // We can log this or handle it, but for solo we usually have it.
     }
 
     return null;
-  }
-
-  String determineGameStatus(GameController controller, bool wasCompleted) {
-    if (controller.mode == GameMode.timed &&
-        controller.timeLeft.inSeconds <= 0) {
-      return 'timed_out';
-    }
-    return wasCompleted ? 'completed' : 'abandoned';
   }
 }

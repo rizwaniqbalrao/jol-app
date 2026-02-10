@@ -1,9 +1,8 @@
 import 'package:flutter/material.dart';
-//import '../../controller/game_controller.dart';
-import '../../controller/game_controller.dart'; // Updated import
+import '../controller/base_game_controller_nxn.dart';
 
-class GameGridWidget extends StatelessWidget {
-  final GameController controller;
+class GameGridWidgetNxN extends StatelessWidget {
+  final BaseGameControllerNxN controller;
   final Map<String, TextEditingController> inputControllers;
   final Map<String, FocusNode> focusNodes;
   final bool showMinus;
@@ -14,7 +13,7 @@ class GameGridWidget extends StatelessWidget {
   final Function(int, int)? onCellTap;
   final Function(int, int)? onCellChanged;
 
-  const GameGridWidget({
+  const GameGridWidgetNxN({
     super.key,
     required this.controller,
     required this.inputControllers,
@@ -86,8 +85,9 @@ class GameGridWidget extends StatelessWidget {
               itemBuilder: (context, index) {
                 int row = index ~/ gridSize;
                 int col = index % gridSize;
+                // Safe access using methods or direct check if fields are public in base
                 bool isFixedCell = controller.isFixed[row][col];
-                final value = controller.grid[row][col];
+                final value = controller.getCell(row, col);
 
                 Color cellColor = Colors.white;
 
@@ -123,15 +123,15 @@ class GameGridWidget extends StatelessWidget {
                               ),
                             ),
                           )
-                        : isFixedCell
-                            ? Text(
-                                isGameStarted ? _formatNumber(value) : "",
-                                style: TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: unifiedFontSize,
-                                  color: Colors.black,
-                                ),
-                              )
+                          : isFixedCell
+                              ? Text(
+                                  isGameStarted ? _formatNumber(value) : "",
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: unifiedFontSize,
+                                    color: Colors.black,
+                                  ),
+                                )
                             : TextField(
                                 key: ValueKey('cell-$row-$col'),
                                 controller: inputControllers[_getKey(row, col)],
