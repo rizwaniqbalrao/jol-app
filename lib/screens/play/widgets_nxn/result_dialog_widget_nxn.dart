@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-import '../../../dashboard/models/game_models.dart';
-import '../../controller/game_controller.dart';
+import '../../dashboard/models/game_models.dart';
+import '../controller/base_game_controller_nxn.dart';
 
-class ResultDialogWidget extends StatelessWidget {
-  final GameController controller;
+class ResultDialogWidgetNxN extends StatelessWidget {
+  final BaseGameControllerNxN controller;
   final Game? savedGame;
   final int? pointsEarned;
   final VoidCallback onClose;
@@ -13,7 +13,7 @@ class ResultDialogWidget extends StatelessWidget {
   static const Color accentPink = Color(0xFFF82A87);
   static const Color neutralBg = Color(0xFFF8F9FE);
 
-  const ResultDialogWidget({
+  const ResultDialogWidgetNxN({
     Key? key,
     required this.controller,
     this.savedGame,
@@ -23,20 +23,9 @@ class ResultDialogWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // If accuracyPercentage is directly on controller in base class
     final accuracy = savedGame?.accuracyPercentage ?? controller.accuracyPercentage;
     final totalCells = (controller.gridSize * controller.gridSize) - 1 - controller.seedNumbers;
-
-    int correctCount = 0;
-    for (int i = 0; i < controller.gridSize; i++) {
-      for (int j = 0; j < controller.gridSize; j++) {
-        if (i == 0 && j == 0) continue;
-        if (!controller.isFixed[i][j] &&
-            controller.grid[i][j] != null &&
-            controller.grid[i][j] == controller.solutionGrid[i][j]) {
-          correctCount++;
-        }
-      }
-    }
 
     return Dialog(
       backgroundColor: Colors.transparent,
@@ -101,9 +90,9 @@ class ResultDialogWidget extends StatelessWidget {
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                           children: [
-                            _buildSubStat("Correct", "$correctCount", successGreen),
+                            _buildSubStat("Correct", "${controller.correctAnswers}", successGreen),
                             _buildVerticalDivider(),
-                            _buildSubStat("Total", "${totalCells-6}", primaryBlue),
+                            _buildSubStat("Total", "${controller.totalPlayerCells}", primaryBlue),
                             if (savedGame?.completionTime != null) ...[
                               _buildVerticalDivider(),
                               _buildSubStat("Time", _formatTime(savedGame!.completionTime!), Colors.orange),

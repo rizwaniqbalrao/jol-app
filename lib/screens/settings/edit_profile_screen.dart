@@ -5,6 +5,8 @@ import 'package:intl/intl.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:shimmer/shimmer.dart';
 import '../auth/models/user.dart';
+import '../auth/services/auth_services.dart';
+import '../auth/login_screen.dart';
 import 'services/user_profile_services.dart';
 
 class EditProfileScreen extends StatefulWidget {
@@ -103,6 +105,27 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         _error = userResult.error ?? 'Failed to load profile data';
         _isLoading = false;
       });
+    }
+  }
+
+  /// Check if an error message indicates a token/auth issue
+  bool _isTokenError(String error) {
+    final lower = error.toLowerCase();
+    return lower.contains('authenticated') ||
+        lower.contains('token') ||
+        lower.contains('session') ||
+        lower.contains('log in') ||
+        lower.contains('login');
+  }
+
+  Future<void> _performLogout() async {
+    final authService = AuthService();
+    await authService.logout();
+    if (mounted) {
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(builder: (_) => const LoginScreen()),
+        (route) => false,
+      );
     }
   }
 
@@ -664,7 +687,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                             ),
                             const SizedBox(height: 16),
                             Text(
-                              _error!,
+                              _isTokenError(_error!)
+                                  ? 'Please logout and login again with the correct username.'
+                                  : _error!,
                               textAlign: TextAlign.center,
                               style: const TextStyle(
                                 fontFamily: 'Rubik',
@@ -673,13 +698,37 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                               ),
                             ),
                             const SizedBox(height: 24),
-                            ElevatedButton(
-                              onPressed: _loadData,
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: textPink,
+                            if (_isTokenError(_error!))
+                              ElevatedButton.icon(
+                                onPressed: _performLogout,
+                                icon: const Icon(Icons.logout,
+                                    color: Colors.white),
+                                label: const Text(
+                                  'LOGOUT',
+                                  style: TextStyle(
+                                    fontFamily: 'Digitalt',
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.red.shade600,
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 20, vertical: 12),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                ),
+                              )
+                            else
+                              ElevatedButton(
+                                onPressed: _loadData,
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: textPink,
+                                ),
+                                child: const Text('Retry'),
                               ),
-                              child: const Text('Retry'),
-                            ),
                           ],
                         ),
                       ),

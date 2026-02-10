@@ -125,43 +125,6 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
                 const SizedBox(height: 30),
 
-                // TODO: Social login buttons - not fully implemented, enable when ready
-                // Divider
-                // Row(
-                //   children: [
-                //     Expanded(child: Divider(thickness: 1.2, color: LoginScreen.textPink.withOpacity(0.4))),
-                //     const Padding(
-                //       padding: EdgeInsets.symmetric(horizontal: 12),
-                //       child: Text(
-                //         "OR",
-                //         style: TextStyle(
-                //           fontFamily: 'Digitalt',
-                //           fontWeight: FontWeight.w700,
-                //           fontSize: 14,
-                //           color: LoginScreen.textPink,
-                //         ),
-                //       ),
-                //     ),
-                //     Expanded(child: Divider(thickness: 1.2, color: LoginScreen.textPink.withOpacity(0.4))),
-                //   ],
-                // ),
-                // const SizedBox(height: 30),
-
-                // // Google Login Button
-                // _socialButton(
-                //   text: _isGoogleLoading ? "SIGNING IN..." : "CONTINUE WITH GMAIL",
-                //   icon: Image.asset("lib/assets/images/google.png", height: 22),
-                //   onTap: _isGoogleLoading ? null : _handleGoogleLogin,
-                // ),
-                // const SizedBox(height: 16),
-
-                // // Apple Button
-                // _socialButton(
-                //   text: "CONTINUE WITH APPLE",
-                //   icon: Image.asset("lib/assets/images/apple.png", height: 22),
-                //   onTap: () => _showSocialDialog(context, "Apple"),
-                // ),
-
                 // Sign in button with shadow
                 Container(
                   decoration: BoxDecoration(
@@ -204,6 +167,43 @@ class _LoginScreenState extends State<LoginScreen> {
                             ),
                           ),
                   ),
+                ),
+                const SizedBox(height: 24),
+
+                // OR Divider
+                Row(
+                  children: [
+                    Expanded(
+                        child: Divider(
+                            thickness: 1.2,
+                            color: LoginScreen.textPink.withOpacity(0.4))),
+                    const Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 12),
+                      child: Text(
+                        "OR",
+                        style: TextStyle(
+                          fontFamily: 'Digitalt',
+                          fontWeight: FontWeight.w700,
+                          fontSize: 14,
+                          color: LoginScreen.textPink,
+                        ),
+                      ),
+                    ),
+                    Expanded(
+                        child: Divider(
+                            thickness: 1.2,
+                            color: LoginScreen.textPink.withOpacity(0.4))),
+                  ],
+                ),
+                const SizedBox(height: 24),
+
+                // Google Login Button
+                _socialButton(
+                  text: _isGoogleLoading
+                      ? "SIGNING IN..."
+                      : "CONTINUE WITH GOOGLE",
+                  icon: Image.asset("lib/assets/images/google.png", height: 22),
+                  onTap: _isGoogleLoading ? null : _handleGoogleLogin,
                 ),
                 const SizedBox(height: 20),
 

@@ -137,41 +137,6 @@ class _SignupScreenState extends State<SignupScreen> {
                 ),
                 const SizedBox(height: 30),
 
-                // TODO: Social signup buttons - not fully implemented, enable when ready
-                // Divider
-                // Row(
-                //   children: [
-                //     Expanded(child: Divider(thickness: 1.2, color: SignupScreen.textPink.withOpacity(0.4))),
-                //     const Padding(
-                //       padding: EdgeInsets.symmetric(horizontal: 12),
-                //       child: Text(
-                //         "OR",
-                //         style: TextStyle(
-                //           fontFamily: 'Digitalt',
-                //           fontWeight: FontWeight.w700,
-                //           fontSize: 14,
-                //           color: SignupScreen.textPink,
-                //         ),
-                //       ),
-                //     ),
-                //     Expanded(child: Divider(thickness: 1.2, color: SignupScreen.textPink.withOpacity(0.4))),
-                //   ],
-                // ),
-                // const SizedBox(height: 30),
-
-                // // Social Buttons
-                // _socialButton(
-                //   text: _isGoogleLoading ? "SIGNING UP..." : "CONTINUE WITH GMAIL",
-                //   icon: Image.asset("lib/assets/images/google.png", height: 22),
-                //   onTap: _isGoogleLoading ? null : _handleGoogleSignup,
-                // ),
-                // const SizedBox(height: 16),
-                // _socialButton(
-                //   text: "CONTINUE WITH APPLE",
-                //   icon: Image.asset("lib/assets/images/apple.png", height: 22),
-                //   onTap: () => _showSocialDialog(context, "Apple"),
-                // ),
-
                 // Register button with shadow
                 Container(
                   decoration: BoxDecoration(
@@ -212,6 +177,43 @@ class _SignupScreenState extends State<SignupScreen> {
                             ),
                           ),
                   ),
+                ),
+                const SizedBox(height: 24),
+
+                // OR Divider
+                Row(
+                  children: [
+                    Expanded(
+                        child: Divider(
+                            thickness: 1.2,
+                            color: SignupScreen.textPink.withOpacity(0.4))),
+                    const Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 12),
+                      child: Text(
+                        "OR",
+                        style: TextStyle(
+                          fontFamily: 'Digitalt',
+                          fontWeight: FontWeight.w700,
+                          fontSize: 14,
+                          color: SignupScreen.textPink,
+                        ),
+                      ),
+                    ),
+                    Expanded(
+                        child: Divider(
+                            thickness: 1.2,
+                            color: SignupScreen.textPink.withOpacity(0.4))),
+                  ],
+                ),
+                const SizedBox(height: 24),
+
+                // Google Signup Button
+                _socialButton(
+                  text: _isGoogleLoading
+                      ? "SIGNING UP..."
+                      : "CONTINUE WITH GOOGLE",
+                  icon: Image.asset("lib/assets/images/google.png", height: 22),
+                  onTap: _isGoogleLoading ? null : _handleGoogleSignup,
                 ),
                 const SizedBox(height: 20),
 

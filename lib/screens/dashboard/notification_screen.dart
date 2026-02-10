@@ -9,7 +9,6 @@ class NotificationScreen extends StatefulWidget {
 }
 
 class _NotificationScreenState extends State<NotificationScreen> {
-  static const Color textBlue = Color(0xFF0734A5);
   static const Color textPink = Color(0xFFF82A87);
 
   @override
@@ -31,7 +30,8 @@ class _NotificationScreenState extends State<NotificationScreen> {
           child: Column(
             children: [
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                 child: Row(
                   children: [
                     InkWell(
@@ -78,22 +78,29 @@ class _NotificationScreenState extends State<NotificationScreen> {
                       ),
                       const SizedBox(height: 20),
                       const Text(
-                        "No Notifications Yet",
+                        "NOTIFICATIONS COMING SOON",
                         style: TextStyle(
-                          fontFamily: "Rubik",
-                          fontSize: 24,
-                          fontWeight: FontWeight.w700,
-                          color: textBlue,
+                          fontFamily: "Digitalt",
+                          fontSize: 22,
+                          fontWeight: FontWeight.bold,
+                          color: textPink,
+                          letterSpacing: 1,
                         ),
+                        textAlign: TextAlign.center,
                       ),
-                      const SizedBox(height: 8),
-                      const Text(
-                        "Stay tuned for updates!",
-                        style: TextStyle(
-                          fontFamily: "Rubik",
-                          fontSize: 16,
-                          fontWeight: FontWeight.w400,
-                          color: Colors.black54,
+                      const SizedBox(height: 12),
+                      const Padding(
+                        padding: EdgeInsets.symmetric(horizontal: 40),
+                        child: Text(
+                          "We are working on bringing you updates and alerts directly to this screen.",
+                          style: TextStyle(
+                            fontFamily: "Rubik",
+                            fontSize: 14,
+                            fontWeight: FontWeight.w400,
+                            color: Colors.black54,
+                            height: 1.4,
+                          ),
+                          textAlign: TextAlign.center,
                         ),
                       ),
                     ],

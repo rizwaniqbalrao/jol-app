@@ -1,16 +1,15 @@
 import 'package:flutter/material.dart';
+import '../controller/base_game_controller_nxn.dart';
 
-import '../../controller/game_controller.dart';
-
-class GameKeyboardWidget extends StatelessWidget {
-  final GameController controller;
+class GameKeyboardWidgetNxN extends StatelessWidget {
+  final BaseGameControllerNxN controller;
   final bool isGameStarted;
   final Function(String) onKeyTap;
   final Function(bool) onDecimalToggle;
   final double screenHeight;
   final double screenWidth;
 
-  const GameKeyboardWidget({
+  const GameKeyboardWidgetNxN({
     super.key,
     required this.controller,
     required this.isGameStarted,
@@ -190,8 +189,8 @@ class GameKeyboardWidget extends StatelessWidget {
                 fontSize: fontSize * 0.7,
                 fontWeight: FontWeight.bold,
                 color: !isGameStarted
-                    ? (controller.useDecimals ? Colors.white : Colors.white)
-                    : Colors.white,
+                    ? (controller.useDecimals ? Colors.white : Colors.black87)
+                    : Colors.black45,
               ),
             ),
           ),

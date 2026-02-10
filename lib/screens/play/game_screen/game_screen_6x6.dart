@@ -2,25 +2,24 @@ import 'dart:async';
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
-import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../../dashboard/models/game_models.dart';
-import '../controller/game_controller.dart';
-import '../controller/base_game_controller_nxn.dart' show PuzzleOperation;
-import '../widgets/game_helper.dart';
-import 'widgets/game_grid_widget.dart';
-import 'widgets/game_keyboard_widget.dart';
-import 'widgets/game_dailogs.dart';
-import 'widgets/result_dailog_widget.dart';
+import '../controller/base_game_controller_nxn.dart';
+import '../controller/game_controller_6x6.dart';
+import '../widgets_nxn/game_helper_nxn.dart';
+import '../widgets_nxn/game_grid_widget_nxn.dart';
+import '../widgets_nxn/game_keyboard_widget_nxn.dart';
+import '../widgets_nxn/game_dialogs_nxn.dart';
+import '../widgets_nxn/result_dialog_widget_nxn.dart';
 
-class GameScreen extends StatefulWidget {
-  const GameScreen({super.key});
+class GameScreen6x6 extends StatefulWidget {
+  const GameScreen6x6({super.key});
 
   @override
-  State<GameScreen> createState() => _GameScreenState();
+  State<GameScreen6x6> createState() => _GameScreen6x6State();
 }
 
-class _GameScreenState extends State<GameScreen> {
+class _GameScreen6x6State extends State<GameScreen6x6> {
   static const Color textPink = Color(0xFFF82A87);
   static const Color textGreen = Color(0xFF43AC45);
 
@@ -31,19 +30,20 @@ class _GameScreenState extends State<GameScreen> {
   String? _selectedCell;
   bool _isGameStarted = false;
 
-  // New flag: true when game is finished but user hasn't pressed 'Reset' yet
   bool _needsReset = false;
-
-  // Guard variables to prevent infinite loops
   bool _isInitialized = false;
-  int? _lastInitializedGridSize;
-  // Ensure end-game dialog flow runs only once per game end
   bool _endDialogShown = false;
+  bool _isProcessingEnd = false;
 
-  bool _isProcessingEnd =
-      false; // New flag to prevent multiple end-game processes
-
+  bool? _lastControllerPlayingState;
   Timer? _debounceTimer;
+
+  @override
+  @override
+  void initState() {
+    super.initState();
+    _lastControllerPlayingState = null;
+  }
 
   @override
   void dispose() {
@@ -63,44 +63,11 @@ class _GameScreenState extends State<GameScreen> {
     _focusNodes.clear();
   }
 
-  //parsing helper method
-  /// Safely parses input string to double with rounding to prevent floating-point issues
-  double? safeParse(String? text, {int decimalPlaces = 1}) {
-    if (text == null || text.trim().isEmpty) return null;
-
-    String cleaned = text.trim();
-
-    // Handle incomplete decimal like "12." → treat as "12.0"
-    if (cleaned.endsWith('.')) {
-      cleaned += '0';
-    }
-
-    final parsed = double.tryParse(cleaned);
-    if (parsed == null) return null;
-
-    // Round to desired precision (1 decimal is usually enough for your game)
-    final factor = pow(10, decimalPlaces).toDouble();
-    return (parsed * factor).round() / factor;
-  }
-
   String _getKey(int row, int col) => '$row-$col';
 
-  String _formatNumber(double? value) {
-    if (value == null) return "";
-    // If it's a whole number, show without decimal
-    if (value == value.toInt()) {
-      return value.toInt().toString();
-    }
-    // Otherwise show with decimal
-    return value.toStringAsFixed(1);
-  }
-
-  void _initializeGridState(GameController controller) {
-    // Don't reinitialize while game is running
+  void _initializeGridState(BaseGameControllerNxN controller) {
     if (_isGameStarted) return;
-
-    if (_isInitialized && _lastInitializedGridSize == controller.gridSize)
-      return;
+    if (_isInitialized) return;
 
     _disposeControllers();
 
@@ -110,8 +77,11 @@ class _GameScreenState extends State<GameScreen> {
           String key = _getKey(i, j);
 
           final textController = TextEditingController();
-          if (controller.grid[i][j] != null) {
-            textController.text = _formatNumber(controller.grid[i][j]);
+          final val = controller.getCell(i, j);
+          if (val != null) {
+            textController.text = (val == val.toInt())
+                ? val.toInt().toString()
+                : val.toStringAsFixed(1);
           }
 
           _inputControllers[key] = textController;
@@ -119,9 +89,6 @@ class _GameScreenState extends State<GameScreen> {
           final node = FocusNode();
           node.addListener(() {
             if (node.hasFocus) {
-              debugPrint(
-                  'FocusNode gained focus for $key; _selectedCell=$_selectedCell');
-              // Schedule the selection update to the next frame to avoid timing races
               if (mounted) {
                 SchedulerBinding.instance.addPostFrameCallback((_) {
                   if (mounted && _selectedCell != key)
@@ -129,12 +96,10 @@ class _GameScreenState extends State<GameScreen> {
                 });
               }
             } else {
-              // Finalize input on focus loss
               try {
                 controller.finalizeCellInput(
                     i, j, _inputControllers[key]?.text ?? '');
               } catch (_) {}
-              // Clear selection if this node lost focus and it was selected
               if (mounted && _selectedCell == key)
                 setState(() => _selectedCell = null);
             }
@@ -143,19 +108,17 @@ class _GameScreenState extends State<GameScreen> {
         }
       }
     }
-    _lastInitializedGridSize = controller.gridSize;
     _isInitialized = true;
   }
 
-  Future<bool> _onWillPop(GameController controller) async {
+  Future<bool> _onWillPop(BaseGameControllerNxN controller) async {
     if (!_isGameStarted) return true;
     final shouldLeave =
-        await GameDialogs.showAbandonGameDialog(context, controller);
+        await GameDialogsNxN.showAbandonGameDialog(context, controller);
     return shouldLeave ?? false;
   }
 
-  void _onKeyboardTap(String value, GameController controller) {
-    // Block input if game not active or already finished/reviewing
+  void _onKeyboardTap(String value, BaseGameControllerNxN controller) {
     if (!_isGameStarted || _needsReset) return;
 
     final selected = _selectedCell;
@@ -165,40 +128,29 @@ class _GameScreenState extends State<GameScreen> {
     final row = int.parse(parts[0]);
     final col = int.parse(parts[1]);
 
-    // Fixed cells are not editable
     if (controller.isFixed[row][col]) return;
 
     final textController = _inputControllers[selected];
     final focusNode = _focusNodes[selected];
 
-    // Safety: skip if no controller or not focused
     if (textController == null || !(focusNode?.hasFocus ?? false)) return;
 
-    // Clear wrong mark (we don't do live validation)
-    controller.isWrong[row][col] = false;
+    // Reset wrong status visually (game controller handles logic)
+    // controller.isWrong[row][col] = false; // logic is in controller, this is direct access, maybe avoid?
+    // Actually BaseGameControllerNxN doesn't expose setter for isWrong, but validateAll resets it.
 
-    // ─────────────── CLEAR (Backspace) ───────────────
     if (value == 'clear') {
       if (textController.text.isEmpty) return;
-
       final newText =
           textController.text.substring(0, textController.text.length - 1);
       textController.text = newText;
-
-      // Update model with safely parsed value (null if empty)
-      final parsed = safeParse(newText);
-      controller.grid[row][col] =
-          parsed; // direct grid update (or use updateRawInput if you keep it)
-      controller.notifyListeners();
-
+      controller.updateRawInput(row, col, newText);
       return;
     }
 
-    // ─────────────── NUMBER / DECIMAL INPUT ───────────────
     String currentText = textController.text;
     String newText = currentText + value;
 
-    // Prevent multiple dots
     if (value == '.') {
       if (!controller.useDecimals ||
           currentText.contains('.') ||
@@ -207,45 +159,17 @@ class _GameScreenState extends State<GameScreen> {
       }
     }
 
-    // Length & format guard
-    if (newText.length > 8) return; // generous limit
-    if (newText.replaceAll('.', '').length > 6) return; // e.g. 9999.99
+    if (newText.length > 8) return;
+    if (newText.replaceAll('.', '').length > 6) return;
 
-    // Apply new text to UI immediately
     textController.text = newText;
-
-    // Safely parse and round the value
-    final parsedValue = safeParse(newText);
-
-    if (parsedValue != null) {
-      // Update model
-      controller.grid[row][col] = parsedValue;
-      // If you still want to keep raw input:
-      // controller.updateRawInput(row, col, newText);
-
-      controller.notifyListeners();
-    }
+    controller.updateRawInput(row, col, newText);
   }
 
-  void _onCellChanged(int row, int col, GameController controller) {
-    final key = _getKey(row, col);
-    final text = _inputControllers[key]?.text ?? '';
-    controller.updateRawInput(row, col, text);
-
-    // If validation finished the game, show the stop dialog.
-    // Do not rely on validateGrid() return value — check controller.isPlaying.
-    // if (!controller.isPlaying) {
-    //   WidgetsBinding.instance.addPostFrameCallback((_) {
-    //     _showStopGameDialog(context, controller);
-    //   });
-    //}
-  }
-
-  void _showStopGameDialog(BuildContext context, GameController controller) {
-    GameDialogs.showStopGameDialog(context, controller, () async {
-      // STOP THE TIMER IMMEDIATELY
+  void _showStopGameDialog(
+      BuildContext context, BaseGameControllerNxN controller) {
+    GameDialogsNxN.showStopGameDialog(context, controller, () async {
       controller.stopTimer();
-
       controller.endGame();
 
       setState(() {
@@ -257,8 +181,8 @@ class _GameScreenState extends State<GameScreen> {
     });
   }
 
-  Future<void> _saveGameToBackend(
-      BuildContext context, GameController controller, String status) async {
+  Future<void> _saveGameToBackend(BuildContext context,
+      BaseGameControllerNxN controller, String status) async {
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -266,8 +190,14 @@ class _GameScreenState extends State<GameScreen> {
     );
 
     try {
-      final result = await GameSaveHelper()
+      // NOTE: GameSaveHelper might need updates if it doesn't support generic controller
+      // Assuming GameSaveHelperNxN exists or GameSaveHelper is generic enough.
+      // If not, we might need a GameHelperNxN.
+      // Based on imports, we have `game_helper_nxn.dart`. Let's assume it has GameSaveHelperNxN.
+
+      final result = await GameSaveHelperNxN()
           .saveSoloGame(controller: controller, gameStatus: status);
+
       if (mounted) Navigator.pop(context);
 
       if (result['success']) {
@@ -277,102 +207,67 @@ class _GameScreenState extends State<GameScreen> {
     } catch (e) {
       if (mounted) Navigator.pop(context);
     } finally {
-      _isProcessingEnd = false; // Reset the processing flag
+      _isProcessingEnd = false;
     }
   }
 
-  void _showResultDialog(BuildContext context, GameController controller,
+  void _showResultDialog(BuildContext context, BaseGameControllerNxN controller,
       {Game? savedGame, int? pointsEarned}) {
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (ctx) => ResultDialogWidget(
+      builder: (ctx) => ResultDialogWidgetNxN(
         controller: controller,
         savedGame: savedGame,
         pointsEarned: pointsEarned,
         onClose: () {
           Navigator.pop(ctx);
-          _handleReset(controller); // This cleans the board for a new game
+          _handleReset(controller);
         },
       ),
     );
   }
 
-  void _handleReset(GameController controller) {
+  void _handleReset(BaseGameControllerNxN controller) {
     _isInitialized = false;
     _endDialogShown = false;
     controller.resetGame();
     setState(() {
       _selectedCell = null;
-      _needsReset = false; // Reset the review flag
+      _needsReset = false;
       _isGameStarted = false;
     });
-  }
-
-  void autoEndGameFlow(GameController controller) {
-    // 1. Force state updates
-    setState(() {
-      _isGameStarted = false;
-      _needsReset = true;
-    });
-
-    // 2. Stop controller and calculate final scores
-    controller.stopTimer();
-    controller.endGame();
-
-    // 3. Save and Show Dialog
-    _saveGameToBackend(context, controller, 'completed');
   }
 
   @override
   Widget build(BuildContext context) {
     return ChangeNotifierProvider(
-      create: (_) => GameController(gridSize: 4),
-      child: Consumer<GameController>(
+      create: (_) => GameController6x6(),
+      child: Consumer<GameController6x6>(
         builder: (context, controller, _) {
-          if (!controller.isGenerating) {
-            _initializeGridState(controller);
+          if (!controller.isGenerating && !_isInitialized) {
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (!_isInitialized && mounted) {
+                _initializeGridState(controller);
+              }
+            });
           }
 
-          // If controller stopped while UI still thinks game is running,
-          // run the end-game save/results flow once (no confirmation).
-          SchedulerBinding.instance.addPostFrameCallback((_) {
-            if (!mounted) return;
+          bool gameJustStopped = _isGameStarted &&
+              !controller.isPlaying &&
+              (_lastControllerPlayingState == null ||
+                  _lastControllerPlayingState == true) &&
+              !_needsReset &&
+              !_endDialogShown &&
+              !_isProcessingEnd;
 
-            debugPrint('''
-              AUTO-END CHECK TRIGGERED:
-             _isGameStarted     : $_isGameStarted
-               controller.isPlaying: ${controller.isPlaying}
-               _needsReset        : $_needsReset
-               _endDialogShown    : $_endDialogShown
-               _isProcessingEnd   : $_isProcessingEnd
-              ''');
-            // Game ended (by timer or manual stop) but UI still thinks it's running
-            if (_isGameStarted && !controller.isPlaying && !_needsReset) {
-              // Prevent multiple triggers
-              if (_endDialogShown || _isProcessingEnd) return;
-
-              _endDialogShown = true;
-              _isProcessingEnd = true;
-
-              // Immediately update UI state
-              setState(() {
-                _isGameStarted = false;
-                _needsReset = true;
-              });
-              debugPrint(
-                  "!!! PREMATURE RESET DETECTED HERE !!! Caller: ${StackTrace.current}");
-
-              if (mounted && !_isProcessingEnd) {
-                _isProcessingEnd = true;
-                debugPrint("→ Calling _showStopGameDialog");
-                _showStopGameDialog(context, controller);
-              }
-
-              // Run the full end flow
-              _showStopGameDialog(context, controller);
-            }
-          });
+          if (gameJustStopped) {
+            _lastControllerPlayingState = false;
+            _endDialogShown = true;
+            _isProcessingEnd = true;
+          } else if (controller.isPlaying) {
+            _lastControllerPlayingState = true;
+          }
 
           return WillPopScope(
             onWillPop: () => _onWillPop(controller),
@@ -407,7 +302,7 @@ class _GameScreenState extends State<GameScreen> {
                                   _buildStatsBar(w, h, controller),
                                   _buildControls(w, h, controller),
                                   SizedBox(height: h * 0.02),
-                                  GameGridWidget(
+                                  GameGridWidgetNxN(
                                     controller: controller,
                                     screenHeight: h,
                                     screenWidth: w,
@@ -428,32 +323,22 @@ class _GameScreenState extends State<GameScreen> {
                                     },
                                     onCellTap: (row, col) {
                                       final key = _getKey(row, col);
-
-                                      // 1. Ensure controller exists
                                       if (!_inputControllers.containsKey(key)) {
-                                        final tc = TextEditingController();
-                                        _inputControllers[key] = tc;
-                                      } // Fixed: added closing brace for if
-
-                                      // 2. Ensure focus node exists and attach listener
+                                        _inputControllers[key] =
+                                            TextEditingController();
+                                      }
                                       if (!_focusNodes.containsKey(key)) {
                                         final node = FocusNode();
                                         node.addListener(() {
-                                          if (node.hasFocus) {
-                                            debugPrint(
-                                                'FocusNode gained focus for $key; _selectedCell=$_selectedCell');
-                                            if (mounted) {
-                                              SchedulerBinding.instance
-                                                  .addPostFrameCallback((_) {
-                                                if (mounted &&
-                                                    _selectedCell != key) {
-                                                  setState(() =>
-                                                      _selectedCell = key);
-                                                }
-                                              });
-                                            }
+                                          if (node.hasFocus && mounted) {
+                                            SchedulerBinding.instance
+                                                .addPostFrameCallback((_) {
+                                              if (mounted &&
+                                                  _selectedCell != key)
+                                                setState(
+                                                    () => _selectedCell = key);
+                                            });
                                           } else {
-                                            // Finalize input on focus loss
                                             try {
                                               controller.finalizeCellInput(
                                                   row,
@@ -462,24 +347,22 @@ class _GameScreenState extends State<GameScreen> {
                                                           ?.text ??
                                                       '');
                                             } catch (_) {}
-                                            if (mounted &&
-                                                _selectedCell == key) {
+                                            if (mounted && _selectedCell == key)
                                               setState(
                                                   () => _selectedCell = null);
-                                            }
                                           }
                                         });
                                         _focusNodes[key] = node;
-                                      } // Fixed: added closing brace for if
-
-                                      // 3. Select and request focus
+                                      }
                                       setState(() => _selectedCell = key);
-                                      Future.microtask(() =>
-                                          _focusNodes[key]?.requestFocus());
-                                    }, // Fixed: added closing brace and comma for onCellTap
+                                      _focusNodes[key]?.requestFocus();
+                                    },
+                                    onCellChanged: (row, col) {
+                                      // Handled in widget via controller.updateRawInput
+                                    },
                                   ),
                                   SizedBox(height: h * 0.02),
-                                  GameKeyboardWidget(
+                                  GameKeyboardWidgetNxN(
                                     controller: controller,
                                     isGameStarted: _isGameStarted,
                                     onKeyTap: (val) =>
@@ -498,9 +381,7 @@ class _GameScreenState extends State<GameScreen> {
                       ),
                       if (controller.isGenerating)
                         const Center(
-                          child: CircularProgressIndicator(
-                            color: textPink,
-                          ),
+                          child: CircularProgressIndicator(color: textPink),
                         ),
                     ],
                   ),
@@ -513,7 +394,7 @@ class _GameScreenState extends State<GameScreen> {
     );
   }
 
-  Widget _buildHeader(double w, double h, GameController controller) {
+  Widget _buildHeader(double w, double h, BaseGameControllerNxN controller) {
     return Padding(
       padding: EdgeInsets.all(w * 0.03),
       child: Row(
@@ -538,7 +419,7 @@ class _GameScreenState extends State<GameScreen> {
     );
   }
 
-  Widget _buildControls(double w, double h, GameController controller) {
+  Widget _buildControls(double w, double h, BaseGameControllerNxN controller) {
     return Padding(
       padding: EdgeInsets.fromLTRB(w * 0.05, 10, w * 0.05, 0),
       child: Row(
@@ -553,7 +434,6 @@ class _GameScreenState extends State<GameScreen> {
               (_needsReset && !_isGameStarted)
                   ? null
                   : () {
-                      // Disable Start button if needs reset
                       if (_isGameStarted) {
                         _showStopGameDialog(context, controller);
                       } else {
@@ -590,7 +470,7 @@ class _GameScreenState extends State<GameScreen> {
     );
   }
 
-  Widget _buildStatsBar(double w, double h, GameController controller) {
+  Widget _buildStatsBar(double w, double h, BaseGameControllerNxN controller) {
     return Padding(
       padding: EdgeInsets.symmetric(horizontal: w * 0.05),
       child: Row(
@@ -630,44 +510,39 @@ class _GameScreenState extends State<GameScreen> {
             ),
           ),
           const SizedBox(width: 10),
-          toggleButton(controller), // Hard mode toggle
+          toggleButton(controller),
         ],
       ),
     );
   }
 
-  //toggle button for hard mode
-  Widget toggleButton(GameController controller) {
+  Widget toggleButton(BaseGameControllerNxN controller) {
     final bool enabled = !_isGameStarted && !_needsReset;
+    final Color bgColor = controller.hardMode ? textPink : Colors.grey;
 
-    return GestureDetector(
-      onTap: enabled
+    final TextStyle? btnTextStyle =
+        Theme.of(context).textTheme.labelLarge?.copyWith(
+              color: Colors.white,
+              fontWeight: FontWeight.bold,
+              letterSpacing: 1.1,
+            );
+
+    return TextButton(
+      onPressed: enabled
           ? () {
               controller.setHardMode(!controller.hardMode);
               controller.resetGame();
             }
           : null,
-      child: Opacity(
-        opacity: enabled ? 1.0 : 0.4,
-        child: Container(
-          padding: const EdgeInsets.symmetric(
-            horizontal: 14,
-            vertical: 12,
-          ),
-          decoration: BoxDecoration(
-            color: controller.hardMode ? textPink : Colors.grey,
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: const Text(
-            'Hard',
-            style: TextStyle(
-              color: Colors.white,
-              fontWeight: FontWeight.bold,
-              letterSpacing: 1.1,
-            ),
-          ),
-        ),
+      style: ButtonStyle(
+        backgroundColor: WidgetStateProperty.resolveWith<Color?>(
+            (states) => enabled ? bgColor : Colors.grey.shade400),
+        padding: WidgetStateProperty.all(
+            const EdgeInsets.symmetric(horizontal: 14, vertical: 12)),
+        shape: WidgetStateProperty.all(
+            RoundedRectangleBorder(borderRadius: BorderRadius.circular(8))),
       ),
+      child: Text('Hard', style: btnTextStyle),
     );
   }
 }

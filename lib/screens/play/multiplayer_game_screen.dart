@@ -4,19 +4,23 @@ import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
 import 'package:jol_app/screens/play/widgets/multiplayer_gamehelper.dart';
 import 'package:provider/provider.dart';
-import 'dart:math';
-import 'controller/multiplayer_game_controller.dart';
 import 'models/room_models.dart';
 import 'multiplayer_results_screen.dart';
+import 'controller/base_multiplayer_controller_nxn.dart';
+import 'controller/multiplayer_game_controller.dart';
+import 'controller/multiplayer_game_controller_5x5.dart';
+import 'controller/multiplayer_game_controller_6x6.dart';
 
 class MultiplayerGameScreen extends StatefulWidget {
   final String roomCode;
   final String playerId;
+  final Room room;
 
   const MultiplayerGameScreen({
     super.key,
     required this.roomCode,
     required this.playerId,
+    required this.room,
   });
 
   @override
@@ -49,7 +53,20 @@ class _MultiplayerGameScreenState extends State<MultiplayerGameScreen> {
 
   String _getKey(int row, int col) => '$row-$col';
 
-  bool _isGridFilled(MultiplayerGameController controller, Room room) {
+  /// Format number for display: remove .0 if not in decimal mode
+  String _formatGridValue(double? value, bool useDecimals) {
+    if (value == null) return '';
+    if (useDecimals) {
+      return value.toString();
+    }
+    // Check if the value is an integer
+    if (value == value.toInt()) {
+      return value.toInt().toString();
+    }
+    return value.toString();
+  }
+
+  bool _isGridFilled(BaseMultiplayerControllerNxN controller, Room room) {
     final gridSize = room.settings.gridSize;
     for (int i = 0; i < gridSize; i++) {
       for (int j = 0; j < gridSize; j++) {
@@ -63,7 +80,7 @@ class _MultiplayerGameScreenState extends State<MultiplayerGameScreen> {
   }
 
   // CRITICAL: Handle back button press for abandoned saves
-  Future<bool> _onWillPop(MultiplayerGameController controller) async {
+  Future<bool> _onWillPop(BaseMultiplayerControllerNxN controller) async {
     // If game_screen hasn't started yet, allow free navigation
     if (!controller.isPlaying) {
       return true;
@@ -75,7 +92,7 @@ class _MultiplayerGameScreenState extends State<MultiplayerGameScreen> {
 
   Future<void> _saveGameToBackend(
     BuildContext context,
-    MultiplayerGameController controller,
+    BaseMultiplayerControllerNxN controller,
     Room room,
     String gameStatus,
   ) async {
@@ -133,7 +150,7 @@ class _MultiplayerGameScreenState extends State<MultiplayerGameScreen> {
     }
   }
 
-  void _onKeyboardTap(String value, MultiplayerGameController controller) {
+  void _onKeyboardTap(String value, BaseMultiplayerControllerNxN controller) {
     final selected = _selectedCell;
     if (selected == null) return;
     final parts = selected.split('-');
@@ -175,6 +192,26 @@ class _MultiplayerGameScreenState extends State<MultiplayerGameScreen> {
     }
   }
 
+  BaseMultiplayerControllerNxN _createController() {
+    final size = widget.room.settings.gridSize;
+    if (size == 5) {
+      return MultiplayerGameController5x5(
+        roomCode: widget.roomCode,
+        playerId: widget.playerId,
+      );
+    } else if (size == 6) {
+      return MultiplayerGameController6x6(
+        roomCode: widget.roomCode,
+        playerId: widget.playerId,
+      );
+    } else {
+      return MultiplayerGameController(
+        roomCode: widget.roomCode,
+        playerId: widget.playerId,
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
@@ -182,18 +219,15 @@ class _MultiplayerGameScreenState extends State<MultiplayerGameScreen> {
       statusBarIconBrightness: Brightness.dark,
     ));
 
-    return ChangeNotifierProvider(
-      create: (_) => MultiplayerGameController(
-        roomCode: widget.roomCode,
-        playerId: widget.playerId,
-      ),
-      child: Consumer<MultiplayerGameController>(
+    return ChangeNotifierProvider<BaseMultiplayerControllerNxN>(
+      create: (_) => _createController(),
+      child: Consumer<BaseMultiplayerControllerNxN>(
         builder: (context, controller, _) {
-          // CRITICAL FIX 1: Navigate to results when game_screen ends + auto-save
-          if (controller.room?.gameState.status == 'ended' &&
+          // CRITICAL FIX 1: Navigate to results when game_screen ends OR player submits
+          if ((controller.room?.gameState.status == 'ended' || controller.isSubmitted) &&
               !controller.isPlaying) {
             WidgetsBinding.instance.addPostFrameCallback((_) async {
-              // Auto-save before navigating if player had submitted
+              // Only auto-save if we haven't already and it's appropriate
               if (!_hasAutoSaved &&
                   controller.isSubmitted &&
                   controller.room != null) {
@@ -210,7 +244,11 @@ class _MultiplayerGameScreenState extends State<MultiplayerGameScreen> {
                   status,
                 );
               }
+              
+              // Ensure we don't navigate repeatedly effectively
+              // The controller.isPlaying check above helps, but let's be safe
               if (mounted) {
+                // Use pushReplacement to prevent going back to the game
                 Navigator.pushReplacement(
                   context,
                   MaterialPageRoute(
@@ -359,39 +397,27 @@ class _MultiplayerGameScreenState extends State<MultiplayerGameScreen> {
                                           borderRadius:
                                               BorderRadius.circular(10),
                                         ),
-                                        child: Row(
-                                          mainAxisAlignment:
-                                              MainAxisAlignment.spaceBetween,
-                                          children: [
-                                            isTimed
-                                                ? Text(
-                                                    "Time: ${controller.timeLeft.inMinutes.toString().padLeft(2, '0')}:${(controller.timeLeft.inSeconds % 60).toString().padLeft(2, '0')}",
-                                                    style: const TextStyle(
-                                                      color: Colors.white,
-                                                      fontWeight:
-                                                          FontWeight.w700,
-                                                      fontSize: 14,
-                                                    ),
-                                                  )
-                                                : const Text(
-                                                    "Mode: Untimed",
-                                                    style: TextStyle(
-                                                      color: Colors.white,
-                                                      fontWeight:
-                                                          FontWeight.w700,
-                                                      fontSize: 14,
-                                                    ),
-                                                  ),
-                                            Text(
-                                              "Hints: ${controller.hintsRemaining}",
-                                              style: const TextStyle(
-                                                color: Colors.white,
-                                                fontWeight: FontWeight.w700,
-                                                fontSize: 14,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
+                                         child: Center(
+                                           child: isTimed
+                                               ? Text(
+                                                   "Time: ${controller.timeLeft.inMinutes.toString().padLeft(2, '0')}:${(controller.timeLeft.inSeconds % 60).toString().padLeft(2, '0')}",
+                                                   style: const TextStyle(
+                                                     color: Colors.white,
+                                                     fontWeight:
+                                                         FontWeight.w700,
+                                                     fontSize: 14,
+                                                   ),
+                                                 )
+                                               : const Text(
+                                                   "Mode: Untimed",
+                                                   style: TextStyle(
+                                                     color: Colors.white,
+                                                     fontWeight:
+                                                         FontWeight.w700,
+                                                     fontSize: 14,
+                                                   ),
+                                                 ),
+                                         ),
                                       ),
                                     ),
                                   ],
@@ -453,22 +479,6 @@ class _MultiplayerGameScreenState extends State<MultiplayerGameScreen> {
                                   ),
                                 ),
                               ),
-                              const SizedBox(height: 8),
-
-                              Padding(
-                                padding:
-                                    const EdgeInsets.symmetric(horizontal: 20),
-                                child: Text(
-                                  "Double tap a cell to use a hint (if available)",
-                                  style: TextStyle(
-                                    fontFamily: "Rubik",
-                                    fontSize: 12,
-                                    color: Colors.grey.shade700,
-                                    fontStyle: FontStyle.italic,
-                                  ),
-                                  textAlign: TextAlign.center,
-                                ),
-                              ),
                               const SizedBox(height: 16),
 
                               /// 4. Grid - Fixed height to prevent overflow
@@ -527,16 +537,7 @@ class _MultiplayerGameScreenState extends State<MultiplayerGameScreen> {
                                               cellColor =
                                                   const Color(0xFFFFD54F);
                                             }
-                                            return GestureDetector(
-                                              onDoubleTap: () {
-                                                if (!isFixedCell &&
-                                                    controller.hintsRemaining >
-                                                        0) {
-                                                  _showHintDialog(
-                                                      controller, row, col);
-                                                }
-                                              },
-                                              child: Container(
+                                             return Container(
                                                 decoration: BoxDecoration(
                                                   color: cellColor,
                                                   borderRadius:
@@ -561,8 +562,10 @@ class _MultiplayerGameScreenState extends State<MultiplayerGameScreen> {
                                                         )
                                                       : isFixedCell
                                                           ? Text(
-                                                              value?.toString() ??
-                                                                  "",
+                                                              _formatGridValue(
+                                                                  value,
+                                                                  room.settings
+                                                                      .useDecimals),
                                                               style: TextStyle(
                                                                 fontWeight:
                                                                     FontWeight
@@ -608,8 +611,7 @@ class _MultiplayerGameScreenState extends State<MultiplayerGameScreen> {
                                                               ),
                                                             ),
                                                 ),
-                                              ),
-                                            );
+                                              );
                                           },
                                         );
                                       },
@@ -723,7 +725,7 @@ class _MultiplayerGameScreenState extends State<MultiplayerGameScreen> {
   }
 
   Widget _buildKeyButton(
-      String number, MultiplayerGameController controller, double fontSize) {
+      String number, BaseMultiplayerControllerNxN controller, double fontSize) {
     return Expanded(
       child: Material(
         color: Colors.white,
@@ -749,7 +751,7 @@ class _MultiplayerGameScreenState extends State<MultiplayerGameScreen> {
     );
   }
 
-  Widget _buildClearButton(MultiplayerGameController controller) {
+  Widget _buildClearButton(BaseMultiplayerControllerNxN controller) {
     return Expanded(
       child: Material(
         color: Colors.grey.shade400,
@@ -772,7 +774,7 @@ class _MultiplayerGameScreenState extends State<MultiplayerGameScreen> {
     );
   }
 
-  Widget _buildLeaderboardOverlay(MultiplayerGameController controller) {
+  Widget _buildLeaderboardOverlay(BaseMultiplayerControllerNxN controller) {
     final leaderboard = controller.getLeaderboard();
     return GestureDetector(
       onTap: () => setState(() => _showLeaderboard = false),
@@ -856,35 +858,8 @@ class _MultiplayerGameScreenState extends State<MultiplayerGameScreen> {
     );
   }
 
-  void _showHintDialog(MultiplayerGameController controller, int row, int col) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Use Hint?'),
-        content: Text(
-            'Use a hint for this cell? (${controller.hintsRemaining} remaining)\n\nThis will deduct 5 points.'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () async {
-              Navigator.pop(context);
-              final success = await controller.useHint(row, col);
-              if (success) {
-                _inputControllers[_getKey(row, col)]?.text =
-                    controller.grid[row][col]?.toString() ?? '';
-              }
-            },
-            child: const Text('Use Hint'),
-          ),
-        ],
-      ),
-    );
-  }
 
-  void _showLeaveConfirmation(MultiplayerGameController controller) {
+  void _showLeaveConfirmation(BaseMultiplayerControllerNxN controller) {
     showDialog(
       context: context,
       barrierDismissible: false,

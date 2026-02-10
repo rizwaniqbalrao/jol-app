@@ -1,5 +1,7 @@
 // room_models.dart - FIXED VERSION
 
+import 'package:flutter/material.dart';
+
 class RoomSettings {
   final int gridSize;
   final String mode;
@@ -65,13 +67,28 @@ class PuzzleData {
 
   factory PuzzleData.fromJson(Map<dynamic, dynamic> json) {
     try {
+      debugPrint('📋 Parsing PuzzleData from JSON');
+      debugPrint(
+          '   - grid keys: ${(json['grid'] is Map) ? (json['grid'] as Map).keys.length : (json['grid'] is List) ? (json['grid'] as List).length : 'unknown'}');
+      debugPrint(
+          '   - solution keys: ${(json['solution'] is Map) ? (json['solution'] as Map).keys.length : (json['solution'] is List) ? (json['solution'] as List).length : 'unknown'}');
+      debugPrint(
+          '   - isFixed keys: ${(json['isFixed'] is Map) ? (json['isFixed'] as Map).keys.length : (json['isFixed'] is List) ? (json['isFixed'] as List).length : 'unknown'}');
+
+      final grid = _parseGrid(json['grid']);
+      final solution = _parseGrid(json['solution']);
+      final isFixed = _parseFixed(json['isFixed']);
+
+      debugPrint(
+          '   ✅ Parsed - grid: ${grid.length}x${grid.isNotEmpty ? grid[0].length : 0}, solution: ${solution.length}x${solution.isNotEmpty ? solution[0].length : 0}, isFixed: ${isFixed.length}x${isFixed.isNotEmpty ? isFixed[0].length : 0}');
+
       return PuzzleData(
-        grid: _parseGrid(json['grid']),
-        solution: _parseGrid(json['solution']),
-        isFixed: _parseFixed(json['isFixed']),
+        grid: grid,
+        solution: solution,
+        isFixed: isFixed,
       );
     } catch (e) {
-      print('❌ Error parsing PuzzleData: $e');
+      debugPrint('❌ Error parsing PuzzleData: $e');
       rethrow;
     }
   }
