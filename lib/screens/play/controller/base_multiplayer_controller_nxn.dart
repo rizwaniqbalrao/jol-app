@@ -156,13 +156,15 @@ abstract class BaseMultiplayerControllerNxN extends ChangeNotifier {
             if (i < puzzle.grid.length && j < puzzle.grid[i].length) {
               final rawValue = puzzle.grid[i][j];
               // Round to 1 decimal place to avoid floating-point errors
-              grid[i][j] = rawValue != null ? (rawValue * 10).round() / 10.0 : null;
+              grid[i][j] =
+                  rawValue != null ? (rawValue * 10).round() / 10.0 : null;
             }
             if (grid[i][j] == null || grid[i][j] == -1) {
               if (i < puzzle.solution.length && j < puzzle.solution[i].length) {
                 final rawValue = puzzle.solution[i][j];
                 // Round to 1 decimal place to avoid floating-point errors
-                grid[i][j] = rawValue != null ? (rawValue * 10).round() / 10.0 : null;
+                grid[i][j] =
+                    rawValue != null ? (rawValue * 10).round() / 10.0 : null;
               }
             }
           } else {
@@ -277,14 +279,131 @@ abstract class BaseMultiplayerControllerNxN extends ChangeNotifier {
     notifyListeners();
   }
 
+  bool _validateCellMath(int row, int col, double tolerance) {
+    if (_room?.puzzle == null) return false;
+
+    // Validate based on Headers (Row 0 or Col 0) or Middle Cells logic
+    // NOTE: Validation logic:
+    // Col Header (row=0, col>0): colhead = middle[n][col] ± rowhead[n]
+    // Row Header (row>0, col=0): rowhead = middle[row][n] ± colhead[n]
+    // Middle (row>0, col>0): middle = rowhead[row] ± colhead[col]
+
+    final operation = _room!.settings.operation;
+
+    if (row == 0 && col > 0) {
+      // Validation for Column Header using ANY middle cell in this column
+      for (int n = 1; n < gridSize; n++) {
+        final middleNum = grid[n][col];
+        final rowHead = grid[n][0];
+        if (middleNum != null && rowHead != null) {
+          double expected;
+          if (operation == 'addition') {
+            // colhead = middle + rowhead
+            expected = middleNum + rowHead;
+          } else {
+            // colhead = |middle - rowhead|
+            expected = (middleNum - rowHead).abs();
+          }
+          if ((grid[row][col]! - expected).abs() <= tolerance) return true;
+        }
+      }
+    } else if (row > 0 && col == 0) {
+      // Validation for Row Header using ANY middle cell in this row
+      for (int n = 1; n < gridSize; n++) {
+        final middleNum = grid[row][n];
+        final colHead = grid[0][n];
+        if (middleNum != null && colHead != null) {
+          double expected;
+          if (operation == 'addition') {
+            // rowhead = middle + colhead
+            expected = middleNum + colHead;
+          } else {
+            // rowhead = |middle - colhead|
+            expected = (middleNum - colHead).abs();
+          }
+          if ((grid[row][col]! - expected).abs() <= tolerance) return true;
+        }
+      }
+    } else if (row > 0 && col > 0) {
+      // Middle Cell
+      final rowHead = grid[row][0];
+      final colHead = grid[0][col];
+      if (rowHead != null && colHead != null) {
+        double expected;
+        if (operation == 'addition') {
+          // middle = rowhead + colhead
+          expected = rowHead + colHead;
+        } else {
+          // middle = |rowhead - colhead|
+          expected = (rowHead - colHead).abs();
+        }
+        if ((grid[row][col]! - expected).abs() <= tolerance) return true;
+      }
+    }
+    return false;
+  }
+
+  // --------------------------------------------------
+  // Calculation Logic: Given 2 of 3 values, find the 3rd
+  // rowhead = grid[row][0]
+  // colhead = grid[0][col]
+  // middlenum = grid[row][col]
+  // --------------------------------------------------
+  /// Calculates the third value when two of {rowhead, colhead, middlenum} are known
+  /// Returns the calculated value, or null if insufficient data
+  double? calculateMissingValue({
+    double? rowhead,
+    double? colhead,
+    double? middlenum,
+    required PuzzleOperation operation,
+  }) {
+    int knownCount = 0;
+    if (rowhead != null) knownCount++;
+    if (colhead != null) knownCount++;
+    if (middlenum != null) knownCount++;
+
+    // Need exactly 2 known values to calculate the 3rd
+    if (knownCount != 2) return null;
+
+    if (operation == PuzzleOperation.addition) {
+      // Forward: middlenum = rowhead + colhead
+      // Reverse: rowhead = middlenum - colhead
+      // Reverse: colhead = middlenum - rowhead
+      if (rowhead != null && colhead != null) {
+        return rowhead + colhead;
+      } else if (rowhead != null && middlenum != null) {
+        return middlenum - rowhead;
+      } else if (colhead != null && middlenum != null) {
+        return middlenum - colhead;
+      }
+    } else {
+      // Subtraction (absolute difference)
+      // Forward: middlenum = |rowhead - colhead|
+      // Reverse: rowhead = middlenum + colhead or middlenum - colhead (both possibilities)
+      // Reverse: colhead = middlenum + rowhead or middlenum - rowhead (both possibilities)
+      if (rowhead != null && colhead != null) {
+        return (rowhead - colhead).abs();
+      } else if (rowhead != null && middlenum != null) {
+        // middlenum = |rowhead - colhead|
+        // colhead could be: rowhead - middlenum or rowhead + middlenum
+        // Return the first valid possibility
+        return rowhead - middlenum;
+      } else if (colhead != null && middlenum != null) {
+        // middlenum = |rowhead - colhead|
+        // rowhead could be: colhead - middlenum or colhead + middlenum
+        // Return the first valid possibility
+        return colhead - middlenum;
+      }
+    }
+    return null;
+  }
+
   void _validateGrid({bool progressOnly = false}) {
     if (_room?.puzzle == null) return;
 
     final puzzle = _room!.puzzle!;
     int correctCount = 0;
-    int filledCount = 0;
     int totalPlayerCells = 0;
-    const tolerance = 0.001;
 
     for (int i = 0; i < gridSize; i++) {
       for (int j = 0; j < gridSize; j++) {
@@ -315,25 +434,21 @@ abstract class BaseMultiplayerControllerNxN extends ChangeNotifier {
         if (cellIsFixed) continue;
 
         final current = grid[i][j];
-        double? correct;
-        if (i < puzzle.solution.length && j < puzzle.solution[i].length) {
-          final rawCorrect = puzzle.solution[i][j];
-          // Round solution value to 1 decimal place for consistent comparison
-          correct = rawCorrect != null ? (rawCorrect * 10).round() / 10.0 : null;
-        }
-
-        if (current != null) filledCount++;
 
         bool isCorrect = false;
-        if (current != null && correct != null) {
-          // Round both values to ensure consistency, then compare with tolerance
-          final roundedCurrent = (current * 10).round() / 10.0;
-          final roundedCorrect = (correct * 10).round() / 10.0;
-          isCorrect = (roundedCurrent - roundedCorrect).abs() < tolerance;
+        if (current != null) {
+          const tolerance = 0.0001;
+          isCorrect = _validateCellMath(i, j, tolerance);
+
+          // DEBUG LOGGING
+          if (!isCorrect) {
+            debugPrint(
+                "❌ Cell [$i][$j] Incorrect: User=$current (math validation failed)");
+          }
         }
 
         if (isCorrect) correctCount++;
-        if (current != null && correct != null && !isCorrect) {
+        if (current != null && !isCorrect) {
           isWrong[i][j] = true;
         }
       }
@@ -345,6 +460,11 @@ abstract class BaseMultiplayerControllerNxN extends ChangeNotifier {
     } else {
       _accuracyPercentage = 0.0;
     }
+
+    debugPrint(
+        "📊 Validation Result: $correctCount / $_totalPlayerCells correct. Accuracy: ${_accuracyPercentage.toStringAsFixed(1)}%. Score: $localScore");
+    debugPrint(
+        "   Validation: Header-based math (${_room?.settings.operation})");
 
     int progressScore = totalPlayerCells > 0
         ? (correctCount / totalPlayerCells * 100).round()
@@ -423,6 +543,7 @@ abstract class BaseMultiplayerControllerNxN extends ChangeNotifier {
 
   void _markSubmitted() {
     isSubmitted = true;
+    isPlaying = false; // Stop playing locally once submitted
     _roomService.markCompleted(roomCode, playerId, localScore);
     Future.delayed(const Duration(milliseconds: 500), () {
       _checkIfAllCompleted();

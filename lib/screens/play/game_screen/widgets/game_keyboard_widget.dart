@@ -190,8 +190,8 @@ class GameKeyboardWidget extends StatelessWidget {
                 fontSize: fontSize * 0.7,
                 fontWeight: FontWeight.bold,
                 color: !isGameStarted
-                    ? (controller.useDecimals ? Colors.white : Colors.black87)
-                    : Colors.black45,
+                    ? (controller.useDecimals ? Colors.white : Colors.white)
+                    : Colors.white,
               ),
             ),
           ),

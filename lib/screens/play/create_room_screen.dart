@@ -156,9 +156,9 @@ class _CreateRoomScreenState extends State<CreateRoomScreen> {
         "   Player cells: ${_selectedGridSize * _selectedGridSize - fixedCount}");
   }
 
-  /// Validates puzzle structure before saving to Firebase
+  /// Validates puzzle structure and arithmetic consistency
   bool _validatePuzzle(PuzzleData puzzle, int expectedSize) {
-    debugPrint("🔍 Validating puzzle structure...");
+    debugPrint("🔍 Validating puzzle structure and arithmetic...");
 
     try {
       // Check grid dimensions
@@ -233,6 +233,38 @@ class _CreateRoomScreenState extends State<CreateRoomScreen> {
       if (nullCount > 0) {
         debugPrint("❌ Solution has $nullCount null cells");
         return false;
+      }
+
+      // ARITHMETIC VALIDATION
+      int arithmeticErrors = 0;
+      for (int i = 1; i < expectedSize; i++) {
+        for (int j = 1; j < expectedSize; j++) {
+          final rowHeader = puzzle.solution[i][0];
+          final colHeader = puzzle.solution[0][j];
+          final cellValue = puzzle.solution[i][j];
+
+          if (rowHeader == null || colHeader == null || cellValue == null) continue;
+
+          double expectedValue;
+          if (_selectedOperation == 'addition') {
+             expectedValue = rowHeader + colHeader;
+          } else {
+             expectedValue = (rowHeader - colHeader).abs();
+          }
+          
+          final roundedExpected = (expectedValue * 10).round() / 10.0;
+          final roundedActual = (cellValue * 10).round() / 10.0;
+          
+          if ((roundedExpected - roundedActual).abs() > 0.001) {
+             debugPrint("❌ Arithmetic Error at [$i][$j]: ${_selectedOperation.toUpperCase()} Row($rowHeader) op Col($colHeader) != Cell($cellValue). Expected: $roundedExpected");
+             arithmeticErrors++;
+          }
+        }
+      }
+      
+      if (arithmeticErrors > 0) {
+         debugPrint("❌ Found $arithmeticErrors arithmetic inconsistencies.");
+         return false;
       }
 
       // Count fixed cells (seed numbers)

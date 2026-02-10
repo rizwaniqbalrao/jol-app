@@ -223,11 +223,11 @@ class _MultiplayerGameScreenState extends State<MultiplayerGameScreen> {
       create: (_) => _createController(),
       child: Consumer<BaseMultiplayerControllerNxN>(
         builder: (context, controller, _) {
-          // CRITICAL FIX 1: Navigate to results when game_screen ends + auto-save
-          if (controller.room?.gameState.status == 'ended' &&
+          // CRITICAL FIX 1: Navigate to results when game_screen ends OR player submits
+          if ((controller.room?.gameState.status == 'ended' || controller.isSubmitted) &&
               !controller.isPlaying) {
             WidgetsBinding.instance.addPostFrameCallback((_) async {
-              // Auto-save before navigating if player had submitted
+              // Only auto-save if we haven't already and it's appropriate
               if (!_hasAutoSaved &&
                   controller.isSubmitted &&
                   controller.room != null) {
@@ -244,7 +244,11 @@ class _MultiplayerGameScreenState extends State<MultiplayerGameScreen> {
                   status,
                 );
               }
+              
+              // Ensure we don't navigate repeatedly effectively
+              // The controller.isPlaying check above helps, but let's be safe
               if (mounted) {
+                // Use pushReplacement to prevent going back to the game
                 Navigator.pushReplacement(
                   context,
                   MaterialPageRoute(

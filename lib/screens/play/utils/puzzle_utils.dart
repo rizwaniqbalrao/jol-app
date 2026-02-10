@@ -234,7 +234,7 @@ class PuzzleUtils {
       required bool useDecimals,
       required bool hardMode,
       required PuzzleOperation operation,
-      int maxAttempts = 25}) {
+      int maxAttempts = 100}) {
     
     int attempts = 0;
     bool success = false;
@@ -244,56 +244,117 @@ class PuzzleUtils {
         _clearBoardStatic(grid, solutionGrid, isFixed);
         
         try {
-            List<int> availableRows = List.generate(gridSize, (i) => i);
-            List<int> availableCols = List.generate(gridSize, (i) => i);
+            // 1. GENERATE CONSISTENT SOLUTION
+            // Fill Headers first to ensure consistency
+            // Row Headers [1][0] to [size-1][0]
+            for (int i = 1; i < gridSize; i++) {
+                solutionGrid[i][0] = _randomNumberNotInRowCol(i, 0, random, solutionGrid, gridSize, useDecimals, hardMode);
+            }
+            // Col Headers [0][1] to [0][size-1]
+            for (int j = 1; j < gridSize; j++) {
+                solutionGrid[0][j] = _randomNumberNotInRowCol(0, j, random, solutionGrid, gridSize, useDecimals, hardMode);
+            }
 
-            int seedNumbers = 0;
-
-            for (int i = 0; i < gridSize; i++) {
-                int randomRow, randomCol;
-                do {
-                    if (seedNumbers == 0) {
-                        randomRow = 0;
-                        randomCol = availableCols[random.nextInt(availableCols.length - 1) + 1];
-                    } else {
-                        randomRow = availableRows[random.nextInt(availableRows.length)];
-                        randomCol = availableCols[random.nextInt(availableCols.length)];
+            // Compute Body Cells based on Headers
+            for (int i = 1; i < gridSize; i++) {
+                for (int j = 1; j < gridSize; j++) {
+                    double? val;
+                    if (operation == PuzzleOperation.addition) {
+                         if (solutionGrid[i][0] != null && solutionGrid[0][j] != null) {
+                             val = solutionGrid[i][0]! + solutionGrid[0][j]!;
+                         }
+                    } else { // Subtraction
+                         if (solutionGrid[i][0] != null && solutionGrid[0][j] != null) {
+                             val = (solutionGrid[i][0]! - solutionGrid[0][j]!).abs();
+                         }
                     }
-                } while (randomRow == 0 && randomCol == 0);
-
-                solutionGrid[randomRow][randomCol] = _randomNumberNotInRowCol(randomRow,
-                    randomCol, random, solutionGrid, gridSize, useDecimals, hardMode);
-                grid[randomRow][randomCol] = solutionGrid[randomRow][randomCol];
-                isFixed[randomRow][randomCol] = true;
-
-                seedNumbers++;
-                availableRows.remove(randomRow);
-                availableCols.remove(randomCol);
+                    solutionGrid[i][j] = val != null ? _staticSafeResult(val, hardMode) : null;
+                }
             }
 
-            // Initial solving pass
-            solvingBoard1Static(solutionGrid, gridSize, operation, hardMode);
+            // 2. CHECK IF SOLUTION IS VALID (No nulls, values in range)
+            bool solutionValid = true;
+            for(int i=0; i<gridSize; i++) {
+                for(int j=0; j<gridSize; j++) {
+                    if (i==0 && j==0) continue;
+                    if (solutionGrid[i][j] == null) {
+                        solutionValid = false; 
+                        break;
+                    }
+                }
+            }
+            if (!solutionValid) continue;
 
-            // Add additional seeds
-            _addAdditionalSeedsStatic(random, grid, solutionGrid,
-                isFixed, gridSize, seedNumbers, operation, useDecimals, hardMode);
+            // 3. PICK CLUES (isFixed)
+            // Create a temporary grid for solvability check
+            List<List<double?>> testGrid = List.generate(gridSize, (_) => List.filled(gridSize, null));
+            testGrid[0][0] = -1;
+            
+            int cluesToPick = gridSize; // Start with gridSize number of clues
+            List<Point<int>> allCoords = [];
+            for(int i=0; i<gridSize; i++) {
+                for(int j=0; j<gridSize; j++) {
+                    if (i==0 && j==0) continue;
+                    allCoords.add(Point(i, j));
+                }
+            }
+            allCoords.shuffle(random);
 
-            // Final solving ripple
-            for (int n = 0; n < gridSize * 5; n++) {
-                solvingBoardStatic(solutionGrid, gridSize, operation, hardMode);
+            // Pick initial set of clues
+            for(int k=0; k<cluesToPick && k<allCoords.length; k++) {
+                Point<int> p = allCoords[k];
+                testGrid[p.x][p.y] = solutionGrid[p.x][p.y];
+                isFixed[p.x][p.y] = true;
+                grid[p.x][p.y] = solutionGrid[p.x][p.y];
             }
 
-            if (checkBoardSolvableStatic(solutionGrid, gridSize)) {
-                // Success - hide non-fixed
-                for (int i = 0; i < gridSize; i++) {
+            // 4. CHECK SOLVABILITY
+            // Try to solve testGrid using deductive logic
+            solvingBoardStatic(testGrid, gridSize, operation, hardMode);
+            // Repeatedly solve...
+             for (int n = 0; n < gridSize * 2; n++) {
+                solvingBoardStatic(testGrid, gridSize, operation, hardMode);
+            }
+
+            if (checkBoardSolvableStatic(testGrid, gridSize)) {
+                success = true;
+            } else {
+                // Not solvable with these clues? Add more clues until solvable or give up
+                // Current approach: simple retry with new board. 
+                // Alternatively: Add more seeds.
+                _addAdditionalSeedsStatic(random, grid, solutionGrid, isFixed, gridSize, cluesToPick, operation, useDecimals, hardMode);
+                 
+                 // Re-check solvability on testGrid (which needs updates from new seeds)
+                 // Re-sync testGrid with new isFixed
+                 for(int i=0; i<gridSize; i++) {
+                    for(int j=0; j<gridSize; j++) {
+                        if (isFixed[i][j]) {
+                             testGrid[i][j] = solutionGrid[i][j];
+                        }
+                    }
+                 }
+                 for (int n = 0; n < gridSize * 5; n++) {
+                    solvingBoardStatic(testGrid, gridSize, operation, hardMode);
+                 }
+                 
+                 if (checkBoardSolvableStatic(testGrid, gridSize)) {
+                     success = true;
+                 }
+            }
+
+            if (success) {
+                 // Final cleanup: Hide non-fixed cells in player 'grid'
+                 for (int i = 0; i < gridSize; i++) {
                     for (int j = 0; j < gridSize; j++) {
                         if (!isFixed[i][j]) {
                             grid[i][j] = null;
+                        } else {
+                            grid[i][j] = solutionGrid[i][j];
                         }
                     }
                 }
-                success = true;
             }
+
         } catch (e) {
             // retry
         }
@@ -334,17 +395,21 @@ class PuzzleUtils {
         int r = random.nextInt(gridSize);
         int c = random.nextInt(gridSize);
 
-        if (r != 0 && c != 0 && solutionGrid[r][c] == null &&
-            checkConditionStatic(r, c, solutionGrid, gridSize)) {
-          final rawVal =
-              generateRandomNumber(random, useDecimals, hardMode, gridSize);
-          solutionGrid[r][c] = (rawVal * 10).round() / 10.0;
-          grid[r][c] = solutionGrid[r][c];
-          isFixed[r][c] = true;
-          seedNumbers++;
-            for (int n = 0; n < 10; n++) {
-                solvingBoardStatic(solutionGrid, gridSize, operation, hardMode);
-            }
+        if (r != 0 && c != 0 && !isFixed[r][c]) {
+           // If solutionGrid has value, reveal it. If not (shouldn't happen), generate one.
+           if (solutionGrid[r][c] != null) {
+              grid[r][c] = solutionGrid[r][c];
+              isFixed[r][c] = true;
+              seedNumbers++;
+           } else {
+               // Fallback if solutionGrid had nulls (unlikely in new logic)
+              final rawVal =
+                  generateRandomNumber(random, useDecimals, hardMode, gridSize);
+              solutionGrid[r][c] = (rawVal * 10).round() / 10.0;
+              grid[r][c] = solutionGrid[r][c];
+              isFixed[r][c] = true;
+              seedNumbers++;
+           }
         }
     }
     return seedNumbers;
