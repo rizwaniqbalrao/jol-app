@@ -26,18 +26,6 @@ class ResultDialogWidget extends StatelessWidget {
     final accuracy = savedGame?.accuracyPercentage ?? controller.accuracyPercentage;
     final totalCells = (controller.gridSize * controller.gridSize) - 1 - controller.seedNumbers;
 
-    int correctCount = 0;
-    for (int i = 0; i < controller.gridSize; i++) {
-      for (int j = 0; j < controller.gridSize; j++) {
-        if (i == 0 && j == 0) continue;
-        if (!controller.isFixed[i][j] &&
-            controller.grid[i][j] != null &&
-            controller.grid[i][j] == controller.solutionGrid[i][j]) {
-          correctCount++;
-        }
-      }
-    }
-
     return Dialog(
       backgroundColor: Colors.transparent,
       elevation: 0,
@@ -70,7 +58,7 @@ class ResultDialogWidget extends StatelessWidget {
                     children: [
                       const Text(
                         "CHALLENGE COMPLETE",
-                        style: TextStyle(
+                         style: TextStyle(
                           fontFamily: 'Digitalt',
                           fontSize: 22,
                           color: primaryBlue,
@@ -79,37 +67,116 @@ class ResultDialogWidget extends StatelessWidget {
                       ),
                       const SizedBox(height: 24),
 
-                      // Accuracy and Score Row
-                      Row(
-                        children: [
-                          _buildMainStat("ACCURACY", "${accuracy.toStringAsFixed(0)}%", accentPink),
-                          const SizedBox(width: 12),
-                          _buildMainStat("SCORE", "${savedGame?.finalScore ?? controller.score}", primaryBlue),
-                        ],
-                      ),
+                      // Scoring breakdown wrapped in Builder
+                      Builder(
+                        builder: (context) {
+                          // Calculate scoring breakdown
+                          final int correctAnswers = controller.correctAnswers;
+                          final int baseScore = correctAnswers * 5;
+                          final int timeRemaining = controller.timeLeft.inSeconds;
+                          final int timeBonus = controller.mode == GameMode.timed 
+                              ? timeRemaining * 2 
+                              : 0;
+                          final double multiplier = controller.getMultiplier();
+                          final int totalScore = savedGame?.finalScore ?? controller.score;
 
-                      const SizedBox(height: 16),
+                          return Column(
+                            children: [
+                              // Main Score Display
+                              Container(
+                                padding: const EdgeInsets.all(24),
+                                decoration: BoxDecoration(
+                                  gradient: const LinearGradient(
+                                    colors: [primaryBlue, Color(0xFF0A4DBF)],
+                                    begin: Alignment.topLeft,
+                                    end: Alignment.bottomRight,
+                                  ),
+                                  borderRadius: BorderRadius.circular(24),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: primaryBlue.withOpacity(0.3),
+                                      blurRadius: 20,
+                                      offset: const Offset(0, 8),
+                                    ),
+                                  ],
+                                ),
+                                child: Column(
+                                  children: [
+                                    const Text(
+                                      "FINAL SCORE",
+                                      style: TextStyle(
+                                        color: Colors.white70,
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.bold,
+                                        letterSpacing: 1.2,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 8),
+                                    Text(
+                                      "$totalScore",
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 48,
+                                        fontFamily: 'Digitalt',
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 16),
+                                    Container(
+                                      height: 1,
+                                      color: Colors.white24,
+                                    ),
+                                    const SizedBox(height: 16),
+                                    // Score breakdown
+                                    _buildScoreBreakdownRow(
+                                      "Base Score",
+                                      "$correctAnswers × 5",
+                                      "$baseScore",
+                                    ),
+                                    if (controller.mode == GameMode.timed) ...[
+                                      const SizedBox(height: 8),
+                                      _buildScoreBreakdownRow(
+                                        "Time Bonus",
+                                        "${timeRemaining}s × 2",
+                                        "+$timeBonus",
+                                      ),
+                                    ],
+                                    const SizedBox(height: 8),
+                                    _buildScoreBreakdownRow(
+                                      "Multiplier",
+                                      _getMultiplierDescription(multiplier),
+                                      "×${multiplier.toStringAsFixed(1)}",
+                                    ),
+                                  ],
+                                ),
+                              ),
 
-                      // Detailed Stats Container
-                      Container(
-                        padding: const EdgeInsets.symmetric(vertical: 18),
-                        decoration: BoxDecoration(
-                          color: neutralBg,
-                          borderRadius: BorderRadius.circular(24),
-                          border: Border.all(color: Colors.black.withOpacity(0.04)),
-                        ),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                          children: [
-                            _buildSubStat("Correct", "$correctCount", successGreen),
-                            _buildVerticalDivider(),
-                            _buildSubStat("Total", "${totalCells-6}", primaryBlue),
-                            if (savedGame?.completionTime != null) ...[
-                              _buildVerticalDivider(),
-                              _buildSubStat("Time", _formatTime(savedGame!.completionTime!), Colors.orange),
+                              const SizedBox(height: 16),
+
+                              // Additional Stats Container
+                              Container(
+                                padding: const EdgeInsets.symmetric(vertical: 18),
+                                decoration: BoxDecoration(
+                                  color: neutralBg,
+                                  borderRadius: BorderRadius.circular(24),
+                                  border: Border.all(color: Colors.black.withOpacity(0.04)),
+                                ),
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                                  children: [
+                                    _buildSubStat("Accuracy", "${accuracy.toStringAsFixed(0)}%", accentPink),
+                                    _buildVerticalDivider(),
+                                    _buildSubStat("Correct", "${controller.correctAnswers}/${controller.totalPlayerCells}", successGreen),
+                                    if (savedGame?.completionTime != null) ...[
+                                      _buildVerticalDivider(),
+                                      _buildSubStat("Time", _formatTime(savedGame!.completionTime!), Colors.orange),
+                                    ],
+                                  ],
+                                ),
+                              ),
                             ],
-                          ],
-                        ),
+                          );
+                        },
                       ),
 
                       const SizedBox(height: 20),
@@ -211,6 +278,65 @@ class ResultDialogWidget extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  Widget _buildScoreBreakdownRow(String label, String calculation, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            label,
+            style: const TextStyle(
+              color: Colors.white70,
+              fontSize: 13,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          Row(
+            children: [
+              Text(
+                calculation,
+                style: const TextStyle(
+                  color: Colors.white54,
+                  fontSize: 12,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Text(
+                value,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 16,
+                  fontFamily: 'Digitalt',
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _getMultiplierDescription(double multiplier) {
+    final gridSize = controller.gridSize;
+    final useDecimals = controller.useDecimals;
+    final hardMode = controller.hardMode;
+    
+    String difficulty = "";
+    if (useDecimals && hardMode) {
+      difficulty = "Decimal Hard";
+    } else if (useDecimals) {
+      difficulty = "Decimal Easy";
+    } else if (hardMode) {
+      difficulty = "Integer Hard";
+    } else {
+      difficulty = "Integer Easy";
+    }
+    
+    return "${gridSize}×$gridSize $difficulty";
   }
 
   Widget _buildMainStat(String label, String value, Color color) {

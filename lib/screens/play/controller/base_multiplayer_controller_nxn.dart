@@ -13,7 +13,7 @@ abstract class BaseMultiplayerControllerNxN extends ChangeNotifier {
   Room? _room;
   StreamSubscription? _roomSubscription;
   Timer? _timerCountdown;
-  Duration timeLeft = const Duration(minutes: 12);
+  Duration timeLeft = const Duration(minutes: 10);
 
   // Local gameplay - dynamic size
   int gridSize = 4;
@@ -489,35 +489,50 @@ abstract class BaseMultiplayerControllerNxN extends ChangeNotifier {
     notifyListeners();
   }
 
-  int _calculateFinalScore(int correctCount, int totalPlayerCells) {
-    if (_room?.settings.mode == 'untimed') {
-      int accuracyScore = totalPlayerCells > 0
-          ? (correctCount / totalPlayerCells * 100).round()
-          : 0;
-      return (accuracyScore - hintPenalty).clamp(0, 100);
+  double _getMultiplier() {
+    // 4×4 grid
+    if (gridSize == 4) {
+      if (!(_room?.settings.useDecimals ?? false) && !(_room?.settings.hardMode ?? false)) return 1.0;  // Integer Easy
+      if ((_room?.settings.useDecimals ?? false) && !(_room?.settings.hardMode ?? false)) return 1.1;   // Decimal Easy
+      if (!(_room?.settings.useDecimals ?? false) && (_room?.settings.hardMode ?? false)) return 1.1;   // Integer Hard
+      if ((_room?.settings.useDecimals ?? false) && (_room?.settings.hardMode ?? false)) return 1.3;    // Decimal Hard
     }
-
-    int accuracyScore = totalPlayerCells > 0
-        ? (correctCount / totalPlayerCells * 100).round()
-        : 0;
-    int timeBonus = _calculateTimeBonus();
-    int finalScore = ((accuracyScore * 0.7) + (timeBonus * 0.3)).round();
-    return (finalScore - hintPenalty).clamp(0, 100);
+    
+    // 5×5 grid
+    if (gridSize == 5) {
+      if (!(_room?.settings.useDecimals ?? false) && !(_room?.settings.hardMode ?? false)) return 1.1;  // Integer Easy
+      if ((_room?.settings.useDecimals ?? false) && !(_room?.settings.hardMode ?? false)) return 1.3;   // Decimal Easy
+      if (!(_room?.settings.useDecimals ?? false) && (_room?.settings.hardMode ?? false)) return 1.3;   // Integer Hard
+      if ((_room?.settings.useDecimals ?? false) && (_room?.settings.hardMode ?? false)) return 1.5;    // Decimal Hard
+    }
+    
+    // 6×6 grid
+    if (gridSize == 6) {
+      if (!(_room?.settings.useDecimals ?? false) && !(_room?.settings.hardMode ?? false)) return 1.2;  // Integer Easy
+      if ((_room?.settings.useDecimals ?? false) && !(_room?.settings.hardMode ?? false)) return 1.4;   // Decimal Easy
+      if (!(_room?.settings.useDecimals ?? false) && (_room?.settings.hardMode ?? false)) return 1.4;   // Integer Hard
+      if ((_room?.settings.useDecimals ?? false) && (_room?.settings.hardMode ?? false)) return 1.6;    // Decimal Hard
+    }
+    
+    return 1.0; // Default fallback
   }
 
-  int _calculateTimeBonus() {
-    if (_room?.settings.mode != 'timed') return 0;
-    final completedPlayers = _room!.players.values
-        .where((player) => player.isCompleted && player.completedAt != null)
-        .toList();
-    if (completedPlayers.isEmpty || completedPlayers.length == 1) return 100;
-    completedPlayers.sort((a, b) => a.completedAt!.compareTo(b.completedAt!));
-    int currentPlayerIndex =
-        completedPlayers.indexWhere((player) => player.id == playerId);
-    if (currentPlayerIndex == -1) return 0;
-    int totalPlayers = completedPlayers.length;
-    double positionFactor = 1.0 - (currentPlayerIndex / (totalPlayers - 1));
-    return (positionFactor * 100).round();
+  int _calculateFinalScore(int correctCount, int totalPlayerCells) {
+    // Base Score = Correct Answers × 5
+    int baseScore = correctCount * 5;
+    
+    // Time Bonus = Seconds Remaining × 2 (only for timed mode AND if all correct)
+    int timeBonus = 0;
+    if (_room?.settings.mode == 'timed' && correctCount == totalPlayerCells && totalPlayerCells > 0) {
+      timeBonus = timeLeft.inSeconds * 2;
+    }
+    
+    // Total Score = (Base Score + Time Bonus) × Multiplier
+    double multiplier = _getMultiplier();
+    int score = ((baseScore + timeBonus) * multiplier).round();
+    
+    // Apply hint penalty
+    return (score - hintPenalty).clamp(0, 999999);
   }
 
   Future<void> _checkIfAllCompleted() async {

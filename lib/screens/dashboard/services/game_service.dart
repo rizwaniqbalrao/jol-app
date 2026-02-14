@@ -185,11 +185,8 @@ class GameService {
   // ═══════════════════════════════════════════════════════════════
 
   String? _validateGameData(Game game) {
-    if (game.finalScore < 0 || game.finalScore > 100) {
-      return 'Invalid score: ${game.finalScore}. Must be between 0-100.';
-    }
-    // Remove the strict completionTime check for 'timed' here
-    // to allow manual stops/abandonment to save correctly.
+    // Validation removed for 0-100 score limit as new scoring allows >100.
+    // Also relaxed constraint for completionTime to allow manual stops/abandonment.
     return null;
   }
 }

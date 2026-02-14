@@ -313,14 +313,47 @@ abstract class BaseGameControllerNxN extends ChangeNotifier {
     return false;
   }
 
-  void _calculateScore() {
-    if (mode == GameMode.untimed) {
-      score = _accuracyPercentage.round();
-    } else {
-      int baseScore = (_accuracyPercentage * 0.7).round();
-      int timeBonus = (timeLeft.inSeconds > 240) ? 30 : (timeLeft.inSeconds > 120 ? 15 : 5);
-      score = baseScore + timeBonus;
+  double getMultiplier() {
+    // 4×4 grid
+    if (gridSize == 4) {
+      if (!_useDecimals && !_hardMode) return 1.0;  // Integer Easy
+      if (_useDecimals && !_hardMode) return 1.1;   // Decimal Easy
+      if (!_useDecimals && _hardMode) return 1.1;   // Integer Hard
+      if (_useDecimals && _hardMode) return 1.3;    // Decimal Hard
     }
+    
+    // 5×5 grid
+    if (gridSize == 5) {
+      if (!_useDecimals && !_hardMode) return 1.1;  // Integer Easy
+      if (_useDecimals && !_hardMode) return 1.3;   // Decimal Easy
+      if (!_useDecimals && _hardMode) return 1.3;   // Integer Hard
+      if (_useDecimals && _hardMode) return 1.5;    // Decimal Hard
+    }
+    
+    // 6×6 grid
+    if (gridSize == 6) {
+      if (!_useDecimals && !_hardMode) return 1.2;  // Integer Easy
+      if (_useDecimals && !_hardMode) return 1.4;   // Decimal Easy
+      if (!_useDecimals && _hardMode) return 1.4;   // Integer Hard
+      if (_useDecimals && _hardMode) return 1.6;    // Decimal Hard
+    }
+    
+    return 1.0; // Default fallback
+  }
+
+  void _calculateScore() {
+    // Base Score = Correct Answers × 5
+    int baseScore = _correctAnswers * 5;
+    
+    // Time Bonus = Seconds Remaining × 2 (only for timed mode AND if all correct)
+    int timeBonus = 0;
+    if (mode == GameMode.timed && _correctAnswers == _totalPlayerCells && _totalPlayerCells > 0) {
+      timeBonus = timeLeft.inSeconds * 2;
+    }
+    
+    // Total Score = (Base Score + Time Bonus) × Multiplier
+    double multiplier = getMultiplier();
+    score = ((baseScore + timeBonus) * multiplier).round();
   }
 
   // -----------------------------------------------------------------------------

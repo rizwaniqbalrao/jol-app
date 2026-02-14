@@ -19,7 +19,7 @@ class GameController extends ChangeNotifier {
   final Map<String, String> rawInputs = {};
 
   int score = 0;
-  Duration timeLeft = const Duration(minutes: 7); // 7 minutes are enough for 4x4 grid
+  Duration timeLeft = const Duration(minutes: 10); // 10 minutes are enough for 4x4 grid
   Timer? _timer;
   bool isPlaying = false;
   bool isGenerating = true;
@@ -316,7 +316,7 @@ class GameController extends ChangeNotifier {
 
   void startTimer() {
     if (_mode != GameMode.timed || _timer != null) return;
-    timeLeft = const Duration(minutes: 7);
+    timeLeft = const Duration(minutes: 10);
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
       if (timeLeft.inSeconds > 0) {
         timeLeft -= const Duration(seconds: 1);
@@ -448,13 +448,7 @@ class GameController extends ChangeNotifier {
     _totalPlayerCells = total;
     _accuracyPercentage = total > 0 ? (correct / total) * 100 : 0;
     
-    if (_mode == GameMode.untimed) {
-      score = _accuracyPercentage.round();
-    } else {
-      int base = (_accuracyPercentage * 0.7).round();
-      int bonus = timeLeft.inSeconds > 240 ? 30 : (timeLeft.inSeconds > 120 ? 15 : 5);
-      score = base + bonus;
-    }
+    _calculateScore();
 
     notifyListeners();
     return correct == total;
@@ -495,16 +489,35 @@ class GameController extends ChangeNotifier {
     _totalPlayerCells = total;
     _accuracyPercentage = total > 0 ? (correct / total) * 100 : 0;
 
-    if (_mode == GameMode.untimed) {
-      score = _accuracyPercentage.round();
-    } else {
-      int base = (_accuracyPercentage * 0.7).round();
-      int bonus = timeLeft.inSeconds > 240 ? 30 : (timeLeft.inSeconds > 120 ? 15 : 5);
-      score = base + bonus;
-    }
+    _calculateScore();
 
     notifyListeners();
     return correct == total;
+  }
+
+  double getMultiplier() {
+    // 4×4 grid only (this controller is specific to 4×4)
+    if (!_useDecimals && !_hardMode) return 1.0;  // Integer Easy
+    if (_useDecimals && !_hardMode) return 1.1;   // Decimal Easy
+    if (!_useDecimals && _hardMode) return 1.1;   // Integer Hard
+    if (_useDecimals && _hardMode) return 1.3;    // Decimal Hard
+    
+    return 1.0; // Default fallback
+  }
+
+  void _calculateScore() {
+    // Base Score = Correct Answers × 5
+    int baseScore = _correctAnswers * 5;
+    
+    // Time Bonus = Seconds Remaining × 2 (only for timed mode AND if all correct)
+    int timeBonus = 0;
+    if (_mode == GameMode.timed && _correctAnswers == _totalPlayerCells && _totalPlayerCells > 0) {
+      timeBonus = timeLeft.inSeconds * 2;
+    }
+    
+    // Total Score = (Base Score + Time Bonus) × Multiplier
+    double multiplier = getMultiplier();
+    score = ((baseScore + timeBonus) * multiplier).round();
   }
 
   @override
