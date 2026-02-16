@@ -518,13 +518,13 @@ abstract class BaseMultiplayerControllerNxN extends ChangeNotifier {
   }
 
   int _calculateFinalScore(int correctCount, int totalPlayerCells) {
-    // Base Score = Correct Answers × 5
-    int baseScore = correctCount * 5;
+    // Base Score = Correct Answers × 10
+    int baseScore = correctCount * 10;
     
     // Time Bonus = Seconds Remaining × 2 (only for timed mode AND if all correct)
     int timeBonus = 0;
     if (_room?.settings.mode == 'timed' && correctCount == totalPlayerCells && totalPlayerCells > 0) {
-      timeBonus = timeLeft.inSeconds * 2;
+      timeBonus = (timeLeft.inSeconds / 15) as int;
     }
     
     // Total Score = (Base Score + Time Bonus) × Multiplier

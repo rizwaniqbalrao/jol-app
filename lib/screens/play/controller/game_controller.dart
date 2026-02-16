@@ -507,12 +507,12 @@ class GameController extends ChangeNotifier {
 
   void _calculateScore() {
     // Base Score = Correct Answers × 5
-    int baseScore = _correctAnswers * 5;
+    int baseScore = _correctAnswers * 10;
     
     // Time Bonus = Seconds Remaining × 2 (only for timed mode AND if all correct)
     int timeBonus = 0;
     if (_mode == GameMode.timed && _correctAnswers == _totalPlayerCells && _totalPlayerCells > 0) {
-      timeBonus = timeLeft.inSeconds * 2;
+      timeBonus = (timeLeft.inSeconds / 15) as int;
     }
     
     // Total Score = (Base Score + Time Bonus) × Multiplier

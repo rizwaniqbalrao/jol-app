@@ -78,6 +78,10 @@ class GameSaveHelper {
         totalPlayers: null,
       );
 
+      print('🎮 GAME OBJECT CREATED - finalScore: ${game.finalScore}');
+      print('🎮 Controller score: ${controller.score}');
+      print('🎮 Accuracy: ${controller.accuracyPercentage}%');
+
       // Step 5: Validate game data
       final validationError = _validateGameData(game);
       if (validationError != null) {
@@ -102,8 +106,7 @@ class GameSaveHelper {
 
         return {
           'success': true,
-          'message':
-              'Game saved successfully! You earned $points points.',
+          'message': 'Game saved successfully! You earned $points points.',
           'matchId': saveResult.data!.matchId,
           'pointsEarned': points,
           'game': savedGame,

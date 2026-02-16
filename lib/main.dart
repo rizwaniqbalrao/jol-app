@@ -52,10 +52,10 @@ class MyApp extends StatelessWidget {
       ),
       home:
           // DashboardScreen(),
-          // GameScreen(),
+          //  GameScreen(),
           // GameScreen5(),
-           SplashScreen(),
-        //  GameScreen6x6(),
+          //  SplashScreen(),
+         GameScreen6x6(),
     );
   }
 }
