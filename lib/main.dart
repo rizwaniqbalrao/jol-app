@@ -54,8 +54,8 @@ class MyApp extends StatelessWidget {
           // DashboardScreen(),
           //  GameScreen(),
           // GameScreen5(),
-          //  SplashScreen(),
-         GameScreen6x6(),
+            SplashScreen(),
+        //  GameScreen6x6(),
     );
   }
 }

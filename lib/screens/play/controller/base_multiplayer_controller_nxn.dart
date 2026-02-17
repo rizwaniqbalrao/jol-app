@@ -524,12 +524,12 @@ abstract class BaseMultiplayerControllerNxN extends ChangeNotifier {
     // Time Bonus = Seconds Remaining × 2 (only for timed mode AND if all correct)
     int timeBonus = 0;
     if (_room?.settings.mode == 'timed' && correctCount == totalPlayerCells && totalPlayerCells > 0) {
-      timeBonus = (timeLeft.inSeconds / 15) as int;
+      timeBonus = (timeLeft.inSeconds / 15).floor();
     }
     
     // Total Score = (Base Score + Time Bonus) × Multiplier
     double multiplier = _getMultiplier();
-    int score = ((baseScore + timeBonus) * multiplier).round();
+    int score = ((baseScore + timeBonus) * multiplier).round().toInt();
     
     // Apply hint penalty
     return (score - hintPenalty).clamp(0, 999999);

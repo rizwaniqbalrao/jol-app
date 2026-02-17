@@ -52,7 +52,7 @@ class _GameKeyboardWidgetState extends State<GameKeyboardWidget> {
       await _audioPlayer.stop();
       // Using 'lib/assets/sounds/sound_1.mp3' directly as the asset key.
       // We set prefix to empty string in initState to avoid 'assets/' prepending.
-      await _audioPlayer.play(AssetSource('lib/assets/sounds/sound_1.mp3'));
+      await _audioPlayer.play(AssetSource('lib/assets/sounds/sound_2.mp3'));
     } catch (e) {
       debugPrint("Error playing sound: $e");
     }

@@ -348,12 +348,12 @@ abstract class BaseGameControllerNxN extends ChangeNotifier {
     // Time Bonus = Seconds Remaining × 2 (only for timed mode AND if all correct)
     int timeBonus = 0;
     if (mode == GameMode.timed && _correctAnswers == _totalPlayerCells && _totalPlayerCells > 0) {
-      timeBonus = (timeLeft.inSeconds / 15) as int;
+      timeBonus = (timeLeft.inSeconds / 15).floor();
     }
     
     // Total Score = (Base Score + Time Bonus) × Multiplier
     double multiplier = getMultiplier();
-    score = ((baseScore + timeBonus) * multiplier).round();
+    score = ((baseScore + timeBonus) * multiplier).round().toInt();
   }
 
   // -----------------------------------------------------------------------------

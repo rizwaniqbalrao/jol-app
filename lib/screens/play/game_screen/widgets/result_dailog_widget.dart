@@ -130,14 +130,14 @@ class ResultDialogWidget extends StatelessWidget {
                                     // Score breakdown
                                     _buildScoreBreakdownRow(
                                       "Base Score",
-                                      "$correctAnswers × 5",
+                                      "$correctAnswers × 10",
                                       "$baseScore",
                                     ),
                                     if (controller.mode == GameMode.timed) ...[
                                       const SizedBox(height: 8),
                                       _buildScoreBreakdownRow(
                                         "Time Bonus",
-                                        "${timeRemaining}s × 2",
+                                        "${timeRemaining}s / 15",
                                         "+$timeBonus",
                                       ),
                                     ],
