@@ -1,5 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
+import 'package:jol_app/screens/auth/services/deep_link_service.dart';
 import 'auth/services/auth_services.dart';
 import 'bnb/home_screen.dart';
 import 'onboarding/onboarding_screen.dart';
@@ -12,12 +14,13 @@ class SplashScreen extends StatefulWidget {
 }
 
 class _SplashScreenState extends State<SplashScreen> {
-
   final AuthService _authService = AuthService();
 
   @override
   void initState() {
     super.initState();
+    // Initialize Deep Link Service after binding
+    Get.find<DeepLinkService>().init();
     _checkAuthAndNavigate();
   }
 

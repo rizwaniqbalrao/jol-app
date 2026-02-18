@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:audioplayers/audioplayers.dart';
+import '../../../../utils/audio_manager.dart';
 
 import '../../controller/game_controller.dart';
 
@@ -26,36 +26,20 @@ class GameKeyboardWidget extends StatefulWidget {
 }
 
 class _GameKeyboardWidgetState extends State<GameKeyboardWidget> {
-  late AudioPlayer _audioPlayer;
-
   @override
   void initState() {
     super.initState();
-    _audioPlayer = AudioPlayer();
-    // Preload or configure if necessary
-    // If using AssetSource, audioplayers usually defaults prefix to 'assets/'
-    // Since our assets are in 'lib/assets/', we need to be careful.
-    // However, usually one should set the prefix to empty if providing full path from root of assets
-    // But accessing prefix on the player instance's cache might vary effectively by version.
-    // We will use a safe approach by setting the source.
-    _audioPlayer.audioCache.prefix = '';
+    // Audio is managed by the singleton AudioManager
   }
 
   @override
   void dispose() {
-    _audioPlayer.dispose();
+    // AudioManager is a singleton and should not be disposed here
     super.dispose();
   }
 
-  Future<void> _playSound() async {
-    try {
-      await _audioPlayer.stop();
-      // Using 'lib/assets/sounds/sound_1.mp3' directly as the asset key.
-      // We set prefix to empty string in initState to avoid 'assets/' prepending.
-      await _audioPlayer.play(AssetSource('lib/assets/sounds/sound_2.mp3'));
-    } catch (e) {
-      debugPrint("Error playing sound: $e");
-    }
+  void _playSound() {
+    AudioManager.instance.playKeyPressSound();
   }
 
   @override
@@ -189,7 +173,8 @@ class _GameKeyboardWidgetState extends State<GameKeyboardWidget> {
   Widget _buildClearButton(double height, double iconSize) {
     return Expanded(
       child: Material(
-        color: widget.isGameStarted ? Colors.grey.shade400 : Colors.grey.shade300,
+        color:
+            widget.isGameStarted ? Colors.grey.shade400 : Colors.grey.shade300,
         borderRadius: BorderRadius.circular(8),
         elevation: 2,
         child: InkWell(
@@ -241,7 +226,9 @@ class _GameKeyboardWidgetState extends State<GameKeyboardWidget> {
                 fontSize: fontSize * 0.7,
                 fontWeight: FontWeight.bold,
                 color: !widget.isGameStarted
-                    ? (widget.controller.useDecimals ? Colors.white : Colors.white)
+                    ? (widget.controller.useDecimals
+                        ? Colors.white
+                        : Colors.white)
                     : Colors.white,
               ),
             ),

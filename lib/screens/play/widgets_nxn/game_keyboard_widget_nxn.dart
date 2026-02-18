@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:audioplayers/audioplayers.dart';
+import '../../../utils/audio_manager.dart';
 import '../controller/base_game_controller_nxn.dart';
 
 class GameKeyboardWidgetNxN extends StatefulWidget {
@@ -25,28 +25,18 @@ class GameKeyboardWidgetNxN extends StatefulWidget {
 }
 
 class _GameKeyboardWidgetNxNState extends State<GameKeyboardWidgetNxN> {
-  late AudioPlayer _audioPlayer;
-
   @override
   void initState() {
     super.initState();
-    _audioPlayer = AudioPlayer();
-    _audioPlayer.audioCache.prefix = '';
   }
 
   @override
   void dispose() {
-    _audioPlayer.dispose();
     super.dispose();
   }
 
-  Future<void> _playSound() async {
-    try {
-      await _audioPlayer.stop();
-      await _audioPlayer.play(AssetSource('lib/assets/sounds/sound_2.mp3'));
-    } catch (e) {
-      debugPrint("Error playing sound: $e");
-    }
+  void _playSound() {
+    AudioManager.instance.playKeyPressSound();
   }
 
   @override
@@ -180,7 +170,8 @@ class _GameKeyboardWidgetNxNState extends State<GameKeyboardWidgetNxN> {
   Widget _buildClearButton(double height, double iconSize) {
     return Expanded(
       child: Material(
-        color: widget.isGameStarted ? Colors.grey.shade400 : Colors.grey.shade300,
+        color:
+            widget.isGameStarted ? Colors.grey.shade400 : Colors.grey.shade300,
         borderRadius: BorderRadius.circular(8),
         elevation: 2,
         child: InkWell(
@@ -232,7 +223,9 @@ class _GameKeyboardWidgetNxNState extends State<GameKeyboardWidgetNxN> {
                 fontSize: fontSize * 0.7,
                 fontWeight: FontWeight.bold,
                 color: !widget.isGameStarted
-                    ? (widget.controller.useDecimals ? Colors.white : Colors.black87)
+                    ? (widget.controller.useDecimals
+                        ? Colors.white
+                        : Colors.black87)
                     : Colors.black45,
               ),
             ),

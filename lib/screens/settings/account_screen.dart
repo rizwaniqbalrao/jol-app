@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
+import 'package:jol_app/screens/auth/controllers/auth_controller.dart';
+import 'package:jol_app/utils/app_routes.dart';
 import 'package:jol_app/screens/settings/edit_profile_screen.dart';
 import 'package:jol_app/screens/settings/services/user_profile_services.dart';
 import 'package:shimmer/shimmer.dart';
@@ -7,7 +10,6 @@ import '../auth/models/user.dart';
 import '../auth/models/user_wallet.dart';
 import '../auth/services/auth_services.dart';
 import '../auth/services/wallet_service.dart';
-import 'choose_color_screen.dart';
 
 class AccountScreen extends StatefulWidget {
   final bool showAppBar;
@@ -118,43 +120,92 @@ class _AccountScreenState extends State<AccountScreen> {
   // ──────────────────────────────────────────────────────────────
 // Logout Button Card
 // ──────────────────────────────────────────────────────────────
-  Widget _logoutCard() {
-    return _sectionCard(
-      vertical: 12,
-      child: Padding(
-        padding: const EdgeInsets.all(14),
-        child: SizedBox(
-          width: double.infinity,
-          child: ElevatedButton.icon(
-            onPressed: _isLoggingOut ? null : _handleLogout,
-            icon: _isLoggingOut
-                ? const SizedBox(
-                    width: 18,
-                    height: 18,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                    ),
-                  )
-                : const Icon(Icons.logout, color: Colors.white),
-            label: Text(
-              _isLoggingOut ? 'LOGGING OUT...' : 'LOGOUT',
-              style: const TextStyle(
-                fontFamily: 'Digitalt',
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-                color: Colors.white,
-              ),
-            ),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.red.shade600,
-              padding: const EdgeInsets.symmetric(vertical: 14),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10),
-              ),
-            ),
+
+  void _showLogoutDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text("Log Out", style: TextStyle(fontFamily: 'Digitalt')),
+        content: const Text("Are you sure you want to log out?",
+            style: TextStyle(fontFamily: 'Digitalt')),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child:
+                const Text("Cancel", style: TextStyle(fontFamily: 'Digitalt')),
           ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              Get.find<AuthController>().logout();
+            },
+            child: const Text("Log Out",
+                style: TextStyle(fontFamily: 'Digitalt', color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showDeleteAccountDialog(BuildContext context) {
+    final passwordController = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text("Delete Account",
+            style: TextStyle(fontFamily: 'Digitalt', color: Colors.red)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text(
+              "Allows us to verify it's you. This action cannot be undone.",
+              style: TextStyle(fontFamily: 'Digitalt'),
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: passwordController,
+              obscureText: true,
+              decoration: const InputDecoration(
+                labelText: "Enter Password",
+                border: OutlineInputBorder(),
+              ),
+            ),
+          ],
         ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child:
+                const Text("Cancel", style: TextStyle(fontFamily: 'Digitalt')),
+          ),
+          Obx(() {
+            final isLoading = Get.find<AuthController>().isLoading.value;
+            print("AccountScreen dialog: isLoading = $isLoading");
+            return TextButton(
+              onPressed: isLoading
+                  ? null
+                  : () async {
+                      print("Delete button pressed");
+                      if (passwordController.text.isNotEmpty) {
+                        print("Password entered: ${passwordController.text}");
+                        // Controller handles navigation (Get.offAll) on success
+                        await Get.find<AuthController>()
+                            .deactivateAccount(passwordController.text);
+                      } else {
+                        print("Password is empty");
+                      }
+                    },
+              child: isLoading
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(strokeWidth: 2))
+                  : const Text("Delete",
+                      style:
+                          TextStyle(fontFamily: 'Digitalt', color: Colors.red)),
+            );
+          }),
+        ],
       ),
     );
   }
@@ -1138,6 +1189,86 @@ class _AccountScreenState extends State<AccountScreen> {
     );
   }
 
+  Widget _settingsCard(BuildContext context) {
+    return _sectionCard(
+      child: Column(
+        children: [
+          _headerRow("ACCOUNT SETTINGS"),
+          const SizedBox(height: 6),
+          _settingsRow(
+            icon: Icons.lock_outline,
+            title: "Change Password",
+            onTap: () => Get.toNamed(AppRoutes.changePassword),
+          ),
+          Divider(
+              height: 1,
+              color: Colors.grey.withOpacity(0.1),
+              indent: 56,
+              endIndent: 16),
+          _settingsRow(
+            icon: Icons.delete_outline,
+            title: "Delete Account",
+            textColor: Colors.red,
+            iconColor: Colors.red,
+            onTap: () => _showDeleteAccountDialog(context),
+          ),
+          Divider(
+              height: 1,
+              color: Colors.grey.withOpacity(0.1),
+              indent: 56,
+              endIndent: 16),
+          _settingsRow(
+            icon: Icons.logout,
+            title: "Log Out",
+            onTap: () => _showLogoutDialog(context),
+          ),
+          const SizedBox(height: 8),
+        ],
+      ),
+    );
+  }
+
+  Widget _settingsRow({
+    required IconData icon,
+    required String title,
+    required VoidCallback onTap,
+    Color textColor = accentPurple,
+    Color iconColor = accentPurple,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: iconColor.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(icon, color: iconColor, size: 20),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Text(
+                title,
+                style: TextStyle(
+                  fontFamily: 'Digitalt',
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: textColor,
+                ),
+              ),
+            ),
+            Icon(Icons.arrow_forward_ios,
+                size: 14, color: Colors.grey.shade400),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _coloursCard() {
     return _sectionCard(
       child: Column(
@@ -1389,7 +1520,9 @@ class _AccountScreenState extends State<AccountScreen> {
                           ),
                         ),
                         const SizedBox(height: 16),
-                        _logoutCard(), // ✅ Add logout button here
+                        // Settings Section
+                        const SizedBox(height: 10),
+                        _settingsCard(context),
                       ],
                     ],
                   ),
