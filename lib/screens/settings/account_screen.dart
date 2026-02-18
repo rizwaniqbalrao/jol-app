@@ -13,7 +13,9 @@ import '../auth/services/wallet_service.dart';
 
 class AccountScreen extends StatefulWidget {
   final bool showAppBar;
-  const AccountScreen({super.key, this.showAppBar = true});
+  final VoidCallback? onWalletUpdated;
+  const AccountScreen(
+      {super.key, this.showAppBar = true, this.onWalletUpdated});
   @override
   State<AccountScreen> createState() => _AccountScreenState();
 }
@@ -571,6 +573,8 @@ class _AccountScreenState extends State<AccountScreen> {
 
       // Reload wallet data
       await _loadProfile();
+      // Notify parent to refresh wallet (e.g. App Bar)
+      widget.onWalletUpdated?.call();
     } else {
       _showSnack(result.error ?? 'Failed to redeem coins');
     }

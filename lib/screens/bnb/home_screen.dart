@@ -73,7 +73,10 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         return ScoreBoardScreen();
       case 4:
         // 'Settings' bottom nav will open Edit Profile
-        return const AccountScreen(showAppBar: false);
+        return AccountScreen(
+          showAppBar: false,
+          onWalletUpdated: _refreshWalletSilently,
+        );
       default:
         return DashboardScreen();
     }
