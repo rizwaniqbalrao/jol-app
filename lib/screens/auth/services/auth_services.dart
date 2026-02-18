@@ -510,7 +510,7 @@ class AuthService {
       if (token == null) return null;
 
       // ✅ Use ApiClient - it handles 401 automatically with navigation to login
-      final response = await ApiClient.get('/auth/user/');
+      final response = await ApiClient.get('/v1/user/detail/');
 
       if (response.statusCode == 200) {
         return User.fromJson(jsonDecode(response.body));
