@@ -19,7 +19,8 @@ class GameController extends ChangeNotifier {
   final Map<String, String> rawInputs = {};
 
   int score = 0;
-  Duration timeLeft = const Duration(minutes: 7); // 7 minutes are enough for 4x4 grid
+  Duration timeLeft =
+      const Duration(minutes: 10); // 10 minutes are enough for 4x4 grid
   Timer? _timer;
   bool isPlaying = false;
   bool isGenerating = true;
@@ -95,7 +96,7 @@ class GameController extends ChangeNotifier {
 
     await Future.delayed(const Duration(milliseconds: 50));
     _clearBoard();
-    
+
     _createBoard(Random());
 
     isGenerating = false;
@@ -104,12 +105,12 @@ class GameController extends ChangeNotifier {
 
   void _clearBoard() {
     for (int i = 0; i < gridSize; i++) {
-        for (int j = 0; j < gridSize; j++) {
-            grid[i][j] = null;
-            _solutionGrid[i][j] = null;
-            isFixed[i][j] = false;
-            isWrong[i][j] = false;
-        }
+      for (int j = 0; j < gridSize; j++) {
+        grid[i][j] = null;
+        _solutionGrid[i][j] = null;
+        isFixed[i][j] = false;
+        isWrong[i][j] = false;
+      }
     }
     grid[0][0] = -1;
     _solutionGrid[0][0] = -1;
@@ -124,7 +125,7 @@ class GameController extends ChangeNotifier {
     while (!success && attempts < maxAttempts) {
       attempts++;
       _clearBoard();
-      
+
       try {
         // 1. Place 4 primary seeds
         List<Point<int>> available = [];
@@ -134,12 +135,12 @@ class GameController extends ChangeNotifier {
             available.add(Point(i, j));
           }
         }
-        
+
         // Ensure first seed is in Row 0 or Col 0 for solvability start
         int firstSeedIdx = available.indexWhere((p) => p.x == 0 || p.y == 0);
         if (firstSeedIdx != -1) {
-            final p = available.removeAt(firstSeedIdx);
-            _placeSeed(p.x, p.y, random);
+          final p = available.removeAt(firstSeedIdx);
+          _placeSeed(p.x, p.y, random);
         }
 
         for (int i = 0; i < 3; i++) {
@@ -193,13 +194,13 @@ class GameController extends ChangeNotifier {
     bool valid = false;
     int attempts = 0;
     while (!valid && attempts < 100) {
-        attempts++;
-        val = _generateRandomNumber(random);
-        if (!_isUsedInRowCol(val, r, c)) {
-            _solutionGrid[r][c] = val;
-            isFixed[r][c] = true;
-            valid = true;
-        }
+      attempts++;
+      val = _generateRandomNumber(random);
+      if (!_isUsedInRowCol(val, r, c)) {
+        _solutionGrid[r][c] = val;
+        isFixed[r][c] = true;
+        valid = true;
+      }
     }
   }
 
@@ -238,19 +239,22 @@ class GameController extends ChangeNotifier {
         if (operation == PuzzleOperation.addition) {
           if (i > 0 && j > 0) {
             if (_solutionGrid[i][0] != null && _solutionGrid[0][j] != null) {
-              _solutionGrid[i][j] = _safeResult(_solutionGrid[i][0]! + _solutionGrid[0][j]!);
+              _solutionGrid[i][j] =
+                  _safeResult(_solutionGrid[i][0]! + _solutionGrid[0][j]!);
             }
           } else if (i == 0) {
             for (int n = 1; n < gridSize; n++) {
               if (_solutionGrid[n][j] != null && _solutionGrid[n][0] != null) {
-                _solutionGrid[i][j] = _safeResult(_solutionGrid[n][j]! + _solutionGrid[n][0]!);
+                _solutionGrid[i][j] =
+                    _safeResult(_solutionGrid[n][j]! + _solutionGrid[n][0]!);
                 break;
               }
             }
           } else if (j == 0) {
             for (int n = 1; n < gridSize; n++) {
               if (_solutionGrid[i][n] != null && _solutionGrid[0][n] != null) {
-                _solutionGrid[i][j] = _safeResult(_solutionGrid[i][n]! + _solutionGrid[0][n]!);
+                _solutionGrid[i][j] =
+                    _safeResult(_solutionGrid[i][n]! + _solutionGrid[0][n]!);
                 break;
               }
             }
@@ -258,22 +262,25 @@ class GameController extends ChangeNotifier {
         } else {
           if (i > 0 && j > 0) {
             if (_solutionGrid[i][0] != null && _solutionGrid[0][j] != null) {
-              _solutionGrid[i][j] = (_solutionGrid[i][0]! - _solutionGrid[0][j]!).abs();
+              _solutionGrid[i][j] =
+                  (_solutionGrid[i][0]! - _solutionGrid[0][j]!).abs();
             }
           } else if (i == 0) {
-             for (int n = 1; n < gridSize; n++) {
-               if (_solutionGrid[n][j] != null && _solutionGrid[n][0] != null) {
-                 _solutionGrid[i][j] = (_solutionGrid[n][j]! - _solutionGrid[n][0]!).abs();
-                 break;
-               }
-             }
+            for (int n = 1; n < gridSize; n++) {
+              if (_solutionGrid[n][j] != null && _solutionGrid[n][0] != null) {
+                _solutionGrid[i][j] =
+                    (_solutionGrid[n][j]! - _solutionGrid[n][0]!).abs();
+                break;
+              }
+            }
           } else if (j == 0) {
-             for (int n = 1; n < gridSize; n++) {
-               if (_solutionGrid[i][n] != null && _solutionGrid[0][n] != null) {
-                 _solutionGrid[i][j] = (_solutionGrid[i][n]! - _solutionGrid[0][n]!).abs();
-                 break;
-               }
-             }
+            for (int n = 1; n < gridSize; n++) {
+              if (_solutionGrid[i][n] != null && _solutionGrid[0][n] != null) {
+                _solutionGrid[i][j] =
+                    (_solutionGrid[i][n]! - _solutionGrid[0][n]!).abs();
+                break;
+              }
+            }
           }
         }
       }
@@ -287,11 +294,16 @@ class GameController extends ChangeNotifier {
 
   bool _checkSeedCondition(int r, int c) {
     if (r == 0) {
-      for (int n = 1; n < gridSize; n++) if (_solutionGrid[n][0] == null || _solutionGrid[n][c] == null) return true;
+      for (int n = 1; n < gridSize; n++)
+        if (_solutionGrid[n][0] == null || _solutionGrid[n][c] == null)
+          return true;
     } else if (c == 0) {
-      for (int n = 1; n < gridSize; n++) if (_solutionGrid[0][n] == null || _solutionGrid[r][n] == null) return true;
+      for (int n = 1; n < gridSize; n++)
+        if (_solutionGrid[0][n] == null || _solutionGrid[r][n] == null)
+          return true;
     } else {
-      if (_solutionGrid[r][0] == null || _solutionGrid[0][c] == null) return true;
+      if (_solutionGrid[r][0] == null || _solutionGrid[0][c] == null)
+        return true;
     }
     return false;
   }
@@ -316,7 +328,7 @@ class GameController extends ChangeNotifier {
 
   void startTimer() {
     if (_mode != GameMode.timed || _timer != null) return;
-    timeLeft = const Duration(minutes: 7);
+    timeLeft = const Duration(minutes: 10);
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
       if (timeLeft.inSeconds > 0) {
         timeLeft -= const Duration(seconds: 1);
@@ -373,16 +385,16 @@ class GameController extends ChangeNotifier {
     const tolerance = 0.001;
 
     for (int i = 0; i < gridSize; i++) {
-        for (int j = 0; j < gridSize; j++) {
-            isWrong[i][j] = false;
-        }
+      for (int j = 0; j < gridSize; j++) {
+        isWrong[i][j] = false;
+      }
     }
 
     for (int i = 0; i < gridSize; i++) {
       for (int j = 0; j < gridSize; j++) {
         if (i == 0 && j == 0) continue;
         if (isFixed[i][j]) continue;
-        
+
         total++;
         final val = grid[i][j];
         if (val == null) {
@@ -420,41 +432,39 @@ class GameController extends ChangeNotifier {
             if ((val - expected).abs() < tolerance) valid = true;
           } else if (i == 0) {
             for (int n = 1; n < gridSize; n++) {
-                if (grid[n][j] != null && grid[n][0] != null) {
-                    if ((val - (grid[n][j]! - grid[n][0]!).abs()).abs() < tolerance) {
-                        valid = true;
-                        break;
-                    }
+              if (grid[n][j] != null && grid[n][0] != null) {
+                if ((val - (grid[n][j]! - grid[n][0]!).abs()).abs() <
+                    tolerance) {
+                  valid = true;
+                  break;
                 }
+              }
             }
           } else if (j == 0) {
             for (int n = 1; n < gridSize; n++) {
-                if (grid[i][n] != null && grid[0][n] != null) {
-                    if ((val - (grid[i][n]! - grid[0][n]!).abs()).abs() < tolerance) {
-                        valid = true;
-                        break;
-                    }
+              if (grid[i][n] != null && grid[0][n] != null) {
+                if ((val - (grid[i][n]! - grid[0][n]!).abs()).abs() <
+                    tolerance) {
+                  valid = true;
+                  break;
                 }
+              }
             }
           }
         }
 
-        if (valid) correct++;
-        else isWrong[i][j] = true;
+        if (valid)
+          correct++;
+        else
+          isWrong[i][j] = true;
       }
     }
 
     _correctAnswers = correct;
     _totalPlayerCells = total;
     _accuracyPercentage = total > 0 ? (correct / total) * 100 : 0;
-    
-    if (_mode == GameMode.untimed) {
-      score = _accuracyPercentage.round();
-    } else {
-      int base = (_accuracyPercentage * 0.7).round();
-      int bonus = timeLeft.inSeconds > 240 ? 30 : (timeLeft.inSeconds > 120 ? 15 : 5);
-      score = base + bonus;
-    }
+
+    _calculateScore();
 
     notifyListeners();
     return correct == total;
@@ -464,7 +474,8 @@ class GameController extends ChangeNotifier {
     isPlaying = false;
     stopTimer();
     if (_gameStartTime != null) {
-      _completionTimeSeconds = DateTime.now().difference(_gameStartTime!).inSeconds;
+      _completionTimeSeconds =
+          DateTime.now().difference(_gameStartTime!).inSeconds;
     }
 
     int correct = 0;
@@ -495,16 +506,35 @@ class GameController extends ChangeNotifier {
     _totalPlayerCells = total;
     _accuracyPercentage = total > 0 ? (correct / total) * 100 : 0;
 
-    if (_mode == GameMode.untimed) {
-      score = _accuracyPercentage.round();
-    } else {
-      int base = (_accuracyPercentage * 0.7).round();
-      int bonus = timeLeft.inSeconds > 240 ? 30 : (timeLeft.inSeconds > 120 ? 15 : 5);
-      score = base + bonus;
-    }
+    _calculateScore();
 
     notifyListeners();
     return correct == total;
+  }
+
+  double getMultiplier() {
+    // 4×4 grid only (this controller is specific to 4×4)
+    if (!_useDecimals && !_hardMode) return 1.0; // Integer Easy
+    if (_useDecimals && !_hardMode) return 1.1; // Decimal Easy
+    if (!_useDecimals && _hardMode) return 1.1; // Integer Hard
+    if (_useDecimals && _hardMode) return 1.3; // Decimal Hard
+
+    return 1.0; // Default fallback
+  }
+
+  void _calculateScore() {
+    // Base Score = Correct Answers × 10
+    int baseScore = _correctAnswers * 10;
+
+    // Time Bonus = Seconds Remaining / 15 (only for timed mode)
+    int timeBonus = 0;
+    if (_mode == GameMode.timed && _correctAnswers > 0) {
+      timeBonus = (timeLeft.inSeconds / 15).floor();
+    }
+
+    // Total Score = (Base Score + Time Bonus) × Multiplier
+    double multiplier = getMultiplier();
+    score = ((baseScore + timeBonus) * multiplier).round();
   }
 
   @override

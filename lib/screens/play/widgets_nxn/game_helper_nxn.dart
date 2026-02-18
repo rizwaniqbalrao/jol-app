@@ -84,13 +84,20 @@ class GameSaveHelperNxN {
       final saveResult = await _gameService.saveGame(game);
 
       if (saveResult.success && saveResult.data != null) {
-        final savedGame = _convertResponseToGame(saveResult.data!);
+        var savedGame = _convertResponseToGame(saveResult.data!);
+
+        // Force points and score to 0 if score is 0 (override backend default if any)
+        int points = saveResult.data!.pointsEarned;
+        if (controller.score == 0) {
+          points = 0;
+          savedGame = savedGame.copyWith(finalScore: 0);
+        }
 
         return {
           'success': true,
-          'message': 'Game saved successfully! You earned ${saveResult.data!.pointsEarned} points.',
+          'message': 'Game saved successfully! You earned $points points.',
           'matchId': saveResult.data!.matchId,
-          'pointsEarned': saveResult.data!.pointsEarned,
+          'pointsEarned': points,
           'game': savedGame,
         };
       } else {
@@ -129,18 +136,7 @@ class GameSaveHelperNxN {
   }
 
   String? _validateGameData(Game game) {
-    if (game.finalScore < 0 || game.finalScore > 100) {
-      return 'Invalid score: ${game.finalScore}. Must be between 0-100.';
-    }
-
-    if (game.accuracyPercentage < 0 || game.accuracyPercentage > 100) {
-      return 'Invalid accuracy: ${game.accuracyPercentage}%. Must be between 0-100.';
-    }
-
-    if (game.status == 'completed' && game.completionTime == null) {
-      // We can log this or handle it, but for solo we usually have it.
-    }
-
+    // Validation removed for 0-100 score limit as new scoring allows >100.
     return null;
   }
 }
