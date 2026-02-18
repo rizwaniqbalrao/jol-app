@@ -1,4 +1,5 @@
 /// File: services/game_service.dart
+library;
 
 import 'dart:convert';
 import '../../auth/services/api_client.dart';
@@ -63,7 +64,12 @@ class GameService {
 
       final body = game.toJson();
 
-      print('POST Add Game - Body: ${jsonEncode(body)}');
+      print('═══════════════════════════════════════════════════════════');
+      print('🎮 GAME SUBMISSION DEBUG');
+      print('═══════════════════════════════════════════════════════════');
+      print('📤 SENDING - finalScore: ${body['final_score']}');
+      print('📤 SENDING - Full Body: ${jsonEncode(body)}');
+      print('═══════════════════════════════════════════════════════════');
 
       // ✅ Use ApiClient - it handles 401 automatically
       final response = await ApiClient.post(
@@ -71,12 +77,16 @@ class GameService {
         body: body,
       );
 
-      print('POST Add Game - Status: ${response.statusCode}');
-      print('POST Add Game - Response: ${response.body}');
+      print('📥 RESPONSE - Status: ${response.statusCode}');
+      print('📥 RESPONSE - Body: ${response.body}');
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         final data = jsonDecode(response.body);
+        print('📥 RESPONSE - Parsed finalScore: ${data['final_score']}');
+        print('📥 RESPONSE - Parsed pointsEarned: ${data['points_earned']}');
         final saveResponse = SaveGameResponse.fromJson(data);
+        print('✅ SaveGameResponse - finalScore: ${saveResponse.finalScore}');
+        print('═══════════════════════════════════════════════════════════');
         return SaveGameResult(success: true, data: saveResponse);
       } else {
         String errorMsg = 'Unable to save game. Please try again.';
@@ -185,11 +195,8 @@ class GameService {
   // ═══════════════════════════════════════════════════════════════
 
   String? _validateGameData(Game game) {
-    if (game.finalScore < 0 || game.finalScore > 100) {
-      return 'Invalid score: ${game.finalScore}. Must be between 0-100.';
-    }
-    // Remove the strict completionTime check for 'timed' here
-    // to allow manual stops/abandonment to save correctly.
+    // Validation removed for 0-100 score limit as new scoring allows >100.
+    // Also relaxed constraint for completionTime to allow manual stops/abandonment.
     return null;
   }
 }
