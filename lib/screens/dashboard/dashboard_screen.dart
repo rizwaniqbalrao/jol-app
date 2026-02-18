@@ -264,7 +264,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               const CircleAvatar(
                 radius: 26,
                 backgroundImage:
-                AssetImage("lib/assets/images/settings_emoji.png"),
+                    AssetImage("lib/assets/images/settings_emoji.png"),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -331,8 +331,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
           // 📊 Stats
           _buildStatRow("OPERATION:", game.operation.toUpperCase()),
           _buildStatRow("SCORE:", game.finalScore.toString()),
-          _buildStatRow("ACCURACY:", '${game.accuracyPercentage.toStringAsFixed(1)}%'),
-          _buildStatRow("HINTS USED:", game.hintsUsed.toString()),
+          _buildStatRow(
+              "ACCURACY:", '${game.accuracyPercentage.toStringAsFixed(1)}%'),
           if (game.completionTime != null)
             _buildStatRow("TIME TAKEN:", _formatTime(game.completionTime)),
           _buildStatRow("STATUS:", game.status.toUpperCase()),

@@ -78,6 +78,10 @@ class GameSaveHelper {
         totalPlayers: null,
       );
 
+      print('🎮 GAME OBJECT CREATED - finalScore: ${game.finalScore}');
+      print('🎮 Controller score: ${controller.score}');
+      print('🎮 Accuracy: ${controller.accuracyPercentage}%');
+
       // Step 5: Validate game data
       final validationError = _validateGameData(game);
       if (validationError != null) {
@@ -91,14 +95,20 @@ class GameSaveHelper {
       final saveResult = await _gameService.saveGame(game);
 
       if (saveResult.success && saveResult.data != null) {
-        final savedGame = _convertResponseToGame(saveResult.data!);
+        var savedGame = _convertResponseToGame(saveResult.data!);
+
+        // Force points and score to 0 if score is 0 (override backend default if any)
+        int points = saveResult.data!.pointsEarned;
+        if (controller.score == 0) {
+          points = 0;
+          savedGame = savedGame.copyWith(finalScore: 0);
+        }
 
         return {
           'success': true,
-          'message':
-              'Game saved successfully! You earned ${saveResult.data!.pointsEarned} points.',
+          'message': 'Game saved successfully! You earned $points points.',
           'matchId': saveResult.data!.matchId,
-          'pointsEarned': saveResult.data!.pointsEarned,
+          'pointsEarned': points,
           'game': savedGame,
         };
       } else {
@@ -138,14 +148,6 @@ class GameSaveHelper {
 
   /// Updated Validation: Removed hint-specific logic
   String? _validateGameData(Game game) {
-    if (game.finalScore < 0 || game.finalScore > 100) {
-      return 'Invalid score: ${game.finalScore}. Must be between 0-100.';
-    }
-
-    if (game.accuracyPercentage < 0 || game.accuracyPercentage > 100) {
-      return 'Invalid accuracy: ${game.accuracyPercentage}%. Must be between 0-100.';
-    }
-
     // Relaxed constraint: In some abandoned scenarios, completionTime might be null
     // but the backend usually expects it if status is 'completed'
     if (game.status == 'completed' && game.completionTime == null) {

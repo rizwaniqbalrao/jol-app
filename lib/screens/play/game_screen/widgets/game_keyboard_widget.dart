@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
+import '../../../../utils/audio_manager.dart';
 
 import '../../controller/game_controller.dart';
 
-class GameKeyboardWidget extends StatelessWidget {
+class GameKeyboardWidget extends StatefulWidget {
   final GameController controller;
   final bool isGameStarted;
   final Function(String) onKeyTap;
@@ -21,13 +22,34 @@ class GameKeyboardWidget extends StatelessWidget {
   });
 
   @override
+  State<GameKeyboardWidget> createState() => _GameKeyboardWidgetState();
+}
+
+class _GameKeyboardWidgetState extends State<GameKeyboardWidget> {
+  @override
+  void initState() {
+    super.initState();
+    // Audio is managed by the singleton AudioManager
+  }
+
+  @override
+  void dispose() {
+    // AudioManager is a singleton and should not be disposed here
+    super.dispose();
+  }
+
+  void _playSound() {
+    AudioManager.instance.playKeyPressSound();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return SizedBox(
-      height: screenHeight * 0.30,
+      height: widget.screenHeight * 0.30,
       child: Padding(
-        padding: EdgeInsets.symmetric(horizontal: screenWidth * 0.1),
+        padding: EdgeInsets.symmetric(horizontal: widget.screenWidth * 0.1),
         child: Container(
-          padding: EdgeInsets.all(screenHeight * 0.015),
+          padding: EdgeInsets.all(widget.screenHeight * 0.015),
           decoration: BoxDecoration(
             color: Colors.grey.shade300,
             borderRadius: BorderRadius.circular(12),
@@ -52,9 +74,9 @@ class GameKeyboardWidget extends StatelessWidget {
                     child: Row(
                       children: [
                         _buildKeyButton('1', keyHeight, fontSize),
-                        SizedBox(width: screenWidth * 0.02),
+                        SizedBox(width: widget.screenWidth * 0.02),
                         _buildKeyButton('2', keyHeight, fontSize),
-                        SizedBox(width: screenWidth * 0.02),
+                        SizedBox(width: widget.screenWidth * 0.02),
                         _buildKeyButton('3', keyHeight, fontSize),
                       ],
                     ),
@@ -64,9 +86,9 @@ class GameKeyboardWidget extends StatelessWidget {
                     child: Row(
                       children: [
                         _buildKeyButton('4', keyHeight, fontSize),
-                        SizedBox(width: screenWidth * 0.02),
+                        SizedBox(width: widget.screenWidth * 0.02),
                         _buildKeyButton('5', keyHeight, fontSize),
-                        SizedBox(width: screenWidth * 0.02),
+                        SizedBox(width: widget.screenWidth * 0.02),
                         _buildKeyButton('6', keyHeight, fontSize),
                       ],
                     ),
@@ -76,9 +98,9 @@ class GameKeyboardWidget extends StatelessWidget {
                     child: Row(
                       children: [
                         _buildKeyButton('7', keyHeight, fontSize),
-                        SizedBox(width: screenWidth * 0.02),
+                        SizedBox(width: widget.screenWidth * 0.02),
                         _buildKeyButton('8', keyHeight, fontSize),
-                        SizedBox(width: screenWidth * 0.02),
+                        SizedBox(width: widget.screenWidth * 0.02),
                         _buildKeyButton('9', keyHeight, fontSize),
                       ],
                     ),
@@ -88,9 +110,9 @@ class GameKeyboardWidget extends StatelessWidget {
                     child: Row(
                       children: [
                         _buildDecimalToggleButton(keyHeight, fontSize),
-                        SizedBox(width: screenWidth * 0.02),
+                        SizedBox(width: widget.screenWidth * 0.02),
                         _buildKeyButton('0', keyHeight, fontSize),
-                        SizedBox(width: screenWidth * 0.02),
+                        SizedBox(width: widget.screenWidth * 0.02),
                         _buildKeyButton('.', keyHeight, fontSize),
                       ],
                     ),
@@ -100,9 +122,9 @@ class GameKeyboardWidget extends StatelessWidget {
                     child: Row(
                       children: [
                         Expanded(child: Container()),
-                        SizedBox(width: screenWidth * 0.02),
+                        SizedBox(width: widget.screenWidth * 0.02),
                         _buildClearButton(keyHeight, iconSize),
-                        SizedBox(width: screenWidth * 0.02),
+                        SizedBox(width: widget.screenWidth * 0.02),
                         Expanded(child: Container()),
                       ],
                     ),
@@ -119,11 +141,16 @@ class GameKeyboardWidget extends StatelessWidget {
   Widget _buildKeyButton(String number, double height, double fontSize) {
     return Expanded(
       child: Material(
-        color: isGameStarted ? Colors.white : Colors.grey.shade400,
+        color: widget.isGameStarted ? Colors.white : Colors.grey.shade400,
         borderRadius: BorderRadius.circular(8),
         elevation: 2,
         child: InkWell(
-          onTap: isGameStarted ? () => onKeyTap(number) : null,
+          onTap: widget.isGameStarted
+              ? () {
+                  _playSound();
+                  widget.onKeyTap(number);
+                }
+              : null,
           borderRadius: BorderRadius.circular(8),
           child: Container(
             height: height,
@@ -134,7 +161,7 @@ class GameKeyboardWidget extends StatelessWidget {
               style: TextStyle(
                 fontSize: fontSize,
                 fontWeight: FontWeight.bold,
-                color: isGameStarted ? Colors.black : Colors.black45,
+                color: widget.isGameStarted ? Colors.black : Colors.black45,
               ),
             ),
           ),
@@ -146,11 +173,17 @@ class GameKeyboardWidget extends StatelessWidget {
   Widget _buildClearButton(double height, double iconSize) {
     return Expanded(
       child: Material(
-        color: isGameStarted ? Colors.grey.shade400 : Colors.grey.shade300,
+        color:
+            widget.isGameStarted ? Colors.grey.shade400 : Colors.grey.shade300,
         borderRadius: BorderRadius.circular(8),
         elevation: 2,
         child: InkWell(
-          onTap: isGameStarted ? () => onKeyTap('clear') : null,
+          onTap: widget.isGameStarted
+              ? () {
+                  _playSound();
+                  widget.onKeyTap('clear');
+                }
+              : null,
           borderRadius: BorderRadius.circular(8),
           child: Container(
             height: height,
@@ -159,7 +192,7 @@ class GameKeyboardWidget extends StatelessWidget {
             child: Icon(
               Icons.backspace_outlined,
               size: iconSize,
-              color: isGameStarted ? Colors.black87 : Colors.black45,
+              color: widget.isGameStarted ? Colors.black87 : Colors.black45,
             ),
           ),
         ),
@@ -170,14 +203,17 @@ class GameKeyboardWidget extends StatelessWidget {
   Widget _buildDecimalToggleButton(double height, double fontSize) {
     return Expanded(
       child: Material(
-        color: controller.useDecimals
+        color: widget.controller.useDecimals
             ? Colors.blue.shade400
             : Colors.grey.shade400,
         borderRadius: BorderRadius.circular(8),
         elevation: 2,
         child: InkWell(
-          onTap: !isGameStarted
-              ? () => onDecimalToggle(!controller.useDecimals)
+          onTap: !widget.isGameStarted
+              ? () {
+                  _playSound();
+                  widget.onDecimalToggle(!widget.controller.useDecimals);
+                }
               : null,
           borderRadius: BorderRadius.circular(8),
           child: Container(
@@ -185,12 +221,14 @@ class GameKeyboardWidget extends StatelessWidget {
             padding: EdgeInsets.symmetric(vertical: height * 0.15),
             alignment: Alignment.center,
             child: Text(
-              controller.useDecimals ? 'Decimals' : 'Integars',
+              widget.controller.useDecimals ? 'Decimals' : 'Integars',
               style: TextStyle(
                 fontSize: fontSize * 0.7,
                 fontWeight: FontWeight.bold,
-                color: !isGameStarted
-                    ? (controller.useDecimals ? Colors.white : Colors.white)
+                color: !widget.isGameStarted
+                    ? (widget.controller.useDecimals
+                        ? Colors.white
+                        : Colors.white)
                     : Colors.white,
               ),
             ),

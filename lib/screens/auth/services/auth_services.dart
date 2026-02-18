@@ -510,7 +510,7 @@ class AuthService {
       if (token == null) return null;
 
       // ✅ Use ApiClient - it handles 401 automatically with navigation to login
-      final response = await ApiClient.get('/auth/user/');
+      final response = await ApiClient.get('/v1/user/detail/');
 
       if (response.statusCode == 200) {
         return User.fromJson(jsonDecode(response.body));
@@ -539,5 +539,163 @@ class AuthService {
       print('Exception in fetchUserProfile: $e');
     }
     return null;
+  }
+
+  // ------------------ EMAIL VERIFICATION ------------------ //
+  Future<AuthResult> verifyEmail(String key) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/auth/registration/verify-email/'),
+        headers: {
+          'accept': 'application/json',
+          'Content-Type': 'application/json'
+        },
+        body: jsonEncode({'key': key}),
+      );
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        return AuthResult(success: true);
+      } else {
+        return AuthResult(success: false, error: _parseError(response));
+      }
+    } catch (e) {
+      return AuthResult(success: false, error: 'Connection error: $e');
+    }
+  }
+
+  // ------------------ PASSWORD RESET CONFIRM ------------------ //
+  Future<AuthResult> confirmPasswordReset(String uid, String token,
+      String newPassword1, String newPassword2) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/auth/password/reset/confirm/$uid/$token/'),
+        headers: {
+          'accept': 'application/json',
+          'Content-Type': 'application/json'
+        },
+        body: jsonEncode(
+            {'new_password1': newPassword1, 'new_password2': newPassword2}),
+      );
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        return AuthResult(success: true);
+      } else {
+        return AuthResult(success: false, error: _parseError(response));
+      }
+    } catch (e) {
+      return AuthResult(success: false, error: 'Connection error: $e');
+    }
+  }
+
+  // ------------------ CHANGE PASSWORD ------------------ //
+  Future<AuthResult> changePassword(
+      String oldPassword, String newPassword1, String newPassword2) async {
+    try {
+      final token = await getCurrentToken();
+      if (token == null)
+        return AuthResult(success: false, error: 'Not authenticated');
+
+      final response = await http.post(
+        Uri.parse('$baseUrl/auth/password/change/'),
+        headers: {
+          'accept': 'application/json',
+          'Content-Type': 'application/json',
+          'Authorization': 'Token $token',
+        },
+        body: jsonEncode({
+          'old_password': oldPassword,
+          'new_password1': newPassword1,
+          'new_password2': newPassword2,
+        }),
+      );
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        return AuthResult(success: true);
+      } else {
+        return AuthResult(success: false, error: _parseError(response));
+      }
+    } catch (e) {
+      return AuthResult(success: false, error: 'Connection error: $e');
+    }
+  }
+
+  // ------------------ ACCOUNT DEACTIVATION ------------------ //
+  Future<AuthResult> deactivateAccount(String password) async {
+    try {
+      print("AuthService: deactivateAccount start");
+      final token = await getCurrentToken();
+      if (token == null) {
+        print("AuthService: No token found");
+        return AuthResult(success: false, error: 'Not authenticated');
+      }
+
+      print("AuthService: Sending request to $baseUrl/auth/deactivate/");
+      final response = await http.post(
+        Uri.parse('$baseUrl/auth/deactivate/'),
+        headers: {
+          'accept': 'application/json',
+          'Content-Type': 'application/json',
+          'Authorization': 'Token $token',
+        },
+        body: jsonEncode({'password': password}),
+      );
+
+      print("AuthService: Deactivate response status: ${response.statusCode}");
+      print("AuthService: Deactivate response body: ${response.body}");
+
+      if (response.statusCode == 204 || response.statusCode == 200) {
+        await _storage.clearAll();
+        return AuthResult(success: true);
+      } else {
+        return AuthResult(success: false, error: _parseError(response));
+      }
+    } catch (e) {
+      print("AuthService: Exception in deactivateAccount: $e");
+      return AuthResult(success: false, error: 'Connection error: $e');
+    }
+  }
+
+  String _parseError(http.Response response) {
+    try {
+      final errorData = jsonDecode(response.body);
+      if (errorData is Map<String, dynamic>) {
+        final errors = <String>[];
+        errorData.forEach((key, value) {
+          if (value is List) {
+            errors.addAll(value.map((e) => '$key: ${e.toString()}'));
+          } else if (value is String) {
+            errors.add('$key: $value');
+          }
+        });
+        if (errors.isNotEmpty) return errors.join('\n');
+      }
+      return response.body.isNotEmpty
+          ? _sanitizeError(response.body)
+          : 'Unknown error';
+    } catch (_) {
+      return response.body.isNotEmpty
+          ? _sanitizeError(response.body)
+          : 'Unknown error';
+    }
+  }
+
+  String _sanitizeError(String rawBody) {
+    if (rawBody.contains("IntegrityError") ||
+        rawBody.contains("unique constraint")) {
+      if (rawBody.contains("email")) {
+        return "An account with this email already exists.";
+      }
+      if (rawBody.contains("username")) {
+        return "This username is already taken.";
+      }
+      return "Account already exists.";
+    }
+    // If it's a huge HTML page, truncate it
+    if (rawBody.length > 200) {
+      if (rawBody.contains("<!DOCTYPE html>"))
+        return "Server error occurred. Please try again later.";
+      return rawBody.substring(0, 200) + "...";
+    }
+    return rawBody;
   }
 }
