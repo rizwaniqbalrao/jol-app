@@ -186,6 +186,7 @@ class ResultDialogWidget extends StatelessWidget {
                                         if (controller.mode ==
                                             GameMode.timed) ...[
                                           const SizedBox(width: 8),
+                                          // Show the Timed Bonus as a separate card to highlight the 1.1x multiplier effect
                                           Expanded(
                                             child: _buildVerticalScoreCard(
                                               "Timed Bonus",

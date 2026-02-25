@@ -152,6 +152,7 @@ class ResultDialogWidgetNxN extends StatelessWidget {
                                       _getMultiplierDescription(multiplier),
                                       "×${multiplier.toStringAsFixed(1)}",
                                     ),
+                                    // Show the Timed Mode Bonus as a separate line item to highlight the 1.1x multiplier effect
                                     if (controller.mode == GameMode.timed) ...[
                                       const SizedBox(height: 8),
                                       _buildScoreBreakdownRow(

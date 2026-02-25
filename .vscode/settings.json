@@ -1,5 +1,5 @@
 {
-    "files.autoSave": "off", // Automatically saves files after a delay
+    "files.autoSave": "afterDelay", // Automatically saves files after a delay
     "editor.minimap.enabled": false, // Disables the minimap
     "editor.wordWrap": "off", // Enables word wrapping
     "files.exclude": {
