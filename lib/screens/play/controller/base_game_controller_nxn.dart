@@ -357,6 +357,13 @@ abstract class BaseGameControllerNxN extends ChangeNotifier {
     // Total Score = (Base Score + Time Bonus) × Multiplier
     double multiplier = getMultiplier();
     score = ((baseScore + timeBonus) * multiplier).round();
+
+     /*if its timed game we'll multipy with additional multilpier of 1.1 for all 4x4, 5x5 and 6x6. 
+    wether its hard mode or not, and if its decimal mode or not. 
+    This is to lure the player to play the timed mode and make the game more competitive.*/
+    if (mode == GameMode.timed) {
+      score = (score * 1.1).round();
+    }
   }
 
   // -----------------------------------------------------------------------------

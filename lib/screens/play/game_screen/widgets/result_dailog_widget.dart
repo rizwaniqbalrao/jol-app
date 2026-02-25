@@ -92,6 +92,11 @@ class ResultDialogWidget extends StatelessWidget {
                                   controller.getMultiplier();
                               final int totalScore =
                                   savedGame?.finalScore ?? controller.score;
+                              final double preTimedModeScore = totalScore / 1.1;
+                              final String preTimedModeScoreText =
+                                  preTimedModeScore % 1 == 0
+                                      ? preTimedModeScore.toInt().toString()
+                                      : preTimedModeScore.toStringAsFixed(1);
 
                               return Column(
                                 children: [
@@ -178,6 +183,19 @@ class ResultDialogWidget extends StatelessWidget {
                                             accentPink,
                                           ),
                                         ),
+                                        if (controller.mode ==
+                                            GameMode.timed) ...[
+                                          const SizedBox(width: 8),
+                                          Expanded(
+                                            child: _buildVerticalScoreCard(
+                                              "Timed Bonus",
+                                              "$preTimedModeScoreText × 1.1",
+                                              "$totalScore",
+                                              Icons.flash_on_rounded,
+                                              successGreen,
+                                            ),
+                                          ),
+                                        ],
                                       ],
                                     ),
                                   ),
