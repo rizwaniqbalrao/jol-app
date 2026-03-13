@@ -121,27 +121,7 @@ class AuthService {
         return AuthResult(success: true, user: user);
       } else {
         // Parse server errors for user-friendly display
-        String errorMsg =
-            'Login with Google failed. Please try again or use another method.';
-        try {
-          final errorData = jsonDecode(response.body);
-          if (errorData is Map<String, dynamic>) {
-            final errors = <String>[];
-            errorData.forEach((key, value) {
-              if (value is List) {
-                errors.addAll(value.map((e) => '$key: ${e.toString()}'));
-              } else if (value is String) {
-                errors.add('$key: $value');
-              }
-            });
-            if (errors.isNotEmpty) {
-              errorMsg = errors.join('\n');
-            }
-          }
-        } catch (_) {
-          // If JSON parse fails, use raw body or generic
-          errorMsg = response.body.isNotEmpty ? response.body : errorMsg;
-        }
+        String errorMsg = _parseError(response);
         return AuthResult(success: false, error: errorMsg);
       }
     } catch (e) {
@@ -227,26 +207,7 @@ class AuthService {
       } else {
         // Handle server errors
         print('⚠️ Login failed with status ${response.statusCode}');
-        String errorMsg = 'Incorrect username, email, or password.';
-
-        try {
-          final errorData = jsonDecode(response.body);
-          if (errorData is Map<String, dynamic>) {
-            final errors = <String>[];
-            errorData.forEach((key, value) {
-              if (value is List) {
-                errors.addAll(value.map((e) => '$key: $e'));
-              } else if (value is String) {
-                errors.add('$key: $value');
-              }
-            });
-            if (errors.isNotEmpty) errorMsg = errors.join('\n');
-          }
-        } catch (_) {
-          // Use raw body if JSON parse fails
-          if (response.body.isNotEmpty) errorMsg = response.body;
-        }
-
+        String errorMsg = _parseError(response);
         print('⚠️ Parsed error: $errorMsg');
         return AuthResult(success: false, error: errorMsg);
       }
@@ -318,27 +279,7 @@ class AuthService {
         }
       } else {
         // Parse server errors for user-friendly display
-        String errorMsg =
-            'Unable to create account. Please check your details (e.g., strong password, unique username/email) and try again.';
-        try {
-          final errorData = jsonDecode(response.body);
-          if (errorData is Map<String, dynamic>) {
-            final errors = <String>[];
-            errorData.forEach((key, value) {
-              if (value is List) {
-                errors.addAll(value.map((e) => '$key: ${e.toString()}'));
-              } else if (value is String) {
-                errors.add('$key: $value');
-              }
-            });
-            if (errors.isNotEmpty) {
-              errorMsg = errors.join('\n');
-            }
-          }
-        } catch (_) {
-          // If JSON parse fails, use raw body or generic
-          errorMsg = response.body.isNotEmpty ? response.body : errorMsg;
-        }
+        String errorMsg = _parseError(response);
         print('Parsed error: $errorMsg');
         return AuthResult(success: false, error: errorMsg);
       }
@@ -385,26 +326,7 @@ class AuthService {
         return AuthResult(success: true);
       } else {
         // Parse server errors for user-friendly display
-        String errorMsg =
-            'Unable to send password reset email. Please check your email address and try again.';
-        try {
-          final errorData = jsonDecode(response.body);
-          if (errorData is Map<String, dynamic>) {
-            final errors = <String>[];
-            errorData.forEach((key, value) {
-              if (value is List) {
-                errors.addAll(value.map((e) => '$key: ${e.toString()}'));
-              } else if (value is String) {
-                errors.add('$key: $value');
-              }
-            });
-            if (errors.isNotEmpty) {
-              errorMsg = errors.join('\n');
-            }
-          }
-        } catch (_) {
-          errorMsg = response.body.isNotEmpty ? response.body : errorMsg;
-        }
+        String errorMsg = _parseError(response);
         print('Parsed error: $errorMsg');
         return AuthResult(success: false, error: errorMsg);
       }
@@ -450,26 +372,7 @@ class AuthService {
       } else {
         // Still return success if local storage cleared
         // but log the server error
-        String errorMsg =
-            'Logged out locally but server logout may have failed.';
-        try {
-          final errorData = jsonDecode(response.body);
-          if (errorData is Map<String, dynamic>) {
-            final errors = <String>[];
-            errorData.forEach((key, value) {
-              if (value is List) {
-                errors.addAll(value.map((e) => '$key: ${e.toString()}'));
-              } else if (value is String) {
-                errors.add('$key: $value');
-              }
-            });
-            if (errors.isNotEmpty) {
-              errorMsg = errors.join('\n');
-            }
-          }
-        } catch (_) {
-          errorMsg = response.body.isNotEmpty ? response.body : errorMsg;
-        }
+        String errorMsg = _parseError(response);
         print('Logout warning: $errorMsg');
         return AuthResult(success: true); // Still successful locally
       }
@@ -680,20 +583,23 @@ class AuthService {
   }
 
   String _sanitizeError(String rawBody) {
-    if (rawBody.contains("IntegrityError") ||
-        rawBody.contains("unique constraint")) {
-      if (rawBody.contains("email")) {
+    final lowerBody = rawBody.toLowerCase();
+    if (lowerBody.contains("integrityerror") ||
+        lowerBody.contains("unique constraint")) {
+      if (lowerBody.contains("email")) {
         return "An account with this email already exists.";
       }
-      if (rawBody.contains("username")) {
+      if (lowerBody.contains("username")) {
         return "This username is already taken.";
       }
       return "Account already exists.";
     }
-    // If it's a huge HTML page, truncate it
+    // If it's an HTML page, completely hide raw HTML
+    if (lowerBody.contains("<!doctype html>") || lowerBody.contains("<html")) {
+      return "A server error occurred. Please try again later.";
+    }
+    // Truncate long error messages
     if (rawBody.length > 200) {
-      if (rawBody.contains("<!DOCTYPE html>"))
-        return "Server error occurred. Please try again later.";
       return rawBody.substring(0, 200) + "...";
     }
     return rawBody;

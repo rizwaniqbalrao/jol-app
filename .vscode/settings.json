@@ -43,5 +43,6 @@
             "linux": "Default Shell",
             "osx": "Default Shell"
         }
-    }
+    },
+    "cmake.sourceDirectory": "D:/Development/goal 27/Flutter Mobile Applications/jol-app/windows"
 }

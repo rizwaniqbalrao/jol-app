@@ -7,7 +7,7 @@ plugins {
 }
 
 android {
-    namespace = "com.example.jol_app"
+    namespace = "com.jacklookman.jolpuzzles"
     compileSdk = 36
     ndkVersion = "27.0.12077973"
 
@@ -28,7 +28,7 @@ android {
 
 
     defaultConfig {
-        applicationId = "com.example.jol_app"
+        applicationId = "com.jacklookman.jolpuzzles"
         minSdkVersion = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
