@@ -1,3 +1,36 @@
 {
-    "cmake.ignoreCMakeListsMissing": true
+  "files.autoSave": "afterDelay",
+  "editor.minimap.enabled": false,
+  "editor.tabSize": 2,
+
+  "files.exclude": {
+    "**/.DS_Store": true,
+    "**/node_modules": true,
+    "**/.sst": true
+  },
+
+  "editor.defaultFormatter": "esbenp.prettier-vscode",
+
+  "typescript.preferences.importModuleSpecifier": "relative",
+  "typescript.tsdk": "node_modules/typescript/lib",
+  "typescript.tsserver.experimental.enableProjectDiagnostics": true,
+
+  "debug.openDebug": "neverOpen",
+  "problems.autoReveal": true,
+
+  "terminal.integrated.hideOnStartup": "always",
+  "terminal.integrated.defaultProfile.windows": "Command Prompt",
+
+  "task.allowAutomaticTasks": true,
+
+  "jestrunner.configPath": "jest.unit.config.cjs",
+
+  "tasks": {
+    "label": "lint on open",
+    "type": "shell",
+    "command": "npm run lint",
+    "runOn": "folderOpen"
+  },
+
+  "cmake.sourceDirectory": "D:/Development/goal 27/Flutter Mobile Applications/jol-app/windows"
 }

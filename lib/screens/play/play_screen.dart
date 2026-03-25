@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:jol_app/screens/play/create_room_screen.dart';
 import 'package:jol_app/screens/play/game_screen/game_screen.dart';
+import 'package:jol_app/screens/play/game_screen/game_screen_nxn.dart';
+import 'package:jol_app/screens/play/game_screen/game_screen_6x6.dart';
 
 import '../../constants/add_manager.dart';
 import 'join_room_screen.dart';
@@ -105,7 +107,7 @@ class _PlayScreenState extends State<PlayScreen> {
                               gridSize: "5x5",
                               title: "INTERMEDIATE",
                               color: textOrange,
-                              isUnlocked: false,
+                              isUnlocked: true, // Change to true for testing
                               icon: Icons.grid_on,
                             ),
                             const SizedBox(height: 10),
@@ -115,7 +117,7 @@ class _PlayScreenState extends State<PlayScreen> {
                               gridSize: "6x6",
                               title: "ADVANCED",
                               color: textPink,
-                              isUnlocked: false,
+                              isUnlocked: true, // Change to true for testing 
                               icon: Icons.grid_3x3,
                             ),
 
@@ -210,8 +212,16 @@ class _PlayScreenState extends State<PlayScreen> {
     await _showAdThenNavigate(context, const CreateRoomScreen());
   }
 
-  Future<void> _handleStartGame(BuildContext context) async {
-    await _showAdThenNavigate(context, const GameScreen());
+  Future<void> _handleStartGame(BuildContext context, String gridSize) async {
+    Widget nextScreen;
+    if (gridSize == "5x5") {
+      nextScreen = const GameScreenNxN(gridSize: 5);
+    } else if (gridSize == "6x6") {
+      nextScreen = const GameScreen6x6();
+    } else {
+      nextScreen = const GameScreen();
+    }
+    await _showAdThenNavigate(context, nextScreen);
   }
 
   /// Unified method to handle Ad and guaranteed navigation
@@ -493,7 +503,7 @@ class _PlayScreenState extends State<PlayScreen> {
                         Navigator.pop(dialogContext);
 
                         // 2. Trigger the ad and navigation using the main screen's context
-                        _handleStartGame(context);
+                        _handleStartGame(context, gridSize);
                       },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: color,

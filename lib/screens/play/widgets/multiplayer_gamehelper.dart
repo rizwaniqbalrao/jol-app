@@ -5,6 +5,7 @@ import '../../dashboard/models/game_models.dart';
 import '../../dashboard/services/game_service.dart';
 import '../../settings/services/user_profile_services.dart';
 import '../controller/multiplayer_game_controller.dart';
+import '../controller/base_multiplayer_controller_nxn.dart';
 import '../models/room_models.dart';
 
 class MultiplayerGameSaveHelper {
@@ -21,7 +22,7 @@ class MultiplayerGameSaveHelper {
   /// - 'pointsEarned': int? (if successful)
   /// - 'game_screen': Game? (if successful) - The saved game_screen as a Game model object
   Future<Map<String, dynamic>> saveMultiplayerGame({
-    required MultiplayerGameController controller,
+    required BaseMultiplayerControllerNxN controller,
     required Room room,
     required String gameStatus, // "completed", "abandoned", or "timed_out"
   }) async {
@@ -40,7 +41,8 @@ class MultiplayerGameSaveHelper {
 
       // Step 2: Determine player position and total players
       final leaderboard = controller.getLeaderboard();
-      final playerIndex = leaderboard.indexWhere((p) => p.id == controller.playerId);
+      final playerIndex =
+          leaderboard.indexWhere((p) => p.id == controller.playerId);
 
       if (playerIndex == -1) {
         return {
@@ -58,7 +60,8 @@ class MultiplayerGameSaveHelper {
       // For timed mode, use the calculated completion time
       // For untimed mode, still track the time but backend won't require it
       if (room.settings.mode == 'untimed' && controller.gameStartTime != null) {
-        completionTime = DateTime.now().difference(controller.gameStartTime!).inSeconds;
+        completionTime =
+            DateTime.now().difference(controller.gameStartTime!).inSeconds;
       }
 
       // Step 4: Determine final game_screen status
@@ -73,7 +76,8 @@ class MultiplayerGameSaveHelper {
         playerId: userId,
         gameType: 'multiplayer',
         gameMode: room.settings.mode == 'timed' ? 'timed' : 'untimed',
-        operation: room.settings.operation == 'addition' ? 'addition' : 'subtraction',
+        operation:
+            room.settings.operation == 'addition' ? 'addition' : 'subtraction',
         gridSize: room.settings.gridSize,
         timestamp: DateTime.now().toUtc().toIso8601String(),
         status: finalStatus,
@@ -104,10 +108,11 @@ class MultiplayerGameSaveHelper {
 
         return {
           'success': true,
-          'message': 'Game saved successfully! You earned ${saveResult.data!.pointsEarned} points.',
+          'message':
+              'Game saved successfully! You earned ${saveResult.data!.pointsEarned} points.',
           'matchId': saveResult.data!.matchId,
           'pointsEarned': saveResult.data!.pointsEarned,
-          'game_screen': savedGame,  // ✅ Return the Game object
+          'game_screen': savedGame, // ✅ Return the Game object
         };
       } else {
         return {
@@ -128,7 +133,8 @@ class MultiplayerGameSaveHelper {
   Game _convertResponseToGame(SaveGameResponse response) {
     return Game(
       matchId: response.matchId,
-      playerId: response.playerId ?? 'N/A',  // Use playerId from response if available
+      playerId:
+          response.playerId ?? 'N/A', // Use playerId from response if available
       gameType: response.gameType,
       gameMode: response.gameMode,
       operation: response.operation,
@@ -196,10 +202,10 @@ class MultiplayerGameSaveHelper {
 
   /// Helper method to determine game_screen status based on controller state
   String determineMultiplayerGameStatus(
-      MultiplayerGameController controller,
-      Room room,
-      bool wasSubmitted,
-      ) {
+    MultiplayerGameController controller,
+    Room room,
+    bool wasSubmitted,
+  ) {
     // Check if timed out
     if (room.settings.mode == 'timed' && controller.timeLeft.inSeconds <= 0) {
       return 'timed_out';

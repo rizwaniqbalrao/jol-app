@@ -55,6 +55,7 @@ class _WaitingLobbyScreenState extends State<WaitingLobbyScreen> {
               builder: (context) => MultiplayerGameScreen(
                 roomCode: widget.roomCode,
                 playerId: widget.playerId,
+                room: _room!,
               ),
             ),
           );
