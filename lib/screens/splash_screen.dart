@@ -4,7 +4,7 @@ import 'package:get/get.dart';
 import 'package:jol_app/screens/auth/services/deep_link_service.dart';
 import 'auth/services/auth_services.dart';
 import 'bnb/home_screen.dart';
-import 'onboarding/onboarding_screen.dart';
+import 'auth/login_screen.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -40,10 +40,10 @@ class _SplashScreenState extends State<SplashScreen> {
         MaterialPageRoute(builder: (context) => const HomeScreen()),
       );
     } else {
-      // User is not logged in, go to OnboardingScreen
+      // User is not logged in, go to LoginScreen
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(builder: (context) => const OnboardingScreen()),
+        MaterialPageRoute(builder: (context) => const LoginScreen()),
       );
     }
   }

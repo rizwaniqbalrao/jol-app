@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
 import 'package:jol_app/screens/play/widgets/multiplayer_gamehelper.dart';
+import 'package:jol_app/utils/audio_manager.dart';
 import 'package:provider/provider.dart';
 import 'models/room_models.dart';
 import 'multiplayer_results_screen.dart';
@@ -732,7 +733,10 @@ class _MultiplayerGameScreenState extends State<MultiplayerGameScreen> {
         borderRadius: BorderRadius.circular(8),
         elevation: 2,
         child: InkWell(
-          onTap: () => _onKeyboardTap(number, controller),
+          onTap: () {
+            AudioManager.instance.playKeyPressSound();
+            _onKeyboardTap(number, controller);
+          },
           borderRadius: BorderRadius.circular(8),
           child: Container(
             height: 48,
@@ -758,7 +762,10 @@ class _MultiplayerGameScreenState extends State<MultiplayerGameScreen> {
         borderRadius: BorderRadius.circular(8),
         elevation: 2,
         child: InkWell(
-          onTap: () => _onKeyboardTap('clear', controller),
+          onTap: () {
+            AudioManager.instance.playKeyPressSound();
+            _onKeyboardTap('clear', controller);
+          },
           borderRadius: BorderRadius.circular(8),
           child: Container(
             height: 48,

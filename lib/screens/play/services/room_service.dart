@@ -53,45 +53,38 @@ class RoomService {
     return roomCode;
   }
 
-  Future<bool> joinRoom({
+  Future<void> joinRoom({
     required String roomCode,
     required String playerId,
     required String playerName,
   }) async {
-    try {
-      final roomRef = _database.ref('rooms/$roomCode');
-      final snapshot = await roomRef.get();
+    final roomRef = _database.ref('rooms/$roomCode');
+    final snapshot = await roomRef.get();
 
-      if (!snapshot.exists) {
-        throw Exception('Room not found');
-      }
-
-      final roomData = snapshot.value as Map;
-      final gameState = GameState.fromJson(roomData['gameState']);
-
-      if (gameState.status != 'waiting') {
-        throw Exception('Game already started');
-      }
-
-      final players = roomData['players'] as Map? ?? {};
-      final maxPlayers = roomData['settings']['maxPlayers'] ?? 4;
-
-      if (players.length >= maxPlayers) {
-        throw Exception('Room is full');
-      }
-
-      await roomRef.child('players/$playerId').set(
-        Player(
-          id: playerId,
-          name: playerName,
-        ).toJson(),
-      );
-
-      return true;
-    } catch (e) {
-      print('Error joining room: $e');
-      return false;
+    if (!snapshot.exists) {
+      throw Exception('Room not found');
     }
+
+    final roomData = snapshot.value as Map;
+    final gameState = GameState.fromJson(roomData['gameState']);
+
+    if (gameState.status != 'waiting') {
+      throw Exception('Game already started');
+    }
+
+    final players = roomData['players'] as Map? ?? {};
+    final maxPlayers = roomData['settings']['maxPlayers'] ?? 4;
+
+    if (players.length >= maxPlayers) {
+      throw Exception('Room is full');
+    }
+
+    await roomRef.child('players/$playerId').set(
+      Player(
+        id: playerId,
+        name: playerName,
+      ).toJson(),
+    );
   }
 
   Future<void> togglePlayerReady(String roomCode, String playerId, bool isReady) async {

@@ -53,7 +53,7 @@ class DefaultFirebaseOptions {
 
   static const FirebaseOptions android = FirebaseOptions(
     apiKey: 'AIzaSyAnwNK8LLT28xeXL4LkCVpcWKE1b9imSeI',
-    appId: '1:149109781313:android:d780bf1cc05b664797a7c0',
+    appId: '1:149109781313:android:d0fa41c04f7a664497a7c0',
     messagingSenderId: '149109781313',
     projectId: 'jol-app-47422',
     databaseURL: 'https://jol-app-47422-default-rtdb.firebaseio.com',
@@ -62,12 +62,12 @@ class DefaultFirebaseOptions {
 
   static const FirebaseOptions ios = FirebaseOptions(
     apiKey: 'AIzaSyDcmlPv9OAtVhq-HzaWf6Uzq4xYTG07lRk',
-    appId: '1:149109781313:ios:a3cf51d814d0cd8297a7c0',
+    appId: '1:149109781313:ios:967175302a322d6797a7c0',
     messagingSenderId: '149109781313',
     projectId: 'jol-app-47422',
     databaseURL: 'https://jol-app-47422-default-rtdb.firebaseio.com',
     storageBucket: 'jol-app-47422.firebasestorage.app',
-    iosBundleId: 'com.example.jolApp',
+    iosBundleId: 'com.jacklookman.jolpuzzles',
   );
 
   static const FirebaseOptions macos = FirebaseOptions(
@@ -90,4 +90,5 @@ class DefaultFirebaseOptions {
     storageBucket: 'jol-app-47422.firebasestorage.app',
     measurementId: 'G-3EWC27SMN5',
   );
+
 }

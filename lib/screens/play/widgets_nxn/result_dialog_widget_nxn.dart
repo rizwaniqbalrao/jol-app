@@ -73,13 +73,17 @@ class ResultDialogWidgetNxN extends StatelessWidget {
                         builder: (context) {
                           // Calculate scoring breakdown
                           final int correctAnswers = controller.correctAnswers;
-                          final int baseScore = correctAnswers * 5;
+                          final int baseScore = correctAnswers * 10;
                           final int timeRemaining = controller.timeLeft.inSeconds;
                           final int timeBonus = controller.mode == GameMode.timed 
                               ? timeRemaining * 2 
                               : 0;
                           final double multiplier = controller.getMultiplier();
                           final int totalScore = savedGame?.finalScore ?? controller.score;
+                          final double preTimedModeScore = totalScore / 1.1;
+                          final String preTimedModeScoreText = preTimedModeScore % 1 == 0
+                              ? preTimedModeScore.round().toInt().toString()
+                              : preTimedModeScore.toStringAsFixed(1);
 
                           return Column(
                             children: [
@@ -132,7 +136,7 @@ class ResultDialogWidgetNxN extends StatelessWidget {
                                     _buildScoreBreakdownRow(
                                       "Base Score",
                                       "$correctAnswers × 10",
-                                      "$baseScore",
+                                      "${correctAnswers * 10 }",
                                     ),
                                     if (controller.mode == GameMode.timed) ...[
                                       const SizedBox(height: 8),
@@ -148,6 +152,15 @@ class ResultDialogWidgetNxN extends StatelessWidget {
                                       _getMultiplierDescription(multiplier),
                                       "×${multiplier.toStringAsFixed(1)}",
                                     ),
+                                    // Show the Timed Mode Bonus as a separate line item to highlight the 1.1x multiplier effect
+                                    if (controller.mode == GameMode.timed) ...[
+                                      const SizedBox(height: 8),
+                                      _buildScoreBreakdownRow(
+                                        "Timed Mode Bonus",
+                                        "$preTimedModeScoreText × 1.1",
+                                        "$totalScore",
+                                      ),
+                                    ],
                                   ],
                                 ),
                               ),
