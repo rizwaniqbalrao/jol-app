@@ -1,5 +1,7 @@
 import 'dart:async';
 
+import 'dart:io';
+
 import 'package:flutter/foundation.dart'; // For kDebugMode
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 
@@ -10,7 +12,9 @@ class AdManager {
   void loadInterstitial() {
     final adUnitId = kDebugMode
         ? 'ca-app-pub-3940256099942544/1033173712' // Test ID for debug builds
-        : 'ca-app-pub-8560615341997714/1775210155'; // Real ID for release builds
+        : Platform.isAndroid 
+            ? 'ca-app-pub-1892741475670987/6174254279' // Client Android ID
+            : 'ca-app-pub-1892741475670987/7241458781'; // Client iOS ID
 
     InterstitialAd.load(
       adUnitId: adUnitId,
