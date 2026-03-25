@@ -19,6 +19,7 @@ migrate_working_dir/
 .idea/
 
 # VS Code which you may wish to be included in version control, so this line
+temp_auto_push.bat
 # is commented out by default.
 
 # Flutter/Dart/Pub related
@@ -41,3 +42,5 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+.gitignore
+temp_interactive_push.bat
