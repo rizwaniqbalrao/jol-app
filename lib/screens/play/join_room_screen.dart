@@ -50,13 +50,13 @@ class _JoinRoomScreenState extends State<JoinRoomScreen> {
 
     try {
       final playerId = const Uuid().v4();
-      final success = await _roomService.joinRoom(
+      await _roomService.joinRoom(
         roomCode: roomCode,
         playerId: playerId,
         playerName: playerName,
       );
 
-      if (success && mounted) {
+      if (mounted) {
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(
@@ -67,13 +67,26 @@ class _JoinRoomScreenState extends State<JoinRoomScreen> {
             ),
           ),
         );
-      } else {
-        throw Exception('Failed to join room');
       }
     } catch (e) {
       if (mounted) {
+        String errorMessage = e.toString().replaceAll('Exception: ', '');
+        
+        // Map specific exceptions to more user-friendly messages
+        if (errorMessage.contains('Room not found')) {
+          errorMessage = "The code you entered is incorrect. To join a room, someone else must create a room first.";
+        } else if (errorMessage.contains('Room is full')) {
+          errorMessage = "This room is already full. You cannot join.";
+        } else if (errorMessage.contains('Game already started')) {
+          errorMessage = "This game has already started. You cannot join.";
+        }
+
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e')),
+          SnackBar(
+            content: Text(errorMessage, style: const TextStyle(color: Colors.white)),
+            backgroundColor: Colors.red.shade600,
+            duration: const Duration(seconds: 4),
+          ),
         );
       }
     } finally {

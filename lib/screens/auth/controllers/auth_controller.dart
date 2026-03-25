@@ -52,14 +52,7 @@ class AuthController extends GetxController {
         isAuthenticated.value = true;
         return true;
       } else {
-        Get.snackbar(
-          "Login Failed",
-          result.error ?? "Unknown error occurred",
-          snackPosition: SnackPosition.BOTTOM,
-          backgroundColor: Colors.red.withOpacity(0.8),
-          colorText: Colors.white,
-          margin: const EdgeInsets.all(16),
-        );
+        _showSnackbar("Login Failed", result.error ?? "Unknown error occurred");
         return false;
       }
     } finally {
@@ -80,14 +73,8 @@ class AuthController extends GetxController {
 
         return true;
       } else {
-        Get.snackbar(
-          "Registration Failed",
-          result.error ?? "Unknown error occurred",
-          snackPosition: SnackPosition.BOTTOM,
-          backgroundColor: Colors.red.withOpacity(0.8),
-          colorText: Colors.white,
-          margin: const EdgeInsets.all(16),
-        );
+        _showSnackbar(
+            "Registration Failed", result.error ?? "Unknown error occurred");
         return false;
       }
     } finally {
@@ -104,14 +91,8 @@ class AuthController extends GetxController {
         isAuthenticated.value = true;
         return true;
       } else {
-        Get.snackbar(
-          "Google Sign-In Failed",
-          result.error ?? "Unknown error occurred",
-          snackPosition: SnackPosition.BOTTOM,
-          backgroundColor: Colors.red.withOpacity(0.8),
-          colorText: Colors.white,
-          margin: const EdgeInsets.all(16),
-        );
+        _showSnackbar(
+            "Google Sign-In Failed", result.error ?? "Unknown error occurred");
         return false;
       }
     } finally {
@@ -138,12 +119,10 @@ class AuthController extends GetxController {
     try {
       final result = await _authService.verifyEmail(key);
       if (result.success) {
-        Get.snackbar("Success", "Email verified successfully",
-            backgroundColor: Colors.green, colorText: Colors.white);
+        _showSnackbar("Success", "Email verified successfully", isError: false);
         return true;
       }
-      Get.snackbar("Error", result.error ?? "Verification failed",
-          backgroundColor: Colors.red, colorText: Colors.white);
+      _showSnackbar("Error", result.error ?? "Verification failed");
       return false;
     } finally {
       isLoading.value = false;
@@ -155,12 +134,10 @@ class AuthController extends GetxController {
     try {
       final result = await _authService.requestPasswordReset(email);
       if (result.success) {
-        Get.snackbar("Success", "Password reset email sent",
-            backgroundColor: Colors.green, colorText: Colors.white);
+        _showSnackbar("Success", "Password reset email sent", isError: false);
         return true;
       }
-      Get.snackbar("Error", result.error ?? "Failed to send reset email",
-          backgroundColor: Colors.red, colorText: Colors.white);
+      _showSnackbar("Error", result.error ?? "Failed to send reset email");
       return false;
     } finally {
       isLoading.value = false;
@@ -174,14 +151,12 @@ class AuthController extends GetxController {
       final result =
           await _authService.confirmPasswordReset(uid, token, p1, p2);
       if (result.success) {
-        Get.snackbar("Success", "Password reset successfully",
-            backgroundColor: Colors.green, colorText: Colors.white);
+        _showSnackbar("Success", "Password reset successfully", isError: false);
         // Navigate to login
         Get.offAll(() => const LoginScreen());
         return true;
       }
-      Get.snackbar("Error", result.error ?? "Reset failed",
-          backgroundColor: Colors.red, colorText: Colors.white);
+      _showSnackbar("Error", result.error ?? "Reset failed");
       return false;
     } finally {
       isLoading.value = false;
@@ -193,12 +168,11 @@ class AuthController extends GetxController {
     try {
       final result = await _authService.changePassword(oldP, newP1, newP2);
       if (result.success) {
-        Get.snackbar("Success", "Password changed successfully",
-            backgroundColor: Colors.green, colorText: Colors.white);
+        _showSnackbar("Success", "Password changed successfully",
+            isError: false);
         return true;
       }
-      Get.snackbar("Error", result.error ?? "Change failed",
-          backgroundColor: Colors.red, colorText: Colors.white);
+      _showSnackbar("Error", result.error ?? "Change failed");
       return false;
     } finally {
       isLoading.value = false;
@@ -216,15 +190,37 @@ class AuthController extends GetxController {
         user.value = null;
         isAuthenticated.value = false;
         Get.offAll(() => const LoginScreen());
-        Get.snackbar("Success", "Account deactivated",
-            backgroundColor: Colors.green, colorText: Colors.white);
+        _showSnackbar("Success", "Account deactivated", isError: false);
         return true;
       }
-      Get.snackbar("Error", result.error ?? "Deactivation failed",
-          backgroundColor: Colors.red, colorText: Colors.white);
+      _showSnackbar("Error", result.error ?? "Deactivation failed");
       return false;
     } finally {
       isLoading.value = false;
+    }
+  }
+
+  void _showSnackbar(String title, String message, {bool isError = true}) {
+    final context = Get.context;
+    if (context != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('$title: $message',
+              style: const TextStyle(color: Colors.white)),
+          backgroundColor: isError ? Colors.red.withOpacity(0.8) : Colors.green,
+          behavior: SnackBarBehavior.floating,
+          margin: const EdgeInsets.all(16),
+          duration: const Duration(seconds: 3),
+        ),
+      );
+    } else {
+      Get.rawSnackbar(
+        title: title,
+        message: message,
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: isError ? Colors.red.withOpacity(0.8) : Colors.green,
+        margin: const EdgeInsets.all(16),
+      );
     }
   }
 }

@@ -92,6 +92,11 @@ class ResultDialogWidget extends StatelessWidget {
                                   controller.getMultiplier();
                               final int totalScore =
                                   savedGame?.finalScore ?? controller.score;
+                              final double preTimedModeScore = totalScore / 1.1;
+                              final String preTimedModeScoreText =
+                                  preTimedModeScore % 1 == 0
+                                      ? preTimedModeScore.toInt().toString()
+                                      : preTimedModeScore.toStringAsFixed(1);
 
                               return Column(
                                 children: [
@@ -137,47 +142,60 @@ class ResultDialogWidget extends StatelessWidget {
 
                                   const SizedBox(height: 24),
 
-                                  // Visual Score Breakdown (Horizontal Row)
-                                  IntrinsicHeight(
+                                  // Visual Score Breakdown (Single Container Row)
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(vertical: 16),
+                                    decoration: BoxDecoration(
+                                      color: neutralBg,
+                                      borderRadius: BorderRadius.circular(24),
+                                      border: Border.all(color: Colors.black.withOpacity(0.04)),
+                                    ),
                                     child: Row(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.stretch,
+                                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                                       children: [
                                         Expanded(
-                                          child: _buildVerticalScoreCard(
+                                          child: _buildCompactScoreItem(
                                             "Base Score",
-                                            "$correctAnswers × 10",
                                             "$baseScore",
-                                            Icons.check_circle_rounded,
+                                            "$correctAnswers × 10",
                                             primaryBlue,
+                                            Icons.check_circle_rounded,
                                           ),
                                         ),
-                                        if (controller.mode == GameMode.timed &&
-                                            timeBonus > 0) ...[
-                                          const SizedBox(width: 8),
+                                        if (controller.mode == GameMode.timed && timeBonus > 0) ...[
+                                          _buildVerticalDivider(),
                                           Expanded(
-                                            child: _buildVerticalScoreCard(
+                                            child: _buildCompactScoreItem(
                                               "Time Bonus",
-                                              "${timeRemaining}s / 15",
                                               "+$timeBonus",
-                                              Icons.timer_rounded,
+                                              "${timeRemaining}s / 15",
                                               Colors.orange,
+                                              Icons.timer_rounded,
                                             ),
                                           ),
                                         ],
-                                        const SizedBox(width: 8),
+                                        _buildVerticalDivider(),
                                         Expanded(
-                                          child: _buildVerticalScoreCard(
+                                          child: _buildCompactScoreItem(
                                             "Multiplier",
-                                            _getMultiplierDescription(
-                                                    multiplier)
-                                                .replaceAll(
-                                                    RegExp(r'\d+×\d+\s'), ''),
-                                            "x ${multiplier.toStringAsFixed(1)}",
-                                            Icons.bolt_rounded,
+                                            "x${multiplier.toStringAsFixed(1)}",
+                                            _getMultiplierDescription(multiplier).replaceAll(RegExp(r'\d+×\d+\s'), ''),
                                             accentPink,
+                                            Icons.bolt_rounded,
                                           ),
                                         ),
+                                        if (controller.mode == GameMode.timed) ...[
+                                          _buildVerticalDivider(),
+                                          Expanded(
+                                            child: _buildCompactScoreItem(
+                                              "Mode Bonus",
+                                              "$totalScore",
+                                              "$preTimedModeScoreText × 1.1",
+                                              successGreen,
+                                              Icons.flash_on_rounded,
+                                            ),
+                                          ),
+                                        ],
                                       ],
                                     ),
                                   ),
@@ -332,65 +350,55 @@ class ResultDialogWidget extends StatelessWidget {
     );
   }
 
-  Widget _buildVerticalScoreCard(
+  Widget _buildCompactScoreItem(
     String label,
-    String calculation,
     String value,
-    IconData icon,
+    String calculation,
     Color color,
+    IconData icon,
   ) {
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 8),
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.08),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: color.withOpacity(0.1), width: 1),
-      ),
-      child: Column(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: color.withOpacity(0.2),
-              shape: BoxShape.circle,
-            ),
-            child: Icon(icon, color: color, size: 22),
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, color: color, size: 22),
+        const SizedBox(height: 6),
+        Text(
+          value,
+          style: TextStyle(
+            color: color,
+            fontSize: 20,
+            fontFamily: 'Digitalt',
+            fontWeight: FontWeight.bold,
           ),
-          const SizedBox(height: 12),
-          Text(
-            value,
-            style: TextStyle(
-              color: color,
-              fontSize: 22,
-              fontFamily: 'Digitalt',
-              fontWeight: FontWeight.bold,
-            ),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+        ),
+        const SizedBox(height: 4),
+        Text(
+          label,
+          style: TextStyle(
+            color: Colors.grey.shade700,
+            fontSize: 10,
+            fontWeight: FontWeight.w700,
+            letterSpacing: 0.2,
           ),
-          const SizedBox(height: 4),
-          Text(
-            label,
-            style: TextStyle(
-              color: Colors.grey.shade700,
-              fontSize: 11,
-              fontWeight: FontWeight.w700,
-              letterSpacing: 0.5,
-            ),
-            textAlign: TextAlign.center,
+          textAlign: TextAlign.center,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+        ),
+        const SizedBox(height: 2),
+        Text(
+          calculation,
+          style: TextStyle(
+            color: Colors.grey.shade500,
+            fontSize: 9,
+            fontFamily: 'Digitalt',
           ),
-          const SizedBox(height: 4),
-          Text(
-            calculation,
-            style: TextStyle(
-              color: Colors.grey.shade500,
-              fontSize: 10,
-              fontFamily: 'Digitalt',
-            ),
-            textAlign: TextAlign.center,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
-        ],
-      ),
+          textAlign: TextAlign.center,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+        ),
+      ],
     );
   }
 
