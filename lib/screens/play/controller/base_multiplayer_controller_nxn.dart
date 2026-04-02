@@ -24,6 +24,7 @@ abstract class BaseMultiplayerControllerNxN extends ChangeNotifier {
   int hintPenalty = 0;
   bool isSubmitted = false;
   bool isPlaying = false;
+  bool isAbandoned = false;
 
   // Game metrics tracking
   DateTime? _gameStartTime;
@@ -79,6 +80,13 @@ abstract class BaseMultiplayerControllerNxN extends ChangeNotifier {
         // End game when status changes
         if (room.gameState.status == 'ended' && isPlaying) {
           _endGame();
+        }
+
+        // Host left mid-game — notify non-host players
+        if (room.gameState.status == 'abandoned' && !isAbandoned) {
+          isAbandoned = true;
+          isPlaying = false;
+          _timerCountdown?.cancel();
         }
 
         // Check if all players completed whenever room updates

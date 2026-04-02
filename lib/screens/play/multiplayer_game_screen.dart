@@ -36,6 +36,7 @@ class _MultiplayerGameScreenState extends State<MultiplayerGameScreen> {
   final MultiplayerGameSaveHelper _gameSaveHelper = MultiplayerGameSaveHelper();
   bool _isSaving = false;
   bool _hasAutoSaved = false;
+  bool _hasShownAbandonedDialog = false;
   final Map<String, TextEditingController> _inputControllers = {};
   final Map<String, FocusNode> _focusNodes = {};
   bool _showLeaderboard = false;
@@ -224,9 +225,38 @@ class _MultiplayerGameScreenState extends State<MultiplayerGameScreen> {
       create: (_) => _createController(),
       child: Consumer<BaseMultiplayerControllerNxN>(
         builder: (context, controller, _) {
+          // Handle host leaving mid-game: show dialog and go home
+          if (controller.isAbandoned && mounted && !_hasShownAbandonedDialog) {
+            _hasShownAbandonedDialog = true;
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (!mounted) return;
+              showDialog(
+                context: context,
+                barrierDismissible: false,
+                builder: (dialogContext) => AlertDialog(
+                  title: const Text('Game Ended'),
+                  content: const Text(
+                      'The host has left the game. The room has been closed.'),
+                  actions: [
+                    TextButton(
+                      onPressed: () {
+                        Navigator.of(dialogContext).pop();
+                        if (mounted) {
+                          Navigator.of(context)
+                              .popUntil((route) => route.isFirst);
+                        }
+                      },
+                      child: const Text('OK'),
+                    ),
+                  ],
+                ),
+              );
+            });
+          }
+
           // CRITICAL FIX 1: Navigate to results when game_screen ends OR player submits
           if ((controller.room?.gameState.status == 'ended' || controller.isSubmitted) &&
-              !controller.isPlaying) {
+              !controller.isPlaying && !controller.isAbandoned) {
             WidgetsBinding.instance.addPostFrameCallback((_) async {
               // Only auto-save if we haven't already and it's appropriate
               if (!_hasAutoSaved &&

@@ -30,6 +30,7 @@ class _WaitingLobbyScreenState extends State<WaitingLobbyScreen> {
   final RoomService _roomService = RoomService();
   Room? _room;
   bool _isLoading = true;
+  bool _isNavigatingAway = false;
   StreamSubscription<Room?>? _roomSubscription;
 
   @override
@@ -62,44 +63,38 @@ class _WaitingLobbyScreenState extends State<WaitingLobbyScreen> {
         }
 
         if (room.gameState.status == 'abandoned') {
-          if (mounted) _showAbandonedDialog();
+          if (mounted && !_isNavigatingAway) _showAbandonedDialog();
         }
       },
       onError: (error) async {
-        // 🧹 Try to clean up the room safely
-        try {
-          final exists = await _roomService.roomExists(widget.roomCode);
-          if (exists) {
-            await _roomService.cleanupRoom(widget.roomCode);
-          }
-        } catch (_) {
-          // ignore cleanup errors
-        }
+        // 🧹 If room deleted (host left), just navigate away cleanly
+        if (_isNavigatingAway) return;
+        _isNavigatingAway = true;
 
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Room error: $error')),
-          );
-          Navigator.pop(context);
+          Navigator.of(context).popUntil((route) => route.isFirst);
         }
       },
     );
   }
 
   void _showAbandonedDialog() {
-    if (!mounted) return;
+    if (!mounted || _isNavigatingAway) return;
+    _isNavigatingAway = true;
+    _roomSubscription?.cancel();
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (context) => AlertDialog(
+      builder: (dialogContext) => AlertDialog(
         title: const Text('Room Closed'),
         content: const Text('The host has left the room.'),
         actions: [
           TextButton(
             onPressed: () {
-              if (!mounted) return;
-              Navigator.pop(context);
-              Navigator.pop(context);
+              Navigator.of(dialogContext).pop(); // close dialog
+              if (mounted) {
+                Navigator.of(context).pop(); // go back to previous screen
+              }
             },
             child: const Text('OK'),
           ),
@@ -125,6 +120,11 @@ class _WaitingLobbyScreenState extends State<WaitingLobbyScreen> {
 
   Future<void> _leaveRoom() async {
     if (_room == null) return;
+
+    // Set guard immediately so our own stream events don't trigger
+    // the abandoned dialog on us (the person who is leaving)
+    _isNavigatingAway = true;
+    _roomSubscription?.cancel();
 
     final isHost = _room!.gameState.hostId == widget.playerId;
     await _roomService.leaveRoom(widget.roomCode, widget.playerId);
@@ -177,8 +177,8 @@ class _WaitingLobbyScreenState extends State<WaitingLobbyScreen> {
 
   void _shareRoomCode() {
     Share.share(
-      'Join my Jaloo Puzzle game_screen!\nRoom Code: ${widget.roomCode}',
-      subject: 'Join Jaloo Puzzle Game',
+      'Join my JOL Puzzle game!\nRoom Code: ${widget.roomCode}',
+      subject: 'Join JOL Puzzle Game',
     );
   }
 
