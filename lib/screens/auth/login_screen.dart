@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:jol_app/screens/auth/services/auth_services.dart';
 import 'package:jol_app/screens/auth/signup_screen.dart';
@@ -24,6 +25,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
   bool _isLoading = false;
   bool _isGoogleLoading = false;
+  bool _isAppleLoading = false;
   bool _obscurePassword = true;
 
   @override
@@ -205,6 +207,18 @@ class _LoginScreenState extends State<LoginScreen> {
                   icon: Image.asset("lib/assets/images/google.png", height: 22),
                   onTap: _isGoogleLoading ? null : _handleGoogleLogin,
                 ),
+
+                // Apple Login Button (iOS only)
+                if (Platform.isIOS) ...[
+                  const SizedBox(height: 14),
+                  _socialButton(
+                    text: _isAppleLoading
+                        ? "SIGNING IN..."
+                        : "CONTINUE WITH APPLE",
+                    icon: Image.asset("lib/assets/images/apple.png", height: 22),
+                    onTap: _isAppleLoading ? null : _handleAppleLogin,
+                  ),
+                ],
                 const SizedBox(height: 20),
 
                 // Signup link
@@ -302,6 +316,25 @@ class _LoginScreenState extends State<LoginScreen> {
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(result.error ?? 'Google login failed.')),
+      );
+    }
+  }
+
+  // Handle Apple login
+  Future<void> _handleAppleLogin() async {
+    setState(() => _isAppleLoading = true);
+    final result = await _authService.appleSignIn();
+    setState(() => _isAppleLoading = false);
+
+    if (result.success) {
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(builder: (context) => const HomeScreen()),
+        (route) => false,
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(result.error ?? 'Apple login failed.')),
       );
     }
   }

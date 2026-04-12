@@ -100,6 +100,24 @@ class AuthController extends GetxController {
     }
   }
 
+  Future<bool> appleSignIn() async {
+    isLoading.value = true;
+    try {
+      final result = await _authService.appleSignIn();
+      if (result.success && result.user != null) {
+        user.value = result.user!;
+        isAuthenticated.value = true;
+        return true;
+      } else {
+        _showSnackbar(
+            "Apple Sign-In Failed", result.error ?? "Unknown error occurred");
+        return false;
+      }
+    } finally {
+      isLoading.value = false;
+    }
+  }
+
   Future<void> logout() async {
     isLoading.value = true;
     try {

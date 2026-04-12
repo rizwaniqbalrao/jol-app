@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:jol_app/screens/auth/controllers/auth_controller.dart';
@@ -25,6 +26,7 @@ class _SignupScreenState extends State<SignupScreen> {
 
   bool _isLoading = false;
   bool _isGoogleLoading = false;
+  bool _isAppleLoading = false;
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
 
@@ -216,6 +218,18 @@ class _SignupScreenState extends State<SignupScreen> {
                   icon: Image.asset("lib/assets/images/google.png", height: 22),
                   onTap: _isGoogleLoading ? null : _handleGoogleSignup,
                 ),
+
+                // Apple Signup Button (iOS only)
+                if (Platform.isIOS) ...[
+                  const SizedBox(height: 14),
+                  _socialButton(
+                    text: _isAppleLoading
+                        ? "SIGNING UP..."
+                        : "CONTINUE WITH APPLE",
+                    icon: Image.asset("lib/assets/images/apple.png", height: 22),
+                    onTap: _isAppleLoading ? null : _handleAppleSignup,
+                  ),
+                ],
                 const SizedBox(height: 20),
 
                 // Sign in link
@@ -359,6 +373,18 @@ class _SignupScreenState extends State<SignupScreen> {
     setState(() => _isGoogleLoading = true);
     final success = await authController.googleSignIn();
     setState(() => _isGoogleLoading = false);
+
+    if (success) {
+      Get.offAllNamed(AppRoutes.home);
+    }
+  }
+
+  // Handle Apple signup
+  Future<void> _handleAppleSignup() async {
+    final authController = Get.find<AuthController>();
+    setState(() => _isAppleLoading = true);
+    final success = await authController.appleSignIn();
+    setState(() => _isAppleLoading = false);
 
     if (success) {
       Get.offAllNamed(AppRoutes.home);
