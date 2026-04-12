@@ -53,14 +53,14 @@ class AuthService {
 // ✅ Initialize Google Sign-In (once)
       await GoogleSignIn.instance.initialize(
         clientId:
-        '513851405319-8s9jl10luc5v0vm8s8agu1mr47hh38p9.apps.googleusercontent.com',
+            '513851405319-8s9jl10luc5v0vm8s8agu1mr47hh38p9.apps.googleusercontent.com',
         serverClientId:
-        '513851405319-87gfavvccvimg3ici170j9o6cvlpb95n.apps.googleusercontent.com',
+            '513851405319-87gfavvccvimg3ici170j9o6cvlpb95n.apps.googleusercontent.com',
       );
 
 // ✅ Start authentication
       final GoogleSignInAccount account =
-      await GoogleSignIn.instance.authenticate(
+          await GoogleSignIn.instance.authenticate(
         scopeHint: const <String>['openid', 'email', 'profile'],
       );
 
@@ -69,7 +69,7 @@ class AuthService {
 
 // ✅ Get Access Token (optional)
       final GoogleSignInClientAuthorization? authz =
-      await account.authorizationClient.authorizationForScopes(
+          await account.authorizationClient.authorizationForScopes(
         const <String>['email', 'profile', 'openid'],
       );
       final String? accessToken = authz?.accessToken;
@@ -78,7 +78,7 @@ class AuthService {
         return AuthResult(
             success: false,
             error:
-            'Unable to connect with Google. Please check your account and try again.');
+                'Unable to connect with Google. Please check your account and try again.');
       }
 
 // ✅ Send token to Django backend for verification & login
@@ -113,12 +113,12 @@ class AuthService {
         final user = userData.isNotEmpty
             ? User.fromJson(userData)
             : User(
-          id: 0,
-          email: account.email,
-          username: account.displayName ?? account.email,
-          firstName: account.displayName,
-          lastName: null,
-        );
+                id: 0,
+                email: account.email,
+                username: account.displayName ?? account.email,
+                firstName: account.displayName,
+                lastName: null,
+              );
 
         return AuthResult(success: true, user: user);
       } else {
@@ -131,9 +131,10 @@ class AuthService {
       return AuthResult(
           success: false,
           error:
-          'Google sign-in unavailable right now. Check your connection and try again.');
+              'Google sign-in unavailable right now. Check your connection and try again.');
     }
   }
+
   /// ✅ Apple Sign In — native iOS flow
   Future<AuthResult> appleSignIn() async {
     try {
@@ -159,7 +160,7 @@ class AuthService {
         return AuthResult(
             success: false,
             error:
-            'Unable to connect with Apple. Please check your account and try again.');
+                'Unable to connect with Apple. Please check your account and try again.');
       }
 
       final Map<String, dynamic> body = {
@@ -201,12 +202,12 @@ class AuthService {
         final user = userData.isNotEmpty
             ? User.fromJson(userData)
             : User(
-          id: 0,
-          email: email ?? '',
-          username: email ?? 'apple_user',
-          firstName: firstName,
-          lastName: lastName,
-        );
+                id: 0,
+                email: email ?? '',
+                username: email ?? 'apple_user',
+                firstName: firstName,
+                lastName: lastName,
+              );
 
         return AuthResult(success: true, user: user);
       } else {
@@ -227,10 +228,9 @@ class AuthService {
       return AuthResult(
           success: false,
           error:
-          'Apple sign-in unavailable right now. Check your connection and try again.');
+              'Apple sign-in unavailable right now. Check your connection and try again.');
     }
   }
-
 
   Future<AuthResult> login(
       String username, String email, String password) async {
@@ -243,7 +243,7 @@ class AuthService {
 
 // Prepare login request
       final request =
-      LoginRequest(username: username, email: email, password: password);
+          LoginRequest(username: username, email: email, password: password);
       final requestBody = jsonEncode(request.toJson());
       print('🔹 Request body JSON: $requestBody');
 
@@ -296,10 +296,10 @@ class AuthService {
         final user = data['user'] != null
             ? User.fromJson(data['user'])
             : User(
-          id: 0,
-          email: email,
-          username: username,
-        );
+                id: 0,
+                email: email,
+                username: username,
+              );
 
         print('✅ User object created: ${user.username}');
         return AuthResult(success: true, user: user);
@@ -316,7 +316,7 @@ class AuthService {
       return AuthResult(
         success: false,
         error:
-        'Unable to connect. Check your internet or server status.\nError: $e',
+            'Unable to connect. Check your internet or server status.\nError: $e',
       );
     }
   }
@@ -367,10 +367,10 @@ class AuthService {
           final user = data['user'] != null
               ? User.fromJson(data['user'])
               : User(
-            id: 0,
-            email: email,
-            username: username,
-          );
+                  id: 0,
+                  email: email,
+                  username: username,
+                );
           print('Registration success: Token saved, user: ${user.username}');
           return AuthResult(success: true, user: user);
         } else {
@@ -385,7 +385,7 @@ class AuthService {
       return AuthResult(
           success: false,
           error:
-          'Unable to create account. Please check your details (e.g., strong password, unique username/email) and try again.');
+              'Unable to create account. Please check your details (e.g., strong password, unique username/email) and try again.');
     } catch (e) {
       print('Exception in register: $e');
       return AuthResult(
