@@ -43,33 +43,33 @@ class AuthService {
       }
     } catch (e) {
       print('⚠️ Referral processing error: $e');
-      // Don't fail the auth flow if referral fails
+// Don't fail the auth flow if referral fails
     }
   }
 
   /// ✅ Correct implementation for new google_sign_in API
   Future<AuthResult> googleSignIn() async {
     try {
-      // ✅ Initialize Google Sign-In (once)
+// ✅ Initialize Google Sign-In (once)
       await GoogleSignIn.instance.initialize(
         clientId:
-            '513851405319-8s9jl10luc5v0vm8s8agu1mr47hh38p9.apps.googleusercontent.com',
+        '513851405319-8s9jl10luc5v0vm8s8agu1mr47hh38p9.apps.googleusercontent.com',
         serverClientId:
-            '513851405319-87gfavvccvimg3ici170j9o6cvlpb95n.apps.googleusercontent.com',
+        '513851405319-87gfavvccvimg3ici170j9o6cvlpb95n.apps.googleusercontent.com',
       );
 
-      // ✅ Start authentication
+// ✅ Start authentication
       final GoogleSignInAccount account =
-          await GoogleSignIn.instance.authenticate(
+      await GoogleSignIn.instance.authenticate(
         scopeHint: const <String>['openid', 'email', 'profile'],
       );
 
-      // ✅ Get ID token (used by backend)
+// ✅ Get ID token (used by backend)
       final String? idToken = account.authentication.idToken;
 
-      // ✅ Get Access Token (optional)
+// ✅ Get Access Token (optional)
       final GoogleSignInClientAuthorization? authz =
-          await account.authorizationClient.authorizationForScopes(
+      await account.authorizationClient.authorizationForScopes(
         const <String>['email', 'profile', 'openid'],
       );
       final String? accessToken = authz?.accessToken;
@@ -78,10 +78,10 @@ class AuthService {
         return AuthResult(
             success: false,
             error:
-                'Unable to connect with Google. Please check your account and try again.');
+            'Unable to connect with Google. Please check your account and try again.');
       }
 
-      // ✅ Send token to Django backend for verification & login
+// ✅ Send token to Django backend for verification & login
       final response = await http.post(
         Uri.parse('$baseUrl/auth/google/'),
         headers: {
@@ -97,7 +97,7 @@ class AuthService {
       print(
           "***********************************************************************");
       print(response.body);
-      // ✅ Handle backend response
+// ✅ Handle backend response
       if (response.statusCode == 200 || response.statusCode == 201) {
         final data = jsonDecode(response.body);
         final token = data['key'] ?? data['token'];
@@ -105,7 +105,7 @@ class AuthService {
         if (token != null) {
           await _storage.saveToken(token);
 
-          // 🔥 Process referral after successful Google sign-in
+// 🔥 Process referral after successful Google sign-in
           await _processReferralAfterAuth(token);
         }
 
@@ -113,16 +113,16 @@ class AuthService {
         final user = userData.isNotEmpty
             ? User.fromJson(userData)
             : User(
-                id: 0,
-                email: account.email,
-                username: account.displayName ?? account.email,
-                firstName: account.displayName,
-                lastName: null,
-              );
+          id: 0,
+          email: account.email,
+          username: account.displayName ?? account.email,
+          firstName: account.displayName,
+          lastName: null,
+        );
 
         return AuthResult(success: true, user: user);
       } else {
-        // Parse server errors for user-friendly display
+// Parse server errors for user-friendly display
         String errorMsg = _parseError(response);
         return AuthResult(success: false, error: errorMsg);
       }
@@ -131,20 +131,20 @@ class AuthService {
       return AuthResult(
           success: false,
           error:
-              'Google sign-in unavailable right now. Check your connection and try again.');
+          'Google sign-in unavailable right now. Check your connection and try again.');
     }
   }
   /// ✅ Apple Sign In — native iOS flow
   Future<AuthResult> appleSignIn() async {
     try {
-      // Guard: Apple Sign In only works on iOS
+// Guard: Apple Sign In only works on iOS
       if (!Platform.isIOS) {
         return AuthResult(
             success: false,
             error: 'Apple Sign In is only available on iOS devices.');
       }
 
-      // ✅ Trigger native Apple Sign In sheet
+// ✅ Trigger native Apple Sign In sheet
       final credential = await SignInWithApple.getAppleIDCredential(
         scopes: [
           AppleIDAuthorizationScopes.email,
@@ -159,18 +159,15 @@ class AuthService {
         return AuthResult(
             success: false,
             error:
-                'Unable to connect with Apple. Please check your account and try again.');
+            'Unable to connect with Apple. Please check your account and try again.');
       }
 
-      // ✅ Build request body for backend
       final Map<String, dynamic> body = {
-        'access_token': identityToken,
+        'access_token': identityToken, // Required by dj-rest-auth serializer
+        'id_token': identityToken, // Required by allauth Apple adapter
       };
-      if (authorizationCode != null) {
-        body['code'] = authorizationCode;
-      }
 
-      // ✅ Send token to Django backend for verification & login
+// ✅ Send token to Django backend for verification & login
       final response = await http.post(
         Uri.parse('$baseUrl/auth/apple/'),
         headers: {
@@ -182,7 +179,7 @@ class AuthService {
 
       print("Apple Sign-In response: ${response.body}");
 
-      // ✅ Handle backend response (same pattern as Google)
+// ✅ Handle backend response (same pattern as Google)
       if (response.statusCode == 200 || response.statusCode == 201) {
         final data = jsonDecode(response.body);
         final token = data['key'] ?? data['token'];
@@ -190,13 +187,13 @@ class AuthService {
         if (token != null) {
           await _storage.saveToken(token);
 
-          // 🔥 Process referral after successful Apple sign-in
+// 🔥 Process referral after successful Apple sign-in
           await _processReferralAfterAuth(token);
         }
 
         final userData = data['user'] ?? {};
 
-        // Build user from response or from Apple credential
+// Build user from response or from Apple credential
         final String? firstName = credential.givenName;
         final String? lastName = credential.familyName;
         final String? email = credential.email;
@@ -204,12 +201,12 @@ class AuthService {
         final user = userData.isNotEmpty
             ? User.fromJson(userData)
             : User(
-                id: 0,
-                email: email ?? '',
-                username: email ?? 'apple_user',
-                firstName: firstName,
-                lastName: lastName,
-              );
+          id: 0,
+          email: email ?? '',
+          username: email ?? 'apple_user',
+          firstName: firstName,
+          lastName: lastName,
+        );
 
         return AuthResult(success: true, user: user);
       } else {
@@ -219,7 +216,7 @@ class AuthService {
     } catch (e) {
       print("❌ Apple sign-in error: $e");
 
-      // Handle user cancellation gracefully
+// Handle user cancellation gracefully
       if (e is SignInWithAppleAuthorizationException) {
         if (e.code == AuthorizationErrorCode.canceled) {
           return AuthResult(
@@ -230,7 +227,7 @@ class AuthService {
       return AuthResult(
           success: false,
           error:
-              'Apple sign-in unavailable right now. Check your connection and try again.');
+          'Apple sign-in unavailable right now. Check your connection and try again.');
     }
   }
 
@@ -240,17 +237,17 @@ class AuthService {
     try {
       print('🔹 Starting login for: username="$username", email="$email"');
 
-      // Fetch CSRF token (may not be needed for token login)
+// Fetch CSRF token (may not be needed for token login)
       final csrfToken = await _getCsrfToken();
       print('🔹 CSRF token fetched: ${csrfToken ?? "NULL"}');
 
-      // Prepare login request
+// Prepare login request
       final request =
-          LoginRequest(username: username, email: email, password: password);
+      LoginRequest(username: username, email: email, password: password);
       final requestBody = jsonEncode(request.toJson());
       print('🔹 Request body JSON: $requestBody');
 
-      // Headers
+// Headers
       final headers = {
         'accept': 'application/json',
         'Content-Type': 'application/json',
@@ -260,7 +257,7 @@ class AuthService {
       print(
           '🔹 Sending POST request to $baseUrl/auth/login/ with headers: $headers');
 
-      // Send request
+// Send request
       final response = await http.post(
         Uri.parse('$baseUrl/auth/login/'),
         headers: headers,
@@ -283,31 +280,31 @@ class AuthService {
               success: false, error: 'No token received from server.');
         }
 
-        // Save token
+// Save token
         await _storage.saveToken(token);
         print('********************************Saving token: $token');
 
-        // Save user ID only if available
+// Save user ID only if available
         if (data['user'] != null && data['user']['id'] != null) {
           await _storage.saveUserId(data['user']['id'].toString());
         }
 
-        // Process referral
+// Process referral
         await _processReferralAfterAuth(token);
 
-        // Create user object safely
+// Create user object safely
         final user = data['user'] != null
             ? User.fromJson(data['user'])
             : User(
-                id: 0,
-                email: email,
-                username: username,
-              );
+          id: 0,
+          email: email,
+          username: username,
+        );
 
         print('✅ User object created: ${user.username}');
         return AuthResult(success: true, user: user);
       } else {
-        // Handle server errors
+// Handle server errors
         print('⚠️ Login failed with status ${response.statusCode}');
         String errorMsg = _parseError(response);
         print('⚠️ Parsed error: $errorMsg');
@@ -319,12 +316,12 @@ class AuthService {
       return AuthResult(
         success: false,
         error:
-            'Unable to connect. Check your internet or server status.\nError: $e',
+        'Unable to connect. Check your internet or server status.\nError: $e',
       );
     }
   }
 
-  // ------------------ REGISTER ------------------ //
+// ------------------ REGISTER ------------------ //
   Future<AuthResult> register(
       String username, String email, String password1, String password2) async {
     try {
@@ -364,23 +361,23 @@ class AuthService {
         if (token != null) {
           await _storage.saveToken(token);
 
-          // 🔥 Process referral after successful registration
+// 🔥 Process referral after successful registration
           await _processReferralAfterAuth(token);
 
           final user = data['user'] != null
               ? User.fromJson(data['user'])
               : User(
-                  id: 0,
-                  email: email,
-                  username: username,
-                );
+            id: 0,
+            email: email,
+            username: username,
+          );
           print('Registration success: Token saved, user: ${user.username}');
           return AuthResult(success: true, user: user);
         } else {
           print('No token in response');
         }
       } else {
-        // Parse server errors for user-friendly display
+// Parse server errors for user-friendly display
         String errorMsg = _parseError(response);
         print('Parsed error: $errorMsg');
         return AuthResult(success: false, error: errorMsg);
@@ -388,7 +385,7 @@ class AuthService {
       return AuthResult(
           success: false,
           error:
-              'Unable to create account. Please check your details (e.g., strong password, unique username/email) and try again.');
+          'Unable to create account. Please check your details (e.g., strong password, unique username/email) and try again.');
     } catch (e) {
       print('Exception in register: $e');
       return AuthResult(
@@ -397,7 +394,7 @@ class AuthService {
     }
   }
 
-  // ------------------ PASSWORD RESET ------------------ //
+// ------------------ PASSWORD RESET ------------------ //
   Future<AuthResult> requestPasswordReset(String email) async {
     try {
       print('Requesting password reset for email: $email');
@@ -427,7 +424,7 @@ class AuthService {
       if (response.statusCode == 200 || response.statusCode == 201) {
         return AuthResult(success: true);
       } else {
-        // Parse server errors for user-friendly display
+// Parse server errors for user-friendly display
         String errorMsg = _parseError(response);
         print('Parsed error: $errorMsg');
         return AuthResult(success: false, error: errorMsg);
@@ -440,14 +437,14 @@ class AuthService {
     }
   }
 
-  // ------------------ LOGOUT ------------------ //
+// ------------------ LOGOUT ------------------ //
   Future<AuthResult> logout() async {
     try {
       final token = await getCurrentToken();
       final csrfToken = await _getCsrfToken();
 
       if (token == null) {
-        // Already logged out locally
+// Already logged out locally
         await _storage.clearAll();
         return AuthResult(success: true);
       }
@@ -466,27 +463,27 @@ class AuthService {
       print('Logout response status: ${response.statusCode}');
       print('Logout response body: ${response.body}');
 
-      // Clear local storage regardless of server response
+// Clear local storage regardless of server response
       await _storage.clearAll();
 
       if (response.statusCode == 200 || response.statusCode == 204) {
         return AuthResult(success: true);
       } else {
-        // Still return success if local storage cleared
-        // but log the server error
+// Still return success if local storage cleared
+// but log the server error
         String errorMsg = _parseError(response);
         print('Logout warning: $errorMsg');
         return AuthResult(success: true); // Still successful locally
       }
     } catch (e) {
       print('Exception in logout: $e');
-      // Clear local storage even if server call fails
+// Clear local storage even if server call fails
       await _storage.clearAll();
       return AuthResult(success: true); // Local logout successful
     }
   }
 
-  // ------------------ OTHER HELPERS ------------------ //
+// ------------------ OTHER HELPERS ------------------ //
   Future<String?> _getCsrfToken() async {
     try {
       final response = await http.get(
@@ -514,13 +511,13 @@ class AuthService {
       final token = await getCurrentToken();
       if (token == null) return null;
 
-      // ✅ Use ApiClient - it handles 401 automatically with navigation to login
+// ✅ Use ApiClient - it handles 401 automatically with navigation to login
       final response = await ApiClient.get('/v1/user/detail/');
 
       if (response.statusCode == 200) {
         return User.fromJson(jsonDecode(response.body));
       } else {
-        // Parse server errors for logging (no UI error since not AuthResult)
+// Parse server errors for logging (no UI error since not AuthResult)
         try {
           final errorData = jsonDecode(response.body);
           if (errorData is Map<String, dynamic>) {
@@ -546,7 +543,7 @@ class AuthService {
     return null;
   }
 
-  // ------------------ EMAIL VERIFICATION ------------------ //
+// ------------------ EMAIL VERIFICATION ------------------ //
   Future<AuthResult> verifyEmail(String key) async {
     try {
       final response = await http.post(
@@ -568,7 +565,7 @@ class AuthService {
     }
   }
 
-  // ------------------ PASSWORD RESET CONFIRM ------------------ //
+// ------------------ PASSWORD RESET CONFIRM ------------------ //
   Future<AuthResult> confirmPasswordReset(String uid, String token,
       String newPassword1, String newPassword2) async {
     try {
@@ -592,7 +589,7 @@ class AuthService {
     }
   }
 
-  // ------------------ CHANGE PASSWORD ------------------ //
+// ------------------ CHANGE PASSWORD ------------------ //
   Future<AuthResult> changePassword(
       String oldPassword, String newPassword1, String newPassword2) async {
     try {
@@ -624,7 +621,7 @@ class AuthService {
     }
   }
 
-  // ------------------ ACCOUNT DEACTIVATION ------------------ //
+// ------------------ ACCOUNT DEACTIVATION ------------------ //
   Future<AuthResult> deactivateAccount(String password) async {
     try {
       print("AuthService: deactivateAccount start");
@@ -696,11 +693,11 @@ class AuthService {
       }
       return "Account already exists.";
     }
-    // If it's an HTML page, completely hide raw HTML
+// If it's an HTML page, completely hide raw HTML
     if (lowerBody.contains("<!doctype html>") || lowerBody.contains("<html")) {
       return "A server error occurred. Please try again later.";
     }
-    // Truncate long error messages
+// Truncate long error messages
     if (rawBody.length > 200) {
       return rawBody.substring(0, 200) + "...";
     }
