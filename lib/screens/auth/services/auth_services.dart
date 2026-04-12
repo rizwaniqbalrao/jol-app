@@ -1,6 +1,8 @@
 import 'dart:convert';
+import 'dart:io';
 import 'package:http/http.dart' as http;
 import 'package:google_sign_in/google_sign_in.dart';
+import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 import '../models/password_reset_request.dart';
 import '../models/user.dart';
 import '../models/register_request.dart';
@@ -132,6 +134,106 @@ class AuthService {
               'Google sign-in unavailable right now. Check your connection and try again.');
     }
   }
+  /// ✅ Apple Sign In — native iOS flow
+  Future<AuthResult> appleSignIn() async {
+    try {
+      // Guard: Apple Sign In only works on iOS
+      if (!Platform.isIOS) {
+        return AuthResult(
+            success: false,
+            error: 'Apple Sign In is only available on iOS devices.');
+      }
+
+      // ✅ Trigger native Apple Sign In sheet
+      final credential = await SignInWithApple.getAppleIDCredential(
+        scopes: [
+          AppleIDAuthorizationScopes.email,
+          AppleIDAuthorizationScopes.fullName,
+        ],
+      );
+
+      final String? identityToken = credential.identityToken;
+      final String? authorizationCode = credential.authorizationCode;
+
+      if (identityToken == null) {
+        return AuthResult(
+            success: false,
+            error:
+                'Unable to connect with Apple. Please check your account and try again.');
+      }
+
+      // ✅ Build request body for backend
+      final Map<String, dynamic> body = {
+        'access_token': identityToken,
+      };
+      if (authorizationCode != null) {
+        body['code'] = authorizationCode;
+      }
+
+      // ✅ Send token to Django backend for verification & login
+      final response = await http.post(
+        Uri.parse('$baseUrl/auth/apple/'),
+        headers: {
+          'accept': 'application/json',
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode(body),
+      );
+
+      print("Apple Sign-In response: ${response.body}");
+
+      // ✅ Handle backend response (same pattern as Google)
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final data = jsonDecode(response.body);
+        final token = data['key'] ?? data['token'];
+
+        if (token != null) {
+          await _storage.saveToken(token);
+
+          // 🔥 Process referral after successful Apple sign-in
+          await _processReferralAfterAuth(token);
+        }
+
+        final userData = data['user'] ?? {};
+
+        // Build user from response or from Apple credential
+        final String? firstName = credential.givenName;
+        final String? lastName = credential.familyName;
+        final String? email = credential.email;
+
+        final user = userData.isNotEmpty
+            ? User.fromJson(userData)
+            : User(
+                id: 0,
+                email: email ?? '',
+                username: email ?? 'apple_user',
+                firstName: firstName,
+                lastName: lastName,
+              );
+
+        return AuthResult(success: true, user: user);
+      } else {
+        String errorMsg = _parseError(response);
+        return AuthResult(success: false, error: errorMsg);
+      }
+    } catch (e) {
+      print("❌ Apple sign-in error: $e");
+
+      // Handle user cancellation gracefully
+      if (e is SignInWithAppleAuthorizationException) {
+        if (e.code == AuthorizationErrorCode.canceled) {
+          return AuthResult(
+              success: false, error: 'Apple Sign In was cancelled.');
+        }
+      }
+
+      return AuthResult(
+          success: false,
+          error:
+              'Apple sign-in unavailable right now. Check your connection and try again.');
+    }
+  }
+
 
   Future<AuthResult> login(
       String username, String email, String password) async {
