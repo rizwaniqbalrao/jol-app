@@ -10,6 +10,7 @@ import '../auth/models/user.dart';
 import '../auth/models/user_wallet.dart';
 import '../auth/services/auth_services.dart';
 import '../auth/services/wallet_service.dart';
+import '../../constants/app_config.dart';
 
 class AccountScreen extends StatefulWidget {
   final bool showAppBar;
@@ -1373,7 +1374,7 @@ class _AccountScreenState extends State<AccountScreen> {
                                       ? NetworkImage(
                                           _profile!.avatar!.startsWith('http')
                                               ? _profile!.avatar!
-                                              : 'http://13.53.102.145${_profile!.avatar}',
+                                              : AppConfig.mediaUrl(_profile!.avatar) ?? '',
                                         )
                                       : const AssetImage(
                                               "lib/assets/images/settings_emoji.png")

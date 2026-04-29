@@ -8,6 +8,7 @@ import '../auth/models/user.dart';
 import '../auth/services/auth_services.dart';
 import '../auth/login_screen.dart';
 import 'services/user_profile_services.dart';
+import '../../constants/app_config.dart';
 
 class EditProfileScreen extends StatefulWidget {
   const EditProfileScreen({super.key});
@@ -413,9 +414,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     if (_selectedAvatarFile != null) {
       imageProvider = FileImage(_selectedAvatarFile!);
     } else if (_avatarUrl != null && _avatarUrl!.isNotEmpty) {
-      String fullAvatarUrl = _avatarUrl!.startsWith('http')
-          ? _avatarUrl!
-          : 'http://13.53.102.145$_avatarUrl';
+      String fullAvatarUrl = AppConfig.mediaUrl(_avatarUrl) ?? '';
       imageProvider = NetworkImage(fullAvatarUrl);
     }
 

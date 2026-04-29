@@ -44,3 +44,4 @@ app.*.map.json
 /android/app/release
 .gitignore
 temp_interactive_push.bat
+branch_structure.json

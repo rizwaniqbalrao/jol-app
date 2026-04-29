@@ -1,6 +1,7 @@
 // File: services/leaderboard_service.dart
 
 import 'dart:convert';
+import '../../../constants/app_config.dart';
 import 'package:http/http.dart' as http;
 import '../../auth/services/secure_storage_service.dart';
 import '../models/leadboard_entry.dart';
@@ -18,7 +19,7 @@ class LeaderboardResult {
 }
 
 class LeaderboardService {
-  final String baseUrl = 'http://13.53.102.145/api/v1';
+  final String baseUrl = AppConfig.apiV1BaseUrl;
   final SecureStorageService _storage = SecureStorageService();
 
   /// Fetch leaderboard with filters
