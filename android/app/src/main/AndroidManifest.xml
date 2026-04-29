@@ -8,6 +8,16 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="com.google.android.gms.permission.AD_ID" />
 
+    <!-- Restrict app to phones only (blocks Tablets, large screens, and Android XR) -->
+    <supports-screens
+        android:smallScreens="true"
+        android:normalScreens="true"
+        android:largeScreens="false"
+        android:xlargeScreens="false" />
+
+    <!-- Require touchscreen to filter out non-touch TVs and simple ChromeOS devices -->
+    <uses-feature android:name="android.hardware.touchscreen" android:required="true" />
+
     <application
         android:label="JOL Puzzles"
         android:name="${applicationName}"
