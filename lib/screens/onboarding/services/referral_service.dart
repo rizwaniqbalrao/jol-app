@@ -1,11 +1,11 @@
 import 'dart:convert';
+import '../../../constants/app_config.dart';
 import 'package:http/http.dart' as http;
 
 import '../models/referral_model.dart';
 
 class ReferralService {
-  static const String baseUrl =
-      'http://13.53.102.145';
+  static const String baseUrl = AppConfig.baseUrl;
   static const String referralEndpoint = '/api/v1/user/process-referral/';
 
   /// Process referral by hitting the API once

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:jol_app/screens/score%20board/services/leadboard_services.dart';
+import '../../constants/app_config.dart';
 import 'models/leadboard_entry.dart';
 
 class ScoreBoardScreen extends StatefulWidget {
@@ -399,7 +400,7 @@ class LeaderboardCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const String baseUrl = "http://13.53.102.145";
+    final String? fullAvatarUrl = AppConfig.mediaUrl(avatarUrl);
 
     return Container(
       margin: const EdgeInsets.symmetric(vertical: 8),
@@ -449,8 +450,8 @@ class LeaderboardCard extends StatelessWidget {
                       children: [
                         CircleAvatar(
                           radius: 28,
-                          backgroundImage: avatarUrl != null && avatarUrl!.isNotEmpty
-                              ? NetworkImage(baseUrl + avatarUrl!)
+                          backgroundImage: fullAvatarUrl != null
+                              ? NetworkImage(fullAvatarUrl)
                               : const AssetImage("lib/assets/images/settings_emoji.png")
                           as ImageProvider,
                         ),
