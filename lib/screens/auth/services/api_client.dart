@@ -1,4 +1,5 @@
 import 'dart:convert';
+import '../../../constants/app_config.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter/material.dart';
 import '../../../main.dart';
@@ -6,7 +7,7 @@ import '../login_screen.dart';
 import 'secure_storage_service.dart';
 
 class ApiClient {
-  static const String baseUrl = 'http://13.53.102.145/api';
+  static const String baseUrl = AppConfig.apiBaseUrl;
   static final SecureStorageService _storage = SecureStorageService();
 
   // Track if we're already handling logout to prevent multiple calls

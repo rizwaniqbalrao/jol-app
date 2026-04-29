@@ -1,4 +1,5 @@
 import 'dart:convert';
+import '../../../constants/app_config.dart';
 import 'dart:io';
 import 'package:http/http.dart' as http;
 import 'package:google_sign_in/google_sign_in.dart';
@@ -20,7 +21,7 @@ class AuthResult {
 }
 
 class AuthService {
-  final String baseUrl = 'http://13.53.102.145/api';
+  final String baseUrl = AppConfig.apiBaseUrl;
   final SecureStorageService _storage = SecureStorageService();
 
   /// Process referral after successful authentication
@@ -134,6 +135,7 @@ class AuthService {
           'Google sign-in unavailable right now. Check your connection and try again.');
     }
   }
+
   /// ✅ Apple Sign In — native iOS flow
   Future<AuthResult> appleSignIn() async {
     try {
@@ -230,7 +232,6 @@ class AuthService {
           'Apple sign-in unavailable right now. Check your connection and try again.');
     }
   }
-
 
   Future<AuthResult> login(
       String username, String email, String password) async {
